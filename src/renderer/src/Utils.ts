@@ -1,0 +1,403 @@
+import { compact, decompact } from 'sdp-compact'
+import { appendInviteFragment, parseInviteFragment, type InviteCrypto } from './crypto/invite'
+
+export const enum ConnectionType {
+  HOST = 'host',
+  PARTICIPANT = 'participant',
+}
+
+export type RTCSessionDescriptionOptions = RTCSessionDescriptionInit
+
+const CONNECTION_PROTOCOLS = new Set(['kiwi:', 'bananas:'])
+const COMPACT_OPTIONS = { compress: 'base64' as const }
+const PAYLOAD_VERSION = '2'
+
+const SHORT_TYPE: Record<ConnectionType, string> = {
+  [ConnectionType.HOST]: 'h',
+  [ConnectionType.PARTICIPANT]: 'p',
+}
+
+const TYPE_FROM_SHORT: Record<string, ConnectionType> = {
+  h: ConnectionType.HOST,
+  p: ConnectionType.PARTICIPANT,
+  host: ConnectionType.HOST,
+  participant: ConnectionType.PARTICIPANT,
+}
+
+const connectionRoleFromUrl = (url: URL): string => {
+  if (url.hostname) return url.hostname
+  return url.pathname.slice(2).split('/')[0] ?? ''
+}
+
+const toBase64Url = (b64: string): string =>
+  b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+
+const fromBase64Url = (value: string): string => {
+  const b64 = value.replace(/-/g, '+').replace(/_/g, '/')
+  const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4))
+  return b64 + pad
+}
+
+const candidateLineFields = (line: string): { protocol: string; type: string } | null => {
+  if (!line.startsWith('a=candidate:')) return null
+  const parts = line.slice('a=candidate:'.length).split(/\s+/)
+  const typIndex = parts.indexOf('typ')
+  return {
+    protocol: parts[2]?.toLowerCase() ?? '',
+    type: typIndex >= 0 ? (parts[typIndex + 1]?.toLowerCase() ?? '') : '',
+  }
+}
+
+const hasHostUdpCandidate = (lines: string[]): boolean =>
+  lines.some((line) => {
+    const fields = candidateLineFields(line)
+    return fields?.protocol === 'udp' && fields.type === 'host'
+  })
+
+const isRedundantHostTcpLine = (line: string): boolean => {
+  const fields = candidateLineFields(line)
+  return fields?.protocol === 'tcp' && fields.type === 'host'
+}
+
+export const cloneForIpc = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
+export const mediaTrackConstraints = (
+  deviceId: string | undefined | null,
+): boolean | MediaTrackConstraints => {
+  if (!deviceId) return true
+  return { deviceId: { exact: deviceId } }
+}
+
+/** Native RTCSessionDescription stores type/sdp as prototype getters, so object spread drops them. */
+export const cloneSessionDescription = (
+  desc: RTCSessionDescriptionInit,
+): RTCSessionDescriptionInit => ({
+  type: desc.type,
+  sdp: desc.sdp,
+})
+
+export const cloneIceCandidate = (candidate: RTCIceCandidateInit): RTCIceCandidateInit => ({
+  candidate: candidate.candidate,
+  sdpMid: candidate.sdpMid ?? undefined,
+  sdpMLineIndex: candidate.sdpMLineIndex ?? undefined,
+  usernameFragment: candidate.usernameFragment ?? undefined,
+})
+
+/** Drop host/TCP only when host/UDP is already present. Relay and srflx TCP stay. */
+export const pruneRedundantIceCandidates = (
+  desc: RTCSessionDescriptionInit,
+): RTCSessionDescriptionInit => {
+  const cloned = cloneSessionDescription(desc)
+  if (!cloned.sdp) return cloned
+  const newline = cloned.sdp.includes('\r\n') ? '\r\n' : '\n'
+  const lines = cloned.sdp.split(/\r?\n/)
+  if (!hasHostUdpCandidate(lines)) return cloned
+  return {
+    type: cloned.type,
+    sdp: lines.filter((line) => !isRedundantHostTcpLine(line)).join(newline),
+  }
+}
+
+export const iceCandidateAddress = (line: string): string | null => {
+  const trimmed = line.trim()
+  const body = trimmed.startsWith('a=') ? trimmed.slice(2) : trimmed
+  if (!body.startsWith('candidate:')) return null
+  const parts = body.slice('candidate:'.length).split(/\s+/)
+  return parts[4] || null
+}
+
+const isLinkLocalIpv6 = (address: string): boolean => address.toLowerCase().startsWith('fe80:')
+
+export const isUnusableIpv6Address = (address: string, keepRoutableIpv6: boolean): boolean => {
+  if (!address.includes(':')) return false
+  if (isLinkLocalIpv6(address)) return true
+  return !keepRoutableIpv6
+}
+
+const rewriteIp6ConnectionLine = (line: string, keepRoutableIpv6: boolean): string => {
+  const connection = /^c=IN IP6 (\S+)/i.exec(line)
+  if (connection) {
+    if (isUnusableIpv6Address(connection[1], keepRoutableIpv6)) return 'c=IN IP4 0.0.0.0'
+    return line
+  }
+  const rtcp = /^a=rtcp:(\d+) IN IP6 (\S+)/i.exec(line)
+  if (rtcp && isUnusableIpv6Address(rtcp[2], keepRoutableIpv6)) {
+    return `a=rtcp:${rtcp[1]} IN IP4 0.0.0.0`
+  }
+  return line
+}
+
+export const dropUnusableIpv6IceCandidates = (
+  desc: RTCSessionDescriptionInit,
+  keepRoutableIpv6: boolean,
+): RTCSessionDescriptionInit => {
+  const cloned = cloneSessionDescription(desc)
+  if (!cloned.sdp) return cloned
+  const newline = cloned.sdp.includes('\r\n') ? '\r\n' : '\n'
+  const lines = cloned.sdp.split(/\r?\n/).flatMap((line) => {
+    const address = iceCandidateAddress(line)
+    if (address && isUnusableIpv6Address(address, keepRoutableIpv6)) return []
+    return [rewriteIp6ConnectionLine(line, keepRoutableIpv6)]
+  })
+  return { type: cloned.type, sdp: lines.join(newline) }
+}
+
+export const isUnusableIpv6IceCandidate = (
+  candidate: RTCIceCandidateInit | null | undefined,
+  keepRoutableIpv6: boolean,
+): boolean => {
+  const line = candidate?.candidate
+  if (!line) return false
+  const address = iceCandidateAddress(line)
+  return address !== null && isUnusableIpv6Address(address, keepRoutableIpv6)
+}
+
+const sdpLines = (sdp?: string | null): string[] => (sdp ? sdp.split(/\r?\n/) : [])
+
+export const sdpHasIceCandidate = (sdp?: string | null): boolean =>
+  sdpLines(sdp).some((line) => iceCandidateAddress(line) !== null)
+
+/** ULA and global IPv6 count. Link-local addresses do not. */
+export const sdpHasUsableIpv6Candidate = (sdp?: string | null): boolean =>
+  sdpLines(sdp).some((line) => {
+    const address = iceCandidateAddress(line)
+    return address !== null && address.includes(':') && !isLinkLocalIpv6(address)
+  })
+
+export const answerDescriptionForRemote = (
+  local: RTCSessionDescriptionInit,
+  remoteSdp?: string | null,
+): RTCSessionDescriptionInit =>
+  dropUnusableIpv6IceCandidates(
+    pruneRedundantIceCandidates(local),
+    sdpHasUsableIpv6Candidate(remoteSdp),
+  )
+
+export const externalLinkClickHandler = (root: HTMLButtonElement, url: string): void => {
+  root.classList.add('btn-disabled')
+  root.setAttribute('aria-busy', 'true')
+  setTimeout(() => {
+    root.classList.remove('btn-disabled')
+    root.removeAttribute('aria-busy')
+  }, 3000)
+  window.open(url)
+}
+
+export const getUUIDv4 = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
+export const compressJson = async (data: unknown): Promise<string> => {
+  const stream = new Blob([JSON.stringify(data)], {
+    type: 'application/json',
+  }).stream()
+  const compressedStream = stream.pipeThrough(new CompressionStream('gzip'))
+  const compressedResponse = new Response(compressedStream)
+  const blob = await compressedResponse.blob()
+  const buffer = await blob.arrayBuffer()
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+}
+
+export const decompressJson = async (data: string): Promise<unknown> => {
+  const buffer = new Uint8Array(
+    atob(data)
+      .split('')
+      .map((c) => c.charCodeAt(0)),
+  )
+  const stream = new Blob([buffer], {
+    type: 'application/json',
+  }).stream()
+  const decompressedStream = stream.pipeThrough(new DecompressionStream('gzip'))
+  const res = new Response(decompressedStream)
+  const blob = await res.blob()
+  return JSON.parse(await blob.text())
+}
+
+const sdpTypeForConnection = (ct: ConnectionType): RTCSdpType =>
+  ct === ConnectionType.HOST ? 'offer' : 'answer'
+
+const encodeCompactPayload = (desc: RTCSessionDescriptionInit, type: RTCSdpType): string => {
+  const pruned = pruneRedundantIceCandidates(desc)
+  const compacted = compact({ type, sdp: pruned.sdp }, COMPACT_OPTIONS)
+  return PAYLOAD_VERSION + compacted[0] + toBase64Url(compacted.slice(1))
+}
+
+const decodeCompactPayload = (payload: string, type: RTCSdpType): RTCSessionDescriptionInit => {
+  if (!payload.startsWith(PAYLOAD_VERSION) || payload.length < 3) {
+    throw new Error('unsupported connection payload')
+  }
+  const letter = type === 'offer' ? 'O' : 'A'
+  const compacted = letter + fromBase64Url(payload.slice(2))
+  return decompact(compacted, COMPACT_OPTIONS)
+}
+
+const normalizeConnectionText = (str: string): string => str.replace(/\s+/g, '')
+
+export const isMissingInviteError = (error: unknown): boolean =>
+  error instanceof Error && error.message === 'e2ee is required but the invite is missing'
+
+const parseConnectionUrl = (
+  str: string,
+): {
+  type: ConnectionType
+  username: string
+  payload: string | null
+  token: string | null
+  fragment: string | null
+} => {
+  const url = new URL(normalizeConnectionText(str))
+  if (!CONNECTION_PROTOCOLS.has(url.protocol)) {
+    throw new Error('unsupported protocol')
+  }
+  const type = TYPE_FROM_SHORT[connectionRoleFromUrl(url)]
+  if (!type) throw new Error('unsupported connection type')
+  const fragment = url.hash ? url.hash.slice(1) : null
+
+  const token = url.searchParams.get('token')
+  if (token) {
+    const username = url.searchParams.get('username')
+    if (!username) throw new Error('missing username')
+    return { type, username, payload: null, token, fragment }
+  }
+
+  const path = url.pathname.replace(/^\//, '')
+  const slash = path.indexOf('/')
+  if (slash <= 0 || slash === path.length - 1) {
+    throw new Error('invalid compact connection string')
+  }
+  return {
+    type,
+    username: decodeURIComponent(path.slice(0, slash)),
+    payload: path.slice(slash + 1),
+    token: null,
+    fragment,
+  }
+}
+
+export const mayBeConnectionString = (ct: ConnectionType, str: string): boolean => {
+  try {
+    const parsed = parseConnectionUrl(str)
+    if (parsed.type !== ct) return false
+    if (parsed.token) {
+      if (!parsed.username) return false
+      decompressJson(parsed.token)
+      return true
+    }
+    decodeCompactPayload(parsed.payload ?? '', sdpTypeForConnection(parsed.type))
+    return parsed.username.length > 0
+  } catch {
+    return false
+  }
+}
+
+export const getConnectionString = async (
+  ct: ConnectionType,
+  offer: RTCSessionDescriptionInit,
+  data: {
+    username: string
+    invite?: InviteCrypto | null
+  },
+): Promise<string> => {
+  const { username } = data
+  const payload = encodeCompactPayload(offer, sdpTypeForConnection(ct))
+  const url = `kiwi://${SHORT_TYPE[ct]}/${encodeURIComponent(username)}/${payload}`
+  return data.invite ? appendInviteFragment(url, data.invite) : url
+}
+
+export const getDataFromKiwiUrl = async (
+  url: string,
+): Promise<{
+  type: ConnectionType
+  data: { username: string }
+  rtcSessionDescription: RTCSessionDescriptionInit
+  invite: InviteCrypto | null
+  e2ee: boolean
+}> => {
+  const parsed = parseConnectionUrl(url)
+  const expectedType = sdpTypeForConnection(parsed.type)
+  const rtcSessionDescription = parsed.token
+    ? ((await decompressJson(parsed.token)) as RTCSessionDescriptionInit)
+    : decodeCompactPayload(parsed.payload ?? '', expectedType)
+  if (!parsed.token) rtcSessionDescription.type = expectedType
+  const invite = parseInviteFragment(parsed.fragment)
+  return {
+    type: parsed.type,
+    data: {
+      username: parsed.username,
+    },
+    rtcSessionDescription,
+    invite,
+    e2ee: invite !== null,
+  }
+}
+
+export const makeVideoDraggable = (video: HTMLVideoElement): void => {
+  let startX: number
+  let startY: number
+  let initialX: number
+  let initialY: number
+  let isDragging = false
+  video.addEventListener('mousedown', (e) => {
+    isDragging = true
+    startX = e.clientX
+    startY = e.clientY
+    const transform = getComputedStyle(video).transform
+
+    if (transform !== 'none') {
+      const values = transform.split('(')[1].split(')')[0].split(',')
+      initialX = parseFloat(values[4])
+      initialY = parseFloat(values[5])
+    } else {
+      initialX = 0
+      initialY = 0
+    }
+    video.style.cursor = 'grabbing'
+  })
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return
+
+    const deltaX = e.clientX - startX
+    const deltaY = e.clientY - startY
+
+    const moveX = initialX + deltaX
+    const moveY = initialY + deltaY
+
+    video.style.transform = `translate(${moveX}px, ${moveY}px)`
+  })
+
+  document.addEventListener('mouseup', () => {
+    if (!isDragging) return
+    isDragging = false
+    video.style.cursor = 'default'
+  })
+}
+
+export const debounce = <T extends (...args: unknown[]) => void>(
+  func: T,
+  wait: number,
+): ((...args: Parameters<T>) => void) => {
+  let timeout: ReturnType<typeof setTimeout>
+  return (...args: Parameters<T>): void => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => {
+      func(...args)
+    }, wait)
+  }
+}
+
+export const throttle = <T extends (...args: unknown[]) => void>(
+  func: T,
+  wait: number,
+): ((...args: Parameters<T>) => void) => {
+  let lastCalled = 0
+  return (...args: Parameters<T>): void => {
+    const now = Date.now()
+    if (now - lastCalled < wait) return
+    lastCalled = now
+    func(...args)
+  }
+}

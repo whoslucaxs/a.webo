@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -z "${VERSION:-}" ]; then echo "Error: VERSION is not set"; exit 1; fi
+
+BIN_NAME="p2p-kiwi"
+RELEASE_ACTION="create"
+GH_TAG="v$VERSION"
+TARGET_PLATFORM="${TARGET_PLATFORM:-all}"
+FILES=()
+
+LINUX_FILES=(
+  "dist/${BIN_NAME}_amd64.deb"
+  "dist/${BIN_NAME}_amd64.snap"
+  "dist/${BIN_NAME}_x86_64.AppImage"
+  "dist/${BIN_NAME}_x86_64.flatpak"
+)
+
+LINUX_ARM64_FILES=(
+  "dist/${BIN_NAME}_arm64.deb"
+  "dist/${BIN_NAME}_arm64.AppImage"
+  "dist/${BIN_NAME}_aarch64.flatpak"
+)
+
+WINDOWS_FILES=(
+  "dist/${BIN_NAME}-setup_x64.exe"
+)
+
+MACOS_FILES=(
+  "dist/${BIN_NAME}_universal.dmg"
+)
+
+ALL_FILES=(
+  "${LINUX_FILES[@]}"
+  "${LINUX_ARM64_FILES[@]}"
+  "${WINDOWS_FILES[@]}"
+  "${MACOS_FILES[@]}"
+)
+
+set_release_action() {
+  if gh release view "$GH_TAG" --json id --jq .id > /dev/null 2>&1; then
+    echo "Release $GH_TAG already exists, updating it"
+    RELEASE_ACTION="edit"
+  else
+    echo "Release $GH_TAG does not exist, creating it"
+    RELEASE_ACTION="create"
+  fi
+}
+
+check_files_exist() {
+  files=()
+  for file in "${FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+      files+=("$file")
+    fi
+  done
+  if [ ${#files[@]} -gt 0 ]; then
+    echo "Error: the following files do not exist:"
+    for file in "${files[@]}"; do
+      printf " - %s\n" "$file"
+    done
+    echo "This is the content of the dist directory:"
+    ls -l dist/ 2>/dev/null || echo "dist/ directory does not exist"
+    exit 1
+  fi
+}
+
+set_files_based_on_platform() {
+  case $TARGET_PLATFORM in
+    all)
+      FILES=("${ALL_FILES[@]}")
+      ;;
+    linux)
+      FILES=("${LINUX_FILES[@]}")
+      ;;
+    linux-arm64)
+      FILES=("${LINUX_ARM64_FILES[@]}")
+      ;;
+    windows)
+      FILES=("${WINDOWS_FILES[@]}")
+      ;;
+    macos)
+      FILES=("${MACOS_FILES[@]}")
+      ;;
+    *)
+      echo "Error: TARGET_PLATFORM $TARGET_PLATFORM is not supported"
+      exit 1
+      ;;
+  esac
+}
+
+print_files() {
+  echo "Files to upload:"
+  for file in "${FILES[@]}"; do
+    printf " - %s\n" "$file"
+  done
+}
+
+do_gh_release() {
+  if [ "$TARGET_PLATFORM" == "all" ]; then
+    echo "Creating new release $GH_TAG"
+    print_files
+    gh release create --generate-notes "$GH_TAG" "${FILES[@]}"
+    return
+  fi
+
+  if [ "$RELEASE_ACTION" == "edit" ]; then
+    if [ -z "${REPLACE:-}" ]; then
+      echo "Trying to upload files to existing release $GH_TAG"
+      print_files
+      gh release upload "$GH_TAG" "${FILES[@]}"
+    else
+      echo "Overwriting existing release $GH_TAG"
+      print_files
+      gh release upload --clobber "$GH_TAG" "${FILES[@]}"
+    fi
+  else
+    echo "Creating new release $GH_TAG"
+    print_files
+    gh release create --generate-notes "$GH_TAG" "${FILES[@]}"
+  fi
+}
+
+release() {
+  set_files_based_on_platform
+  check_files_exist
+  if [ "$TARGET_PLATFORM" != "all" ]; then
+    set_release_action
+  fi
+  do_gh_release
+}
+
+release

@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+@plugin "daisyui" {
+  themes:
+    corporate --default,
+    business --prefersdark;
+}
+@import '@fontsource/noto-sans';
+
+html,
+body {
+  overflow-y: auto;
+  font-family: 'Noto Sans', sans-serif;
+  height: 100%;
+  width: 100%;
+}

@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUT_DIR="${1:-$ROOT/dist}"
+BIN_NAME="${SIDECAR_BIN_NAME:-p2p-kiwi-sidecar}"
+mkdir -p "$OUT_DIR"
+
+ODIN="${ODIN:-odin}"
+if ! command -v "$ODIN" >/dev/null 2>&1; then
+  echo "odin compiler not found" >&2
+  exit 1
+fi
+
+build_darwin() {
+  local clang_arch="$1"
+  local odin_target="$2"
+  local suffix="$3"
+  local out_bin="$4"
+  local clang="${CC:-clang}"
+  local draw_obj="$OUT_DIR/overlay_draw.${suffix}.o"
+  local mac_obj="$OUT_DIR/overlay_macos.${suffix}.o"
+  local input_obj="$OUT_DIR/input_macos.${suffix}.o"
+
+  "$clang" -arch "$clang_arch" -c "$ROOT/c/overlay_draw.c" -o "$draw_obj" -O2 -I"$ROOT/c"
+  "$clang" -arch "$clang_arch" -c "$ROOT/c/overlay_macos.m" -o "$mac_obj" -fobjc-arc -O2 -I"$ROOT/c"
+  "$clang" -arch "$clang_arch" -c "$ROOT/c/input_macos.m" -o "$input_obj" -fobjc-arc -O2 -I"$ROOT/c"
+  "$ODIN" build "$ROOT" -target:"$odin_target" -out:"$out_bin" -o:speed \
+    "-extra-linker-flags:$draw_obj $mac_obj $input_obj -arch $clang_arch -framework Cocoa -framework AppKit -framework Foundation -framework ApplicationServices -framework Carbon -lm"
+}
+
+assert_universal_sidecar() {
+  local bin="$1"
+  local archs
+  archs="$(lipo -archs "$bin")"
+  echo "sidecar architectures: $archs"
+  if ! echo "$archs" | grep -qw arm64; then
+    echo "sidecar missing arm64 slice: $archs" >&2
+    exit 1
+  fi
+  if ! echo "$archs" | grep -qw x86_64; then
+    echo "sidecar missing x86_64 slice: $archs" >&2
+    exit 1
+  fi
+}
+
+gen_embed_h() {
+  local src="$1"
+  local out="$2"
+  local sym="$3"
+  local guard="$4"
+  if [[ ! -f "$src" ]]; then
+    echo "missing asset: $src" >&2
+    exit 1
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 required to embed $src" >&2
+    exit 1
+  fi
+  python3 - "$src" "$out" "$sym" "$guard" <<'PY'
+import sys
+src, out, sym, guard = sys.argv[1:]
+data = open(src, "rb").read()
+parts = []
+line = []
+for b in data:
+    line.append("0x%02x" % b)
+    if len(line) == 12:
+        parts.append(", ".join(line))
+        line = []
+if line:
+    parts.append(", ".join(line))
+open(out, "w").write(
+    "#ifndef %s\n#define %s\n" % (guard, guard)
+    + "static const unsigned char %s[] = {\n  " % sym
+    + ",\n  ".join(parts)
+    + "\n};\n"
+    + "static const unsigned int %s_len = %d;\n" % (sym, len(data))
+    + "#endif\n"
+)
+PY
+}
+
+gen_cursor_png_h() {
+  gen_embed_h "$ROOT/../../assets/cursor.png" "$ROOT/c/cursor_png.h" cursor_png P2P_KIWI_CURSOR_PNG_H
+}
+
+gen_maple_mono_h() {
+  gen_embed_h "$ROOT/c/vendor/MapleMono-Regular.ttf" "$ROOT/c/maple_mono.h" maple_mono_ttf P2P_KIWI_MAPLE_MONO_H
+}
+
+gen_cursor_png_h
+gen_maple_mono_h
+
+EXTRA_FLAGS=()
+UNAME="$(uname -s)"
+ARCH="$(uname -m)"
+CC="${CC:-cc}"
+SKIP_FINAL_BUILD=0
+
+case "$UNAME" in
+  Linux)
+    DRAW_OBJ="$OUT_DIR/overlay_draw.o"
+    LINUX_OBJ="$OUT_DIR/overlay_linux.o"
+    INPUT_OBJ="$OUT_DIR/input_linux.o"
+    WAYLAND_OBJ="$OUT_DIR/wlr-layer-shell-protocol.o"
+    VIEWPORT_OBJ="$OUT_DIR/viewporter-protocol.o"
+    "$CC" -c "$ROOT/c/overlay_draw.c" -o "$DRAW_OBJ" -fPIC -O2 -I"$ROOT/c"
+    WAYLAND_FLAGS=()
+    if command -v wayland-scanner >/dev/null 2>&1 && pkg-config --exists wayland-client; then
+      wayland-scanner client-header \
+        "$ROOT/protocol/wlr-layer-shell-unstable-v1.xml" \
+        "$ROOT/c/wlr-layer-shell-client-protocol.h"
+      wayland-scanner private-code \
+        "$ROOT/protocol/wlr-layer-shell-unstable-v1.xml" \
+        "$OUT_DIR/wlr-layer-shell-protocol.c"
+      wayland-scanner client-header \
+        "$ROOT/protocol/viewporter.xml" \
+        "$ROOT/c/viewporter-client-protocol.h"
+      wayland-scanner private-code \
+        "$ROOT/protocol/viewporter.xml" \
+        "$OUT_DIR/viewporter-protocol.c"
+      "$CC" -c "$OUT_DIR/wlr-layer-shell-protocol.c" -o "$WAYLAND_OBJ" -fPIC -O2 $(pkg-config --cflags wayland-client)
+      "$CC" -c "$OUT_DIR/viewporter-protocol.c" -o "$VIEWPORT_OBJ" -fPIC -O2 $(pkg-config --cflags wayland-client)
+      WAYLAND_FLAGS=(-DHAVE_WAYLAND -I"$ROOT/c" $(pkg-config --cflags wayland-client))
+      "$CC" -c "$ROOT/c/overlay_linux.c" -o "$LINUX_OBJ" -fPIC -O2 "${WAYLAND_FLAGS[@]}" $(pkg-config --cflags x11 xfixes xext xrandr 2>/dev/null || true)
+      "$CC" -c "$ROOT/c/input_linux.c" -o "$INPUT_OBJ" -fPIC -O2 -I"$ROOT/c" $(pkg-config --cflags x11 xtst xi 2>/dev/null || true)
+      LIBS="$DRAW_OBJ $LINUX_OBJ $INPUT_OBJ $WAYLAND_OBJ $VIEWPORT_OBJ $(pkg-config --libs x11 xfixes xext xrandr xtst xi wayland-client 2>/dev/null || echo '-lX11 -lXfixes -lXext -lXrandr -lXtst -lXi -lwayland-client') -lm"
+    else
+      "$CC" -c "$ROOT/c/overlay_linux.c" -o "$LINUX_OBJ" -fPIC -O2 -I"$ROOT/c" $(pkg-config --cflags x11 xfixes xext xrandr 2>/dev/null || true)
+      "$CC" -c "$ROOT/c/input_linux.c" -o "$INPUT_OBJ" -fPIC -O2 -I"$ROOT/c" $(pkg-config --cflags x11 xtst xi 2>/dev/null || true)
+      LIBS="$DRAW_OBJ $LINUX_OBJ $INPUT_OBJ $(pkg-config --libs x11 xfixes xext xrandr xtst xi 2>/dev/null || echo '-lX11 -lXfixes -lXext -lXrandr -lXtst -lXi') -lm"
+    fi
+    PIPEWIRE_OBJ="$OUT_DIR/pipewire_crop.o"
+    if pkg-config --exists libpipewire-0.3; then
+      "$CC" -c "$ROOT/c/pipewire_crop.c" -o "$PIPEWIRE_OBJ" -fPIC -O2 -I"$ROOT/c" -DHAVE_PIPEWIRE $(pkg-config --cflags libpipewire-0.3)
+      LIBS="$PIPEWIRE_OBJ $LIBS $(pkg-config --libs libpipewire-0.3)"
+    else
+      "$CC" -c "$ROOT/c/pipewire_crop.c" -o "$PIPEWIRE_OBJ" -fPIC -O2 -I"$ROOT/c"
+      LIBS="$PIPEWIRE_OBJ $LIBS"
+    fi
+    EXTRA_FLAGS+=("-extra-linker-flags:$LIBS")
+    ;;
+  Darwin)
+    SIDECAR_ARCH="${SIDECAR_ARCH:-host}"
+    if [[ "$SIDECAR_ARCH" == "universal" ]]; then
+      ARM_BIN="$OUT_DIR/${BIN_NAME}-arm64"
+      AMD_BIN="$OUT_DIR/${BIN_NAME}-amd64"
+      build_darwin arm64 darwin_arm64 arm64 "$ARM_BIN"
+      build_darwin x86_64 darwin_amd64 amd64 "$AMD_BIN"
+      lipo -create "$ARM_BIN" "$AMD_BIN" -output "$OUT_DIR/$BIN_NAME"
+      rm -f "$ARM_BIN" "$AMD_BIN"
+      assert_universal_sidecar "$OUT_DIR/$BIN_NAME"
+      echo "built $OUT_DIR/$BIN_NAME (Darwin universal)"
+    elif [[ "$ARCH" == "x86_64" ]]; then
+      build_darwin x86_64 darwin_amd64 host "$OUT_DIR/$BIN_NAME"
+      echo "built $OUT_DIR/$BIN_NAME ($UNAME $ARCH)"
+    else
+      build_darwin arm64 darwin_arm64 host "$OUT_DIR/$BIN_NAME"
+      echo "built $OUT_DIR/$BIN_NAME ($UNAME $ARCH)"
+    fi
+    SKIP_FINAL_BUILD=1
+    ;;
+  MINGW*|MSYS*|CYGWIN*|Windows_NT)
+    if [[ -z "${WIN_CC:-}" ]]; then
+      if command -v cl >/dev/null 2>&1 || command -v cl.exe >/dev/null 2>&1; then
+        WIN_CC="cl"
+      else
+        WIN_CC="clang"
+      fi
+    fi
+
+    compile_win_obj() {
+      local src="$1"
+      local obj="$2"
+      case "$(basename "${WIN_CC%.exe}")" in
+        cl|clang-cl)
+          # Hyphen flags so Git bash does not rewrite /c as a drive path.
+          "$WIN_CC" -nologo -c -Fo"$obj" -O2 -I"c" "$src"
+          ;;
+        *)
+          "$WIN_CC" -c "$src" -o "$obj" -O2 -I"c"
+          ;;
+      esac
+    }
+
+    pushd "$ROOT" >/dev/null
+
+    mkdir -p dist
+
+    compile_win_obj c/overlay_draw.c dist/overlay_draw.obj
+    compile_win_obj c/overlay_win32.c dist/overlay_win32.obj
+    compile_win_obj c/input_win32.c dist/input_win32.obj
+
+    BIN_NAME="${BIN_NAME}.exe"
+
+    # Odin on Windows emits per-package .obj files next to -out but
+    # invokes link.exe with bare filenames, so CWD must be the output dir.
+    pushd dist >/dev/null
+    "$ODIN" build .. \
+      -out:"$BIN_NAME" \
+      -o:speed
+    popd >/dev/null
+
+    echo "built $ROOT/dist/$BIN_NAME ($UNAME $ARCH)"
+    popd >/dev/null
+
+    SKIP_FINAL_BUILD=1
+    ;;
+esac
+
+if [[ "$SKIP_FINAL_BUILD" -eq 0 ]]; then
+  "$ODIN" build "$ROOT" -out:"$OUT_DIR/$BIN_NAME" -o:speed "${EXTRA_FLAGS[@]}"
+  echo "built $OUT_DIR/$BIN_NAME ($UNAME $ARCH)"
+fi

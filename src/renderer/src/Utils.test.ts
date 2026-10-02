@@ -1,0 +1,498 @@
+import { describe, expect, it } from 'vitest'
+import {
+  compressJson,
+  decompressJson,
+  pruneRedundantIceCandidates,
+  dropUnusableIpv6IceCandidates,
+  answerDescriptionForRemote,
+  isUnusableIpv6IceCandidate,
+  sdpHasUsableIpv6Candidate,
+  getConnectionString,
+  getDataFromKiwiUrl,
+  mayBeConnectionString,
+  mediaTrackConstraints,
+  cloneForIpc,
+  ConnectionType,
+  debounce,
+} from './Utils'
+
+/** Chromium-like Unified Plan offer with UDP, TCP, and mDNS candidates. */
+const REALISTIC_OFFER: RTCSessionDescriptionInit = {
+  type: 'offer',
+  sdp: [
+    'v=0',
+    'o=- 4109260023080860376 2 IN IP4 127.0.0.1',
+    's=-',
+    't=0 0',
+    'a=group:BUNDLE 0 1 2',
+    'a=extmap-allow-mixed',
+    'a=msid-semantic: WMS',
+    'm=audio 9 UDP/TLS/RTP/SAVPF 111 103 104 9 0 8 106 105 13 110 112 113 126',
+    'c=IN IP4 0.0.0.0',
+    'a=rtcp:9 IN IP4 0.0.0.0',
+    'a=ice-ufrag:4hdU',
+    'a=ice-pwd:b9q3v1k0s2icepwdabcdefghijk',
+    'a=ice-options:trickle',
+    'a=fingerprint:sha-256 AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99',
+    'a=setup:actpass',
+    'a=mid:0',
+    'a=sendrecv',
+    'a=rtcp-mux',
+    'a=rtpmap:111 opus/48000/2',
+    'a=rtcp-fb:111 transport-cc',
+    'a=fmtp:111 minptime=10;useinbandfec=1',
+    'a=candidate:1 1 udp 2122260223 192.168.1.20 54321 typ host',
+    'a=candidate:2 1 udp 1686052607 203.0.113.10 54321 typ srflx raddr 192.168.1.20 rport 54321',
+    'a=candidate:3 1 tcp 1518280447 192.168.1.20 9 typ host tcptype active',
+    'a=candidate:4 1 tcp 1488510463 192.168.1.20 9 typ host tcptype passive',
+    'a=candidate:5 1 udp 2122194687 2600-abc.local 54322 typ host',
+    'm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 127 123 125',
+    'c=IN IP4 0.0.0.0',
+    'a=rtcp:9 IN IP4 0.0.0.0',
+    'a=ice-ufrag:4hdU',
+    'a=ice-pwd:b9q3v1k0s2icepwdabcdefghijk',
+    'a=ice-options:trickle',
+    'a=fingerprint:sha-256 AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99',
+    'a=setup:actpass',
+    'a=mid:1',
+    'a=sendrecv',
+    'a=rtcp-mux',
+    'a=rtpmap:96 VP8/90000',
+    'a=rtcp-fb:96 goog-remb',
+    'a=rtcp-fb:96 transport-cc',
+    'a=rtcp-fb:96 ccm fir',
+    'a=rtcp-fb:96 nack',
+    'a=rtcp-fb:96 nack pli',
+    'a=candidate:1 1 udp 2122260223 192.168.1.20 54321 typ host',
+    'a=candidate:3 1 tcp 1518280447 192.168.1.20 9 typ host tcptype active',
+    'm=application 9 UDP/DTLS/SCTP webrtc-datachannel',
+    'c=IN IP4 0.0.0.0',
+    'a=ice-ufrag:4hdU',
+    'a=ice-pwd:b9q3v1k0s2icepwdabcdefghijk',
+    'a=ice-options:trickle',
+    'a=fingerprint:sha-256 AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99',
+    'a=setup:actpass',
+    'a=mid:2',
+    'a=sctp-port:5000',
+    'a=max-message-size:262144',
+    'a=candidate:1 1 udp 2122260223 192.168.1.20 54321 typ host',
+    'a=candidate:3 1 tcp 1518280447 192.168.1.20 9 typ host tcptype active',
+    '',
+  ].join('\r\n'),
+}
+
+const MINIMAL_OFFER: RTCSessionDescriptionInit = {
+  type: 'offer',
+  sdp: [
+    'v=0',
+    'o=- 1 1 IN IP4 127.0.0.1',
+    's=-',
+    't=0 0',
+    'm=audio 9 UDP/TLS/RTP/SAVPF 111',
+    'c=IN IP4 0.0.0.0',
+    'a=ice-ufrag:abcd',
+    'a=ice-pwd:abcdefghijklmnopqrstuvwx',
+    'a=fingerprint:sha-256 AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99',
+    'a=setup:actpass',
+    'a=mid:0',
+    'a=sendrecv',
+    'a=rtcp-mux',
+    'a=rtpmap:111 opus/48000/2',
+    '',
+  ].join('\r\n'),
+}
+
+describe('compressJson / decompressJson', () => {
+  it('round-trips JSON payloads', async () => {
+    const payload = { type: 'offer', sdp: 'v=0\r\no=- 1 1 IN IP4 127.0.0.1' }
+    const compressed = await compressJson(payload)
+    expect(compressed.length).toBeGreaterThan(0)
+    await expect(decompressJson(compressed)).resolves.toEqual(payload)
+  })
+})
+
+describe('pruneRedundantIceCandidates', () => {
+  it('drops redundant host TCP when host UDP exists', () => {
+    const pruned = pruneRedundantIceCandidates(REALISTIC_OFFER)
+    expect(pruned.sdp).not.toMatch(/tcp .* typ host/i)
+    expect(pruned.sdp).toMatch(/udp .* typ host/i)
+    expect(pruned.type).toBe('offer')
+  })
+
+  it('keeps relay TCP next to UDP candidates and keeps TCP-only descriptions', () => {
+    const mixed: RTCSessionDescriptionInit = {
+      type: 'offer',
+      sdp: [
+        'a=candidate:1 1 udp 2122260223 192.168.1.20 54321 typ host',
+        'a=candidate:2 1 tcp 1518280447 192.168.1.20 9 typ host tcptype active',
+        'a=candidate:3 1 udp 1686052607 203.0.113.10 54321 typ srflx',
+        'a=candidate:4 1 udp 41885439 203.0.113.50 59259 typ relay',
+        'a=candidate:5 1 tcp 25042943 203.0.113.51 9 typ relay tcptype passive',
+        '',
+      ].join('\r\n'),
+    }
+    const pruned = pruneRedundantIceCandidates(mixed)
+    expect(pruned.sdp).toMatch(/udp .* typ host/i)
+    expect(pruned.sdp).not.toMatch(/tcp .* typ host/i)
+    expect(pruned.sdp).toMatch(/udp .* typ srflx/i)
+    expect(pruned.sdp).toMatch(/udp .* typ relay/i)
+    expect(pruned.sdp).toMatch(/tcp .* typ relay/i)
+
+    const relays: RTCSessionDescriptionInit = {
+      type: 'offer',
+      sdp: [
+        'a=candidate:4 1 udp 41885439 203.0.113.50 59259 typ relay',
+        'a=candidate:5 1 tcp 25042943 203.0.113.51 9 typ relay tcptype passive',
+        '',
+      ].join('\r\n'),
+    }
+    const bothRelays = pruneRedundantIceCandidates(relays)
+    expect(bothRelays.sdp).toMatch(/udp .* typ relay/i)
+    expect(bothRelays.sdp).toMatch(/tcp .* typ relay/i)
+
+    const tcpOnly: RTCSessionDescriptionInit = {
+      type: 'offer',
+      sdp: 'a=candidate:1 1 tcp 1518280447 192.168.1.20 9 typ host tcptype active\r\n',
+    }
+    expect(pruneRedundantIceCandidates(tcpOnly).sdp).toMatch(/tcp .* typ host/i)
+  })
+
+  it('keeps SDP type from native-like descriptions whose fields are not enumerable', () => {
+    const nativeLike = {} as RTCSessionDescriptionInit
+    Object.defineProperty(nativeLike, 'type', { get: () => 'offer', enumerable: false })
+    Object.defineProperty(nativeLike, 'sdp', {
+      get: () => REALISTIC_OFFER.sdp,
+      enumerable: false,
+    })
+    expect({ ...nativeLike }).toEqual({})
+    const pruned = pruneRedundantIceCandidates(nativeLike)
+    expect(pruned.type).toBe('offer')
+    expect(pruned.sdp).toMatch(/a=candidate:\S+\s+\d+\s+udp\s/i)
+  })
+})
+
+describe('dropUnusableIpv6IceCandidates', () => {
+  const mixed: RTCSessionDescriptionInit = {
+    type: 'offer',
+    sdp: [
+      'v=0',
+      'o=- 1 1 IN IP4 127.0.0.1',
+      's=-',
+      't=0 0',
+      'm=audio 9 UDP/TLS/RTP/SAVPF 111',
+      'c=IN IP6 2001:db8::10',
+      'a=rtcp:9 IN IP6 2001:db8::10',
+      'a=candidate:1 1 udp 2122260223 192.168.1.20 54321 typ host',
+      'a=candidate:2 1 udp 2122194687 fe80::1 54322 typ host',
+      'a=candidate:3 1 udp 1686052607 2001:db8::20 54323 typ srflx',
+      'a=candidate:4 1 udp 2122194687 2600-abc.local 54324 typ host',
+      '',
+    ].join('\r\n'),
+  }
+
+  it('keeps global IPv6 and drops link-local addresses on a dual-stack host', () => {
+    const pruned = dropUnusableIpv6IceCandidates(mixed, true)
+    expect(pruned.sdp).toContain('192.168.1.20')
+    expect(pruned.sdp).toContain('2001:db8::20')
+    expect(pruned.sdp).toContain('2600-abc.local')
+    expect(pruned.sdp).not.toContain('fe80::1')
+    expect(pruned.sdp).toContain('c=IN IP6 2001:db8::10')
+    expect(pruned.sdp).toContain('a=rtcp:9 IN IP6 2001:db8::10')
+  })
+
+  it('drops every IPv6 literal when this host has no routable IPv6', () => {
+    const pruned = dropUnusableIpv6IceCandidates(mixed, false)
+    expect(pruned.sdp).toContain('192.168.1.20')
+    expect(pruned.sdp).toContain('2600-abc.local')
+    expect(pruned.sdp).not.toContain('fe80::1')
+    expect(pruned.sdp).not.toContain('2001:db8::20')
+    expect(pruned.sdp).toContain('c=IN IP4 0.0.0.0')
+    expect(pruned.sdp).toContain('a=rtcp:9 IN IP4 0.0.0.0')
+    expect(pruned.sdp).not.toContain('IN IP6')
+  })
+
+  it('rewrites a link-local connection line even when global IPv6 is kept', () => {
+    const linkLocal = dropUnusableIpv6IceCandidates(
+      { type: 'offer', sdp: 'c=IN IP6 fe80::abcd\r\na=rtcp:9 IN IP6 fe80::abcd\r\n' },
+      true,
+    )
+    expect(linkLocal.sdp).toContain('c=IN IP4 0.0.0.0')
+    expect(linkLocal.sdp).toContain('a=rtcp:9 IN IP4 0.0.0.0')
+  })
+
+  it('treats ULA and global IPv6 as usable and ignores link-local', () => {
+    const sdp = [
+      'a=candidate:1 1 udp 1 192.168.1.20 9 typ host',
+      'a=candidate:2 1 udp 1 fe80::1 9 typ host',
+      'a=candidate:3 1 udp 1 fd6a:d108:e0b4:0:1 9 typ host',
+      'a=candidate:4 1 udp 1 2003:e0::1 9 typ host',
+      'a=candidate:5 1 udp 1 2600-abc.local 9 typ host',
+    ].join('\r\n')
+    expect(sdpHasUsableIpv6Candidate(sdp)).toBe(true)
+    expect(sdpHasUsableIpv6Candidate('a=candidate:1 1 udp 1 fe80::1 9 typ host')).toBe(false)
+    expect(sdpHasUsableIpv6Candidate('a=candidate:1 1 udp 1 192.168.1.20 9 typ host')).toBe(false)
+    expect(sdpHasUsableIpv6Candidate('a=candidate:5 1 udp 1 2600-abc.local 9 typ host')).toBe(false)
+  })
+
+  it('recognizes a trickle candidate that this host cannot use', () => {
+    expect(
+      isUnusableIpv6IceCandidate(
+        { candidate: 'candidate:2 1 udp 1 fe80::1 9 typ host', sdpMid: '0' },
+        true,
+      ),
+    ).toBe(true)
+    expect(
+      isUnusableIpv6IceCandidate(
+        { candidate: 'candidate:3 1 udp 1 2001:db8::20 9 typ srflx', sdpMid: '0' },
+        true,
+      ),
+    ).toBe(false)
+    expect(
+      isUnusableIpv6IceCandidate(
+        { candidate: 'candidate:3 1 udp 1 2001:db8::20 9 typ srflx', sdpMid: '0' },
+        false,
+      ),
+    ).toBe(true)
+    expect(
+      isUnusableIpv6IceCandidate(
+        { candidate: 'candidate:1 1 udp 1 192.168.1.20 9 typ host', sdpMid: '0' },
+        false,
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('connection strings', () => {
+  it('builds a compact kiwi:// host URL and parses it back', async () => {
+    const url = await getConnectionString(ConnectionType.HOST, MINIMAL_OFFER, { username: 'Kiwi' })
+    expect(url.startsWith('kiwi://h/Kiwi/2')).toBe(true)
+    expect(mayBeConnectionString(ConnectionType.HOST, url)).toBe(true)
+    expect(mayBeConnectionString(ConnectionType.PARTICIPANT, url)).toBe(false)
+
+    const parsed = await getDataFromKiwiUrl(url)
+    expect(parsed.type).toBe(ConnectionType.HOST)
+    expect(parsed.data.username).toBe('Kiwi')
+    expect(parsed.rtcSessionDescription.type).toBe('offer')
+    expect(parsed.rtcSessionDescription.sdp).toContain('a=ice-ufrag:abcd')
+  })
+
+  it('omits IPv6 host candidates from a participant answer to an IPv4-only offer', async () => {
+    const ipv4Offer = `${MINIMAL_OFFER.sdp}a=candidate:1 1 udp 2122260223 192.168.31.193 56956 typ host\r\n`
+    const answer: RTCSessionDescriptionInit = {
+      type: 'answer',
+      sdp: [
+        MINIMAL_OFFER.sdp?.replace(/a=setup:actpass/, 'a=setup:active') ?? '',
+        'a=candidate:1 1 udp 2122129151 192.168.178.90 45952 typ host',
+        'a=candidate:2 1 udp 2122265343 fd6a:d108:e0b4:0:dbe8:54d0:50ce:81ac 35743 typ host',
+        'a=candidate:3 1 udp 2122197247 2003:e0:a74b:ef00:ba26:41c8:b9fe:20a1 55316 typ host',
+        'a=candidate:4 1 udp 58532095 116.203.208.7 59259 typ relay raddr 79.217.221.166 rport 45952',
+        '',
+      ].join('\r\n'),
+    }
+    const signaled = answerDescriptionForRemote(answer, ipv4Offer)
+    const url = await getConnectionString(ConnectionType.PARTICIPANT, signaled, {
+      username: 'Marco',
+    })
+    const parsed = await getDataFromKiwiUrl(url)
+    expect(parsed.rtcSessionDescription.sdp).toContain('192.168.178.90')
+    expect(parsed.rtcSessionDescription.sdp).toContain('116.203.208.7')
+    expect(parsed.rtcSessionDescription.sdp).not.toContain('fd6a:')
+    expect(parsed.rtcSessionDescription.sdp).not.toContain('2003:')
+  })
+
+  it('keeps IPv6 in a participant answer when the offer gathered it', () => {
+    const offer = 'a=candidate:1 1 udp 1 2001:db8::20 9 typ host\r\n'
+    const answer: RTCSessionDescriptionInit = {
+      type: 'answer',
+      sdp: [
+        'a=candidate:1 1 udp 1 192.168.178.90 9 typ host',
+        'a=candidate:2 1 udp 1 fd6a:d108:e0b4:0:1 9 typ host',
+        'a=candidate:3 1 udp 1 fe80::1 9 typ host',
+        '',
+      ].join('\r\n'),
+    }
+    const signaled = answerDescriptionForRemote(answer, offer)
+    expect(signaled.sdp).toContain('fd6a:')
+    expect(signaled.sdp).toContain('192.168.178.90')
+    expect(signaled.sdp).not.toContain('fe80::1')
+  })
+
+  it('keeps relay TCP in an answer that also has host UDP', () => {
+    const answer: RTCSessionDescriptionInit = {
+      type: 'answer',
+      sdp: [
+        'a=candidate:1 1 udp 2122129151 192.168.178.90 45952 typ host',
+        'a=candidate:2 1 tcp 1518280447 192.168.178.90 9 typ host tcptype active',
+        'a=candidate:3 1 udp 41885439 203.0.113.50 59259 typ relay',
+        'a=candidate:4 1 tcp 25042943 203.0.113.51 9 typ relay tcptype passive',
+        '',
+      ].join('\r\n'),
+    }
+    const signaled = answerDescriptionForRemote(
+      answer,
+      'a=candidate:1 1 udp 1 192.168.1.20 9 typ host\r\n',
+    )
+    expect(signaled.sdp).toMatch(/udp .* typ host/i)
+    expect(signaled.sdp).not.toMatch(/tcp .* typ host/i)
+    expect(signaled.sdp).toMatch(/udp .* typ relay/i)
+    expect(signaled.sdp).toMatch(/tcp .* typ relay/i)
+  })
+
+  it('builds a compact kiwi:// participant URL', async () => {
+    const url = await getConnectionString(ConnectionType.PARTICIPANT, MINIMAL_OFFER, {
+      username: 'Guest',
+    })
+    expect(url.startsWith('kiwi://p/Guest/2')).toBe(true)
+    expect(mayBeConnectionString(ConnectionType.PARTICIPANT, url)).toBe(true)
+  })
+
+  it('encodes host URLs as offers even when the native description type is missing', async () => {
+    const nativeLike = {} as RTCSessionDescriptionInit
+    Object.defineProperty(nativeLike, 'type', { get: () => 'offer', enumerable: false })
+    Object.defineProperty(nativeLike, 'sdp', {
+      get: () => MINIMAL_OFFER.sdp,
+      enumerable: false,
+    })
+    const url = await getConnectionString(ConnectionType.HOST, nativeLike, { username: 'Kiwi' })
+    expect(url.startsWith('kiwi://h/Kiwi/2O')).toBe(true)
+    const parsed = await getDataFromKiwiUrl(url)
+    expect(parsed.rtcSessionDescription.type).toBe('offer')
+  })
+
+  it('treats kiwi://h compact payloads as offers even if the type letter is A', async () => {
+    const url = await getConnectionString(ConnectionType.HOST, MINIMAL_OFFER, { username: 'Kiwi' })
+    const broken = url.replace('/2O', '/2A')
+    expect(broken.includes('/2A')).toBe(true)
+    const parsed = await getDataFromKiwiUrl(broken)
+    expect(parsed.type).toBe(ConnectionType.HOST)
+    expect(parsed.rtcSessionDescription.type).toBe('offer')
+    expect(parsed.rtcSessionDescription.sdp).toContain('a=setup:actpass')
+  })
+
+  it('round-trips a realistic offer well under Discord length', async () => {
+    const legacyToken = encodeURIComponent(await compressJson(REALISTIC_OFFER))
+    const legacyUrl = `kiwi://host?username=Kiwi&token=${legacyToken}`
+    const compactUrl = await getConnectionString(ConnectionType.HOST, REALISTIC_OFFER, {
+      username: 'Kiwi',
+    })
+
+    expect(compactUrl.length).toBeLessThan(2000)
+    expect(compactUrl.length).toBeLessThan(legacyUrl.length)
+    expect(compactUrl).not.toContain('#')
+
+    const parsed = await getDataFromKiwiUrl(compactUrl)
+    expect(parsed.rtcSessionDescription.type).toBe('offer')
+    expect(parsed.rtcSessionDescription.sdp).toContain('a=ice-ufrag:4hdU')
+    expect(parsed.rtcSessionDescription.sdp).toContain('a=ice-pwd:b9q3v1k0s2icepwdabcdefghijk')
+    expect(parsed.rtcSessionDescription.sdp).toMatch(/a=fingerprint:sha-256/i)
+    expect(parsed.rtcSessionDescription.sdp).toMatch(/203\.0\.113\.10/)
+    expect(parsed.rtcSessionDescription.sdp).not.toMatch(/a=candidate:\S+\s+\d+\s+tcp\s/i)
+  })
+
+  it('still accepts legacy kiwi:// gzip JSON URLs', async () => {
+    const token = encodeURIComponent(await compressJson(MINIMAL_OFFER))
+    const legacyUrl = `kiwi://host?username=Kiwi&token=${token}`
+    expect(mayBeConnectionString(ConnectionType.HOST, legacyUrl)).toBe(true)
+    const parsed = await getDataFromKiwiUrl(legacyUrl)
+    expect(parsed.data.username).toBe('Kiwi')
+    expect(parsed.rtcSessionDescription).toEqual(MINIMAL_OFFER)
+  })
+
+  it('still accepts legacy bananas:// gzip JSON URLs', async () => {
+    const token = encodeURIComponent(await compressJson(MINIMAL_OFFER))
+    const bananasUrl = `bananas://host?username=Kiwi&token=${token}`
+    expect(mayBeConnectionString(ConnectionType.HOST, bananasUrl)).toBe(true)
+    const parsed = await getDataFromKiwiUrl(bananasUrl)
+    expect(parsed.data.username).toBe('Kiwi')
+    expect(parsed.rtcSessionDescription).toEqual(MINIMAL_OFFER)
+  })
+
+  it('rejects missing token, missing username, and unknown protocols', () => {
+    expect(
+      mayBeConnectionString(ConnectionType.HOST, 'https://example.com/host?username=a&token=b'),
+    ).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://host?username=Kiwi')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://host?token=abc')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://h/Kiwi/')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://h/Kiwi/not-valid')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'not a url')).toBe(false)
+  })
+})
+
+describe('cloneForIpc', () => {
+  it('returns a structured-cloneable plain object', () => {
+    const proxyLike = { id: 'a', nested: { n: 1 } }
+    const cloned = cloneForIpc(proxyLike)
+    expect(cloned).toEqual(proxyLike)
+    expect(cloned).not.toBe(proxyLike)
+    expect(structuredClone(cloned)).toEqual(cloned)
+  })
+})
+
+describe('mediaTrackConstraints', () => {
+  it('uses the system default when no device is selected', () => {
+    expect(mediaTrackConstraints('')).toBe(true)
+    expect(mediaTrackConstraints(undefined)).toBe(true)
+  })
+
+  it('prefers the selected device id', () => {
+    expect(mediaTrackConstraints('cam-1')).toEqual({ deviceId: { exact: 'cam-1' } })
+  })
+})
+
+describe('debounce', () => {
+  it('calls the function once after the wait', async () => {
+    let calls = 0
+    const fn = debounce(() => {
+      calls += 1
+    }, 20)
+    fn()
+    fn()
+    fn()
+    expect(calls).toBe(0)
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    expect(calls).toBe(1)
+  })
+})
+
+describe('e2ee invite fragments', () => {
+  it('appends and parses a fragment without sending it as a query param', async () => {
+    const { randomInviteCrypto } = await import('./crypto/invite')
+    const invite = randomInviteCrypto()
+    const url = await getConnectionString(ConnectionType.HOST, MINIMAL_OFFER, {
+      username: 'Kiwi',
+      invite,
+    })
+    expect(url).toContain('#')
+    expect(url).not.toMatch(/[?&]secret=/)
+    expect(mayBeConnectionString(ConnectionType.HOST, url)).toBe(true)
+    const parsed = await getDataFromKiwiUrl(url)
+    expect(parsed.e2ee).toBe(true)
+    expect(parsed.invite).toEqual(invite)
+    expect(parsed.rtcSessionDescription.type).toBe('offer')
+  })
+
+  it('accepts a connection string wrapped across lines in a text file', async () => {
+    const { randomInviteCrypto } = await import('./crypto/invite')
+    const invite = randomInviteCrypto()
+    const url = await getConnectionString(ConnectionType.HOST, MINIMAL_OFFER, {
+      username: 'Kiwi',
+      invite,
+    })
+    const hash = url.indexOf('#')
+    const wrapped = `${url.slice(0, 24)}\n${url.slice(24, hash)}\r\n${url.slice(hash)}`
+    expect(mayBeConnectionString(ConnectionType.HOST, wrapped)).toBe(true)
+    const intact = await getDataFromKiwiUrl(url)
+    const parsed = await getDataFromKiwiUrl(wrapped)
+    expect(parsed.invite).toEqual(intact.invite)
+    expect(parsed.rtcSessionDescription).toEqual(intact.rtcSessionDescription)
+    expect(parsed.e2ee).toBe(true)
+  })
+
+  it('treats legacy URLs without a fragment as visibly non-E2EE', async () => {
+    const url = await getConnectionString(ConnectionType.HOST, MINIMAL_OFFER, { username: 'Kiwi' })
+    const parsed = await getDataFromKiwiUrl(url)
+    expect(parsed.e2ee).toBe(false)
+    expect(parsed.invite).toBeNull()
+  })
+})

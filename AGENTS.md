@@ -1,0 +1,1 @@
+Use the `ponytail:ponytail` skill for coding tasks in this repository, at its default `full` intensity unless the user asks otherwise. Understand the affected flow before choosing the smallest working change.

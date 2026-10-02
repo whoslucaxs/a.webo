@@ -1,0 +1,96 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+---
+version: '3'
+
+tasks:
+  default:
+    desc: Lists all available tasks
+    cmds:
+      - task --list
+    silent: true
+  gen:translations:
+    desc: Generates translation files
+    cmds:
+      - typesafe-i18n --no-watch
+    silent: true
+  gen:translations:watch:
+    desc: Generates translation files
+    cmds:
+      - typesafe-i18n
+    silent: true
+  install:deps:
+    desc: Installs all dependencies
+    cmds:
+      - pnpm install
+      - pnpm install:electron
+    silent: true
+  generate-icons:
+    desc: Generates application icons
+    cmds:
+      - ./scripts/generate-icons.sh
+    silent: true
+  sync:assets:
+    desc: Syncs assets from app to web
+    cmds:
+      - ./scripts/sync-assets.sh
+    silent: true
+  dev:web:
+    desc: Runs the app in development mode
+    dir: ./web
+    cmds:
+      - pnpm run dev
+    silent: true
+  dev:app:
+    desc: Runs the app in development mode
+    cmds:
+      - pnpm run dev
+    silent: true
+  dev:app:new:
+    desc: |
+      Runs a second app in development mode,
+      with a different port and isolated environment
+    cmds:
+      - ./scripts/dev.sh
+    silent: true
+  build:
+    desc: Builds the app
+    cmds:
+      - pnpm run build
+    silent: true
+  build-arch:
+    desc: Builds an Arch Linux package (.pkg.tar.zst) from sources or a .deb
+    cmds:
+      - ./scripts/build-arch.sh {{.CLI_ARGS}}
+    silent: true
+  fmt:
+    desc: Formats all files
+    cmds:
+      - pnpm run format
+    silent: true
+  lint:
+    desc: Runs lint on all files
+    cmds:
+      - pnpm run lint
+    silent: true
+  check:
+    desc: Formats, lints, and type-checks
+    cmds:
+      - pnpm run check
+    silent: true
+  sidecar:build:
+    desc: Builds the native overlay sidecar
+    cmds:
+      - ./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist
+  sidecar:test:
+    desc: Tests the native overlay sidecar
+    cmds:
+      - ./native/overlay-sidecar/scripts/test.sh
+  sidecar:dev:
+    desc: Builds the sidecar for local development
+    cmds:
+      - ./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist
+  sidecar:package:
+    desc: Builds the sidecar into extraResources
+    cmds:
+      - ./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist
+    silent: true
