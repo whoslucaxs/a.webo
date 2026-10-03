@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { appState } from './appState.svelte'
 
 describe('appState', () => {
-  it('starts on the join view', () => {
-    expect(appState.activeView).toBe('join')
+  it('starts on the home view', () => {
+    expect(appState.activeView).toBe('home')
     expect(appState.navigationEnabled).toBe(true)
     expect(appState.isHosting).toBe(false)
     expect(appState.isWatching).toBe(false)
@@ -11,17 +11,17 @@ describe('appState', () => {
   })
 
   it('updates view and session flags', () => {
-    appState.activeView = 'host'
+    appState.activeView = 'settings'
     appState.isHosting = true
     appState.navigationEnabled = false
     appState.hostUrl = 'kiwi://host?username=Kiwi&token=abc'
 
-    expect(appState.activeView).toBe('host')
+    expect(appState.activeView).toBe('settings')
     expect(appState.isHosting).toBe(true)
     expect(appState.navigationEnabled).toBe(false)
     expect(appState.hostUrl).toContain('kiwi://')
 
-    appState.activeView = 'join'
+    appState.activeView = 'home'
     appState.isHosting = false
     appState.navigationEnabled = true
     appState.hostUrl = ''

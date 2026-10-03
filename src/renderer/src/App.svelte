@@ -3,7 +3,6 @@
   import Join from './Join.svelte'
   import Host from './Host.svelte'
   import Settings from './Settings.svelte'
-  import About from './About.svelte'
   import Debug from './Debug.svelte'
   import Bonjour from './Bonjour.svelte'
   import ScreenPicker from './ScreenPicker.svelte'
@@ -15,7 +14,6 @@
   import { getDataFromKiwiUrl } from './Utils'
   import { parseRoomLink } from './session/roomServer'
   import { sessionRoom as room } from './session/sessionStore.svelte'
-  import { L } from './translations'
   import { onMount } from 'svelte'
 
   let screenPicker: ScreenPicker | undefined = $state()
@@ -23,7 +21,6 @@
 
   const presenting = $derived(Boolean(room.isLive || room.sessionEndedReason))
   const showInvite = $derived(room.isCoordinator)
-  const stageTitle = $derived(appState.isHosting ? L.hosting_a_session() : L.joined_a_session())
 
   $effect(() => {
     const liveBonjour = appState.sessionSource === 'bonjour' && room.isLive
@@ -49,14 +46,14 @@
     const { data } = evt
     if (data.type !== 'openKiwiURL') return
     if (parseRoomLink(data.url)) {
-      appState.activeView = 'join'
+      appState.activeView = 'home'
       appState.participantUrl = data.url
       return
     }
     const urlData = await getDataFromKiwiUrl(data.url)
     switch (urlData.type) {
       case 'host':
-        appState.activeView = 'join'
+        appState.activeView = 'home'
         appState.participantUrl = data.url
         break
       case 'participant':
@@ -72,26 +69,27 @@
     appState.bonjourVisible = (evt.target as HTMLInputElement).checked
     }} class="drawer-toggle" checked={appState.bonjourVisible ? true : false} />
   <div class="drawer-content">
-    <Navigation />
+    {#if !presenting}<Navigation />{/if}
     <Toast />
     <div class={presenting ? 'hidden' : ''}>
-      {#if appState.activeView === 'join'}
-        <Join />
-      {:else if appState.activeView === 'host'}
-        <Host />
+      {#if appState.activeView === 'home'}
+        <main class="home-page" data-theme="business">
+          <div class="home-heading">
+            <h1>p2p.kiwi</h1>
+          </div>
+          <div class="home-options">
+            <section class="home-card"><Host /></section>
+            <section class="home-card"><Join /></section>
+          </div>
+        </main>
       {:else if appState.activeView === 'settings'}
         <Settings />
-      {:else if appState.activeView === 'about'}
-        <About />
       {:else if appState.activeView === 'debug'}
         <Debug />
       {/if}
     </div>
     {#if presenting}
-      <div class="container mx-auto p-5">
-        <h1 class="text-3xl font-bold mb-4">{stageTitle}</h1>
-        <SessionStage {room} {showInvite} onReset={() => appState.resetSession()} />
-      </div>
+      <SessionStage {room} {showInvite} onReset={() => appState.resetSession()} />
     {/if}
   </div>
   <div class="drawer-side">

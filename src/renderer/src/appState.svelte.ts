@@ -3,7 +3,7 @@ import type { ViewName } from './types'
 export type SessionSource = 'host' | 'join' | 'bonjour'
 
 class AppState {
-  activeView = $state<ViewName>('join')
+  activeView = $state<ViewName>('home')
   navigationEnabled = $state(true)
   isHosting = $state(false)
   isWatching = $state(false)
@@ -12,6 +12,7 @@ class AppState {
   bonjourEnabled = $state(false)
   bonjourVisible = $state(false)
   hostUrl = $state('')
+  roomLink = $state('')
   participantUrl = $state('')
   sessionSource = $state<SessionSource | null>(null)
   private sessionReset: (() => void) | null = null

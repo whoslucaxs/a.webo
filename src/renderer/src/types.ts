@@ -30,4 +30,4 @@ export type ScreenShareSource = {
   isScreen: boolean
 }
 
-export type ViewName = 'join' | 'host' | 'settings' | 'about' | 'debug' | 'bonjour'
+export type ViewName = 'home' | 'settings' | 'debug' | 'bonjour'

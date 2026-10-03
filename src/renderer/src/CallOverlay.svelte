@@ -160,7 +160,7 @@
   })
 </script>
 
-<div class="h-screen flex flex-col bg-base-200 text-base-content">
+<div class="h-screen flex flex-col bg-base-200 text-base-content" data-theme="business">
   <header class="drag flex items-center justify-between px-3 py-2 bg-base-300">
     <span class="font-semibold text-sm">{L.chat()}</span>
     <div class="no-drag flex gap-1">

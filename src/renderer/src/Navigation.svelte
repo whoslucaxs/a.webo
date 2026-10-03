@@ -12,29 +12,18 @@
   }
 </script>
 
-<div class="navbar bg-base-100 px-4">
+<div class="navbar bg-base-100 px-5 border-b border-base-content/10" data-theme="business">
   <div class="navbar-start flex flex-wrap gap-2">
     <button
-      class="btn {appState.activeView === 'join' ? 'btn-primary' : 'btn-ghost'}"
-      data-action="join"
+      class="btn {appState.activeView === 'home' ? 'btn-primary' : 'btn-ghost'}"
+      data-action="home"
       onclick={handleTopButtonsClick}
       disabled={!appState.navigationEnabled}
     >
       <span class="icon">
-        <i class="fa-solid fa-right-to-bracket"></i>
+        <i class="fa-solid fa-house"></i>
       </span>
-      <strong>{!appState.isWatching ? L.join_a_session() : L.joined_a_session()}</strong>
-    </button>
-    <button
-      class="btn {appState.activeView === 'host' ? 'btn-primary' : 'btn-ghost'}"
-      data-action="host"
-      onclick={handleTopButtonsClick}
-      disabled={!appState.navigationEnabled}
-    >
-      <span class="icon">
-        <i class="fa-solid fa-earth-africa"></i>
-      </span>
-      <strong>{!appState.isHosting ? L.host_a_session() : L.hosting_a_session()}</strong>
+      <strong>p2p.kiwi</strong>
     </button>
     <button
       class="btn {appState.activeView === 'settings' ? 'btn-primary' : 'btn-ghost'}"
@@ -46,17 +35,6 @@
         <i class="fa-solid fa-gear"></i>
       </span>
       <strong>{L.settings()}</strong>
-    </button>
-    <button
-      class="btn {appState.activeView === 'about' ? 'btn-primary' : 'btn-ghost'}"
-      data-action="about"
-      onclick={handleTopButtonsClick}
-      disabled={!appState.navigationEnabled}
-    >
-      <span class="icon">
-        <i class="fa-solid fa-question"></i>
-      </span>
-      <strong>{L.about()}</strong>
     </button>
     {#if appState.debugLogsEnabled}
       <button

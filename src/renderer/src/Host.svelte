@@ -21,7 +21,6 @@
 
   let sessionStarted = $state(false)
   let startingSession = $state(false)
-  let roomLink = $state('')
   let username = ''
   let server = ''
   let roomId = ''
@@ -84,7 +83,7 @@
         if (setup === 'failed') toast.show('error', L.connection_failed())
         return
       }
-      roomLink = makeRoomLink(server, roomId, room.roomInviteFragment)
+      appState.roomLink = makeRoomLink(server, roomId, room.roomInviteFragment)
       sessionStarted = true
       appState.navigationEnabled = false
       appState.isHosting = true
@@ -107,7 +106,7 @@
     if (roomId && hostKey) void closeRoom(server, roomId, hostKey).catch(() => undefined)
     roomId = ''
     hostKey = ''
-    roomLink = ''
+    appState.roomLink = ''
     pending.clear()
     sessionStarted = false
     appState.navigationEnabled = true
@@ -116,31 +115,15 @@
     appState.clearSession()
   }
 
-  const onDisconnectClick = async (): Promise<void> => {
-    await room.Disconnect()
-    reset()
-  }
-
-  const onShareClick = async (): Promise<void> => {
-    if (await room.changeScreen() === 'failed') toast.show('error', L.screen_share_failed())
-  }
 </script>
 
-<div class="container mx-auto p-5">
-  <h1 class="text-3xl font-bold mb-4">{!room.isLive ? L.host_a_session() : L.hosting_a_session()}</h1>
+<div class="home-action">
+  <div class="home-action-icon"><i class="fa-solid fa-video"></i></div>
+  <h2>{L.host_a_session()}</h2>
   {#if !sessionStarted}
-    <button class="btn btn-primary" disabled={startingSession} onclick={onStartSessionButtonClick}>
+    <button class="btn btn-primary w-full" disabled={startingSession} onclick={onStartSessionButtonClick}>
       {#if startingSession}<span class="loading loading-spinner"></span>{/if}
       {L.start_a_new_session()}
     </button>
-  {:else if !room.sessionEndedReason}
-    <div class="flex flex-wrap gap-2 mb-4">
-      <button class="btn btn-primary" onclick={() => void navigator.clipboard.writeText(roomLink)}>
-        <i class="fas fa-copy"></i> {L.copy_my_connection_string()}
-      </button>
-      <button class="btn btn-info" onclick={onShareClick}>{L.share_your_screen()}</button>
-      <button class="btn btn-error" onclick={onDisconnectClick}>{L.cancel()}</button>
-    </div>
-    <p class="break-all">{roomLink}</p>
   {/if}
 </div>

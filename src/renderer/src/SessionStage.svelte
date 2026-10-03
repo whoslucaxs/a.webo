@@ -146,10 +146,15 @@
   let inviteAnotherTextLoading = $state('')
 
   const onCopyInvite = async (): Promise<void> => {
-    inviteAnotherButton.disabled = true
-    inviteAnotherTextLoading = 'generating...'
     if (inviteInFlight) return
+    if (appState.sessionSource === 'host' && appState.roomLink) {
+      await navigator.clipboard.writeText(appState.roomLink)
+      toast.show('success', L.copy_my_connection_string())
+      return
+    }
     inviteInFlight = true
+    if (inviteAnotherButton) inviteAnotherButton.disabled = true
+    inviteAnotherTextLoading = 'generating...'
     try {
       const offer = await room.CreateHostUrl({ username })
       if (!offer) {
@@ -164,7 +169,7 @@
       toast.show('error', L.connection_failed())
     } finally {
       inviteInFlight = false
-      inviteAnotherButton.disabled = false
+      if (inviteAnotherButton) inviteAnotherButton.disabled = false
       inviteAnotherTextLoading = ''
     }
   }
@@ -220,7 +225,15 @@
   )
 </script>
 
-<div class="flex justify-between items-center mb-4 gap-2 flex-wrap">
+<div class="call-shell" data-theme="business">
+<header class="call-header">
+  <div>
+    <span class="call-kicker">p2p.kiwi</span>
+    <h1>{appState.isHosting ? L.hosting_a_session() : L.joined_a_session()}</h1>
+  </div>
+  <span class="call-count" title={L.peer_list()}><i class="fa-solid fa-user-group"></i> {room.peers.length}</span>
+</header>
+<div class="call-controls">
   <div class="flex gap-2 flex-wrap">
       <button
         title={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}
@@ -338,6 +351,9 @@
   </div>
 </div>
 
+<div class="call-content">
+<aside class="call-sidebar">
+
 {#if room.presenterGone && !room.isPresenter && !room.sessionEndedReason}
   <div class="alert alert-warning mb-4">{L.presenter_left()}</div>
 {/if}
@@ -406,54 +422,34 @@
 
 <div class="mb-4">
   <h2 class="font-semibold mb-2">{L.peer_list()}</h2>
-  <div class="rounded-box border border-base-content/5 bg-base-100 max-w-fit">
-    <table class="table">
-      <thead>
-        <tr class="bg-base-300">
-          <th><span class="fa-solid fa-user"></span> {L.username()}</th>
-          <th><span class="fa-solid fa-people-group"></span> Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-      {#each room.peers as peer (peer.id)}
-        <tr class="hover:bg-base-200">
-          <td>
-            {peer.username}{peer.id === room.localPeerId ? ` (${L.you()})` : ''}
-            {#if peer.id === room.coordinatorId}
-              <span class="tooltip tooltip-top" data-tip={L.coordinator()}>
-                <span class="text-info fa-solid fa-satellite-dish"></span>
-              </span>
-            {/if}
-            {#if peer.id === room.presenterId}
-              <span class="tooltip tooltip-top" data-tip={L.presenter()}>
-                <span class="text-info fa-solid fa-desktop"></span>
-              </span>
-            {/if}
-          </td>
-            <td>
-            {#if peer.id !== room.localPeerId}
-              <span class="tooltip tooltip-top" data-tip={L.remove_from_session()}>
-                <button
-                  type="button"
-                  class="btn btn-ghost hover:btn-warning"
-                  aria-label={L.remove_from_session()}
-                  disabled={Boolean(room.activeVote) || !room.canRequestKick(peer.id)}
-                  onclick={() => onRequestKick(peer.id)}
-                >
-                  <span class="icon">
-                    <i class="fa-solid fa-user-minus"></i>
-                  </span>
-                </button>
-              </span>
-            {/if}
-          </td>
-        </tr>
-      {/each}
-      </tbody>
-    </table>
+  <div class="member-list">
+    {#each room.peers as peer (peer.id)}
+      <div class="member-row">
+        <span class="member-avatar" style:background={peer.backgroundColor} style:color={peer.foregroundColor}>
+          {peer.username.trim().charAt(0).toUpperCase() || '?'}
+        </span>
+        <span class="member-name" title={peer.username}>
+          {peer.username}{peer.id === room.localPeerId ? ` (${L.you()})` : ''}
+          {#if peer.id === room.coordinatorId}<i class="fa-solid fa-crown" title={L.coordinator()}></i>{/if}
+          {#if peer.id === room.presenterId}<i class="fa-solid fa-display" title={L.presenter()}></i>{/if}
+        </span>
+        {#if peer.id !== room.localPeerId}
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            title={L.remove_from_session()}
+            aria-label={L.remove_from_session()}
+            disabled={Boolean(room.activeVote) || !room.canRequestKick(peer.id)}
+            onclick={() => onRequestKick(peer.id)}
+          ><i class="fa-solid fa-user-minus"></i></button>
+        {/if}
+      </div>
+    {/each}
   </div>
 </div>
 
+  </aside>
+  <main class="call-stage">
 <div class="screen-grid">
 <div class={showVideo ? 'relative' : 'hidden'}>
   <fieldset class="fieldset px-0">
@@ -523,6 +519,15 @@
   </fieldset>
 {/each}
 </div>
+{#if room.screenShares.length === 0}
+  <div class="call-empty">
+    <i class="fa-solid fa-display"></i>
+    <p>{L.not_streaming_your_display()}</p>
+    <button class="btn btn-primary" onclick={onChangeScreen}>{L.share_your_screen()}</button>
+  </div>
+{/if}
+  </main>
+</div>
 
 <SessionEndedOverlay
   reason={room.sessionEndedReason}
@@ -533,14 +538,139 @@
 />
 
 <PresenterVoteModal {room} />
+</div>
 
 <style>
+  .call-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #313338;
+    color: #f2f3f5;
+  }
+  .call-header {
+    min-height: 4.5rem;
+    padding: 0.9rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    background: #313338;
+    border-bottom: 1px solid #222327;
+  }
+  .call-header h1 {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .call-kicker {
+    color: #b5bac1;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .call-count {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #b5bac1;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .call-content {
+    order: 2;
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+  }
+  .call-sidebar {
+    padding: 1.25rem 1rem;
+    background: #2b2d31;
+    border-right: 1px solid #222327;
+  }
+  .member-list { display: flex; flex-direction: column; gap: 0.25rem; }
+  .member-row {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem;
+    border-radius: 0.6rem;
+  }
+  .member-row:hover { background: #35373c; }
+  .member-avatar {
+    width: 2rem;
+    height: 2rem;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .member-name {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.8rem;
+  }
+  .member-name i { margin-left: 0.25rem; color: #b5bac1; }
+  .call-stage {
+    min-width: 0;
+    padding: clamp(1rem, 2.5vw, 2rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .call-controls {
+    order: 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    padding: 0.85rem 1rem;
+    background: #232428;
+    border-top: 1px solid #17181b;
+  }
+  .call-controls :global(.btn) {
+    min-height: 2.75rem;
+    border-radius: 0.9rem;
+  }
+  .call-controls :global(.mb-4) {
+    margin-bottom: 0;
+  }
+  .call-empty {
+    min-height: min(55vh, 24rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: #b5bac1;
+    text-align: center;
+    background: #25262b;
+    border: 1px solid #41434a;
+    border-radius: 1.25rem;
+  }
+  .call-empty > i { font-size: 3rem; }
   .screen-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
     gap: 1rem;
     align-items: start;
   }
+  .screen-grid fieldset {
+    min-width: 0;
+    padding: 0.75rem;
+    border: 1px solid #41434a;
+    border-radius: 1rem;
+    background: #25262b;
+  }
+  .screen-grid :global(.fieldset-legend) { color: #dbdee1; }
   .video {
     width: 100%;
     height: auto;
@@ -620,5 +750,10 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+  @media (max-width: 760px) {
+    .call-content { grid-template-columns: 1fr; }
+    .call-sidebar { border-right: 0; border-bottom: 1px solid #222327; }
+    .call-controls { gap: 0.5rem; }
   }
 </style>

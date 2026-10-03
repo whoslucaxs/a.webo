@@ -96,10 +96,11 @@
   }
 </script>
 
-<div class="container mx-auto p-5">
-  <h1 class="text-3xl font-bold mb-4">{!room.isLive ? L.join_a_session() : L.joined_a_session()}</h1>
+<div class="home-action">
+  <div class="home-action-icon"><i class="fa-solid fa-right-to-bracket"></i></div>
+  <h2>{L.join_a_session()}</h2>
   {#if !waiting && !appState.isWatching && !room.sessionEndedReason}
-    <div class="join w-full mb-4">
+    <div class="join w-full">
       <input
         bind:value={appState.participantUrl}
         class="input join-item flex-1 {valid ? 'input-success' : ''}"
