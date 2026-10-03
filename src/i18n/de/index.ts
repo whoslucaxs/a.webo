@@ -35,6 +35,8 @@ const en = {
   remote_screen: 'Remote screen',
   report_a_bug: 'Einen Fehler melden',
   save: 'Speichern',
+  settings_saved: 'Einstellungen gespeichert',
+  settings_save_failed: 'Einstellungen konnten nicht gespeichert werden',
   screen_share_failed: 'Bildschirmfreigabe konnte nicht gestartet werden',
   screens: 'Bildschirme',
   see_the_code: 'Sieh dir den Code an',
@@ -47,7 +49,6 @@ const en = {
     'p2p.kiwi Screen Sharing baut auf den folgenden Open-Source-Projekten auf (in keiner bestimmten Reihenfolge)',
   start_a_new_session: 'Eine neue Sitzung starten',
   streaming_your_display: 'Dein Bildschirm wird gestreamt',
-  stun_turn_server_objects: 'STUN/TURN Objekte (getrennt durch Zeilenumbruch)',
   terms_of_service: 'Nutzungsbedingungen',
   username: 'Benutzername',
   website: 'Website',
@@ -101,8 +102,6 @@ const en = {
   vote_remove_cooldown: 'Bitte warte einen Moment, bevor du eine neue Abstimmung startest',
   you: 'Du',
   hardware_video_acceleration: 'Hardware-Videobeschleunigung (VA-API)',
-  hardware_video_acceleration_description:
-    'Nutzt die GPU zum Kodieren und Dekodieren von Video. Deaktiviere dies, wenn die Bildschirmfreigabe schwarz ist oder abstürzt. Starte die App danach neu.',
   camera: 'Kamera',
   camera_on: 'Kamera an',
   camera_off: 'Kamera aus',
@@ -111,20 +110,12 @@ const en = {
   send: 'Senden',
   debug: 'Debug',
   debug_logs: 'Debug-Logs aktivieren',
-  debug_logs_description:
-    'Zeigt eine Debug-Seite mit Verbindungs- und WebRTC-Logs. Aktiviere dies, bevor du das Problem nachstellst, und kopiere dann das Log.',
   debug_clear: 'Log leeren',
   debug_copy: 'Log kopieren',
   debug_empty: 'Noch keine Debug-Einträge. Stelle das Problem nach und kopiere dann das Log.',
   camera_device: 'Kamera',
   microphone_device: 'Mikrofon',
   default_media_device: 'Systemstandard',
-  e2ee_enabled: 'Ende-zu-Ende-Verschlüsselung',
-  e2ee_enabled_description:
-    'Schützt Chat, Abstimmungen, Zeiger und Medien mit MLS. Wenn die Verschlüsselung nicht aufgebaut werden kann, wird der Verkehr verworfen statt unverschlüsselt gesendet.',
-  media_e2ee: 'Medien verschlüsseln (SFrame)',
-  media_e2ee_description:
-    'Pflicht, solange die Ende-zu-Ende-Verschlüsselung an ist. Bildschirm, Kamera und Mikrofon fallen nie auf Klartext zurück.',
   e2ee_on: 'Ende-zu-Ende verschlüsselt',
   e2ee_app_only: 'Verschlüsselung ist Pflicht; Medien werden gehalten, bis SFrame bereit ist',
   e2ee_off: 'Nicht ende-zu-ende verschlüsselt',
@@ -160,10 +151,6 @@ const en = {
   bonjour_incoming_call: 'Eingehender Anruf',
   bonjour_incoming_join: 'Möchte beitreten',
   bonjour_error: 'Bonjour-Anfrage fehlgeschlagen',
-  bonjour_enabled: 'Bonjour aktivieren (optionaler Kontakt-Server)',
-  bonjour_enabled_description:
-    'Wenn aktiv, spricht die App mit dem konfigurierten Bonjour-Server. Medien und MLS-Schlüssel bleiben auf dem Gerät. Standardmäßig aus.',
-  bonjour_server_url: 'Bonjour-Server-URL',
   bonjour_invites: 'Mit einem Code einladen',
   bonjour_invites_description:
     'Teile einen Einmal-Code mit jemandem, der denselben Bonjour-Server nutzt. Anmelden ist optional.',

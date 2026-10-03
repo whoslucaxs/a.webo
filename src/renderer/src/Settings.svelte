@@ -1,323 +1,214 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import ColorPicker from 'svelte-awesome-color-picker'
   import { L } from './translations'
   import { appState } from './appState.svelte'
   import { debugLog } from './debugLog.svelte'
+  import { toast } from './toastState.svelte'
+  import { normalizeRoomServer } from './session/roomServer'
+  type StoredSettings = Awaited<ReturnType<typeof window.KiwiApi.getSettings>>
 
-  let foregroundPreviewIcon: HTMLElement | undefined = $state()
-  let backgroundPreviewIcon: HTMLElement | undefined = $state()
-  let usernameValue = $state('Kiwi')
-  let foregroundValue = $state('#ffffff')
-  let backgroundValue = $state('#0099ff')
+  let savedSettings = $state<StoredSettings | null>(null)
+  let username = $state('')
+  let foregroundColor = $state('#ffffff')
+  let backgroundColor = $state('#0099ff')
   let language = $state('en')
-  const languageOptions = ['en', 'de', 'fr', 'pt-br', 'zh']
-  let iceServersValue = $state('{ "urls": "stun:stun.l.google.com:19302" }')
-  let roomServerValue = $state('')
-  let modalSuccessIsActive = $state(false)
-  let modalFailureIsActive = $state(false)
-  let isMicrophoneEnabledOnConnect = $state(true)
-  let hardwareVideoAcceleration = $state(true)
-  let debugLogsEnabled = $state(false)
-  let e2eeEnabled = $state(true)
-  let mediaE2eeEnabled = $state(true)
+  let roomServerUrl = $state('')
   let cameraDeviceId = $state('')
   let microphoneDeviceId = $state('')
-  let bonjourEnabled = $state(false)
-  let bonjourServerUrl = $state('https://bonjour.p2p.kiwi')
+  let microphoneOnConnect = $state(true)
+  let hardwareVideoAcceleration = $state(true)
+  let debugLogsEnabled = $state(false)
   let cameras = $state<MediaDeviceInfo[]>([])
   let microphones = $state<MediaDeviceInfo[]>([])
+  let saving = $state(false)
   const isLinux = window.electron.process.platform === 'linux'
+  const languages = ['en', 'de', 'fr', 'pt-br', 'zh']
+  const usernameValid = $derived(username.trim().length > 0 && username.trim().length < 32)
 
-  const isUsernameValid = $derived(usernameValue.length > 0 && usernameValue.length < 32)
-  const isForegroundValid = $derived(/^#[0-9A-F]{6}$/i.test(foregroundValue))
-  const isBackgroundValid = $derived(/^#[0-9A-F]{6}$/i.test(backgroundValue))
-  const isIceServersValid = $derived(
-    iceServersValue.split('\n').every((serverObject) => {
-      try {
-        const srv = JSON.parse(serverObject)
-        return srv.urls && srv.urls.length > 0
-      } catch {
-        return false
-      }
-    })
-  )
-
-  $effect(() => {
-    if (isForegroundValid) {
-      foregroundPreviewIcon?.style.setProperty('--color', foregroundValue)
+  const refreshDevices = async (): Promise<void> => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      cameras = devices.filter((device) => device.kind === 'videoinput' && device.deviceId)
+      microphones = devices.filter((device) => device.kind === 'audioinput' && device.deviceId)
+    } catch (error) {
+      debugLog.warn('settings', 'could not list media devices', error)
     }
-    if (isBackgroundValid) {
-      backgroundPreviewIcon?.style.setProperty('--color', backgroundValue)
-    }
-  })
-
-  $effect(() => {
-    if (e2eeEnabled) mediaE2eeEnabled = true
-  })
-
-  async function onSubmit(evt: Event): Promise<void> {
-    evt.preventDefault()
-    if (isUsernameValid && isForegroundValid && isBackgroundValid && isIceServersValid) {
-      await window.KiwiApi.updateSettings({
-        username: usernameValue,
-        foregroundColor: foregroundValue,
-        backgroundColor: backgroundValue,
-        language,
-        isMicrophoneEnabledOnConnect,
-        hardwareVideoAcceleration,
-        debugLogsEnabled,
-        e2eeEnabled,
-        mediaE2eeEnabled: e2eeEnabled ? true : mediaE2eeEnabled,
-        cameraDeviceId,
-        microphoneDeviceId,
-        iceServers: iceServersValue.split('\n').map((srv) => JSON.parse(srv)),
-        roomServerUrl: roomServerValue.trim(),
-        bonjourEnabled,
-        bonjourServerUrl
-      })
-      appState.debugLogsEnabled = debugLogsEnabled
-      appState.bonjourEnabled = bonjourEnabled
-      debugLog.setEnabled(debugLogsEnabled)
-      if (!debugLogsEnabled && appState.activeView === 'debug') appState.activeView = 'settings'
-      if (!bonjourEnabled && appState.activeView === 'bonjour') appState.activeView = 'settings'
-      if (debugLogsEnabled) debugLog.info('settings', 'debug logs enabled')
-      modalSuccessIsActive = true
-      setTimeout(() => {
-        modalSuccessIsActive = false
-      }, 2000)
-    } else {
-      modalFailureIsActive = true
-      setTimeout(() => {
-        modalFailureIsActive = false
-      }, 2000)
-    }
-  }
-  onMount(() => {
-    const onDeviceChange = (): void => {
-      void refreshMediaDevices()
-    }
-    void (async (): Promise<void> => {
-      const settings = await window.KiwiApi.getSettings()
-      usernameValue = settings.username
-      foregroundValue = settings.foregroundColor
-      backgroundValue = settings.backgroundColor
-      language = settings.language
-      isMicrophoneEnabledOnConnect = settings.isMicrophoneEnabledOnConnect
-      hardwareVideoAcceleration = settings.hardwareVideoAcceleration
-      debugLogsEnabled = settings.debugLogsEnabled
-      e2eeEnabled = settings.e2eeEnabled !== false
-      mediaE2eeEnabled = settings.mediaE2eeEnabled !== false
-      cameraDeviceId = settings.cameraDeviceId ?? ''
-      microphoneDeviceId = settings.microphoneDeviceId ?? ''
-      iceServersValue = settings.iceServers.map((srv) => JSON.stringify(srv)).join('\n')
-      roomServerValue = settings.roomServerUrl ?? ''
-      bonjourEnabled = settings.bonjourEnabled === true
-      bonjourServerUrl = settings.bonjourServerUrl || 'https://bonjour.p2p.kiwi'
-      await refreshMediaDevices()
-    })()
-    navigator.mediaDevices.addEventListener('devicechange', onDeviceChange)
-    return (): void => {
-      navigator.mediaDevices.removeEventListener('devicechange', onDeviceChange)
-    }
-  })
-
-  const unlockMediaLabels = async (): Promise<void> => {
-    const tryGet = async (constraints: MediaStreamConstraints): Promise<boolean> => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints)
-        for (const track of stream.getTracks()) track.stop()
-        return true
-      } catch {
-        return false
-      }
-    }
-    if (
-      await tryGet({
-        audio: true,
-        video: true
-      })
-    ) {
-      return
-    }
-    if (await tryGet({ audio: true })) return
-    await tryGet({ video: true })
-  }
-
-  const refreshMediaDevices = async (): Promise<void> => {
-    await unlockMediaLabels()
-    const devices = await navigator.mediaDevices.enumerateDevices()
-    cameras = devices.filter((device) => device.kind === 'videoinput' && device.deviceId)
-    microphones = devices.filter((device) => device.kind === 'audioinput' && device.deviceId)
   }
 
   const deviceLabel = (device: MediaDeviceInfo, index: number): string =>
     device.label || `${device.kind} ${index + 1}`
+
+  onMount(() => {
+    void (async () => {
+      const settings = await window.KiwiApi.getSettings()
+      savedSettings = settings
+      username = settings.username
+      foregroundColor = settings.foregroundColor
+      backgroundColor = settings.backgroundColor
+      language = settings.language || 'en'
+      roomServerUrl = settings.roomServerUrl || ''
+      cameraDeviceId = settings.cameraDeviceId || ''
+      microphoneDeviceId = settings.microphoneDeviceId || ''
+      microphoneOnConnect = settings.isMicrophoneEnabledOnConnect
+      hardwareVideoAcceleration = settings.hardwareVideoAcceleration
+      debugLogsEnabled = settings.debugLogsEnabled
+      await refreshDevices()
+    })().catch((error) => {
+      debugLog.error('settings', 'could not load settings', error)
+      toast.show('error', L.settings_save_failed())
+    })
+    navigator.mediaDevices.addEventListener('devicechange', refreshDevices)
+    return () => navigator.mediaDevices.removeEventListener('devicechange', refreshDevices)
+  })
+
+  const save = async (event: SubmitEvent): Promise<void> => {
+    event.preventDefault()
+    if (!savedSettings || !usernameValid || saving) return
+    saving = true
+    try {
+      const settings: StoredSettings = {
+        ...savedSettings,
+        username: username.trim(),
+        foregroundColor,
+        backgroundColor,
+        language,
+        roomServerUrl: normalizeRoomServer(roomServerUrl),
+        cameraDeviceId,
+        microphoneDeviceId,
+        isMicrophoneEnabledOnConnect: microphoneOnConnect,
+        hardwareVideoAcceleration,
+        debugLogsEnabled,
+        bonjourEnabled: false,
+        e2eeEnabled: true,
+        mediaE2eeEnabled: true,
+      }
+      await window.KiwiApi.updateSettings(settings)
+      savedSettings = settings
+      appState.debugLogsEnabled = debugLogsEnabled
+      appState.bonjourEnabled = false
+      appState.bonjourVisible = false
+      debugLog.setEnabled(debugLogsEnabled)
+      toast.show('success', L.settings_saved())
+    } catch (error) {
+      debugLog.error('settings', 'could not save settings', error)
+      toast.show('error', error instanceof Error ? error.message : L.settings_save_failed())
+    } finally {
+      saving = false
+    }
+  }
 </script>
 
-<dialog class="modal" class:modal-open={modalSuccessIsActive}>
-  <div class="modal-box">
-    <h3 class="text-lg font-bold text-success">Success</h3>
-    <p>Settings successfully saved.</p>
+<div class="settings-page" data-theme="business">
+  <div class="settings-shell">
+    <aside class="settings-menu">
+      <h1>{L.settings()}</h1>
+      <a href="#profile"><i class="fa-solid fa-user"></i> {L.basic()}</a>
+      <a href="#media"><i class="fa-solid fa-video"></i> {L.media()}</a>
+      <a href="#connection"><i class="fa-solid fa-link"></i> {L.room_server_url()}</a>
+      <a href="#advanced"><i class="fa-solid fa-sliders"></i> {L.advanced()}</a>
+    </aside>
+
+    <form class="settings-content" onsubmit={save}>
+      <section id="profile" class="settings-card">
+        <h2>{L.basic()}</h2>
+        <label class="settings-field">
+          <span>{L.username()}</span>
+          <input class="input w-full" class:input-error={!usernameValid} bind:value={username} maxlength="31" required />
+        </label>
+        <div class="color-fields">
+          <label class="settings-field">
+            <span>{L.foreground_color()}</span>
+            <input type="color" bind:value={foregroundColor} aria-label={L.foreground_color()} />
+          </label>
+          <label class="settings-field">
+            <span>{L.background_color()}</span>
+            <input type="color" bind:value={backgroundColor} aria-label={L.background_color()} />
+          </label>
+        </div>
+        <label class="settings-field">
+          <span>{L.language()}</span>
+          <select class="select w-full" bind:value={language}>
+            {#each languages as option}<option value={option}>{option}</option>{/each}
+          </select>
+          <small>{L.language_description()}</small>
+        </label>
+      </section>
+
+      <section id="media" class="settings-card">
+        <h2>{L.media()}</h2>
+        <label class="settings-field">
+          <span>{L.camera_device()}</span>
+          <select class="select w-full" bind:value={cameraDeviceId}>
+            <option value="">{L.default_media_device()}</option>
+            {#each cameras as device, index (device.deviceId)}
+              <option value={device.deviceId}>{deviceLabel(device, index)}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>{L.microphone_device()}</span>
+          <select class="select w-full" bind:value={microphoneDeviceId}>
+            <option value="">{L.default_media_device()}</option>
+            {#each microphones as device, index (device.deviceId)}
+              <option value={device.deviceId}>{deviceLabel(device, index)}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="settings-toggle">
+          <input class="toggle toggle-primary" type="checkbox" bind:checked={microphoneOnConnect} />
+          <span>{L.is_microphone_active_on_connect()}</span>
+        </label>
+      </section>
+
+      <section id="connection" class="settings-card">
+        <h2>{L.room_server_url()}</h2>
+        <label class="settings-field">
+          <span>{L.room_server_url()}</span>
+          <input class="input w-full" type="url" bind:value={roomServerUrl} placeholder="https://signal.nyxlink.online" required />
+        </label>
+      </section>
+
+      <section id="advanced" class="settings-card">
+        <h2>{L.advanced()}</h2>
+        <label class="settings-toggle">
+          <input class="toggle toggle-primary" type="checkbox" bind:checked={debugLogsEnabled} />
+          <span>{L.debug_logs()}</span>
+        </label>
+        {#if isLinux}
+          <label class="settings-toggle">
+            <input class="toggle toggle-primary" type="checkbox" bind:checked={hardwareVideoAcceleration} />
+            <span>{L.hardware_video_acceleration()}</span>
+          </label>
+        {/if}
+      </section>
+
+      <button class="btn btn-primary settings-save" type="submit" disabled={!usernameValid || !savedSettings || saving}>
+        {#if saving}<span class="loading loading-spinner loading-sm"></span>{/if}
+        {L.save()}
+      </button>
+    </form>
   </div>
-</dialog>
-
-<dialog class="modal" class:modal-open={modalFailureIsActive}>
-  <div class="modal-box">
-    <h3 class="text-lg font-bold text-error">Failure</h3>
-    <p>Settings could not be saved.</p>
-  </div>
-</dialog>
-
-<div class="container mx-auto p-5">
-  <h1 class="text-3xl font-bold mb-4">{L.settings()}</h1>
-  <h2 class="text-xl font-semibold mb-2">{L.basic()}</h2>
-  <form class="flex flex-col gap-4 max-w-xl" onsubmit={onSubmit}>
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.room_server_url()}</legend>
-      <input
-        bind:value={roomServerValue}
-        class="input w-full"
-        id="room_server"
-        placeholder="https://signal.example.com"
-        type="url"
-      />
-    </fieldset>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.username()}</legend>
-      <label class="input w-full {isUsernameValid ? 'input-success' : 'input-error'}">
-        <i class="fas fa-user"></i>
-        <input bind:value={usernameValue} type="text" id="username" placeholder="Kiwi" />
-      </label>
-    </fieldset>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.foreground_color()}</legend>
-      <label class="input w-full {isForegroundValid ? 'input-success' : 'input-error'}">
-        <i bind:this={foregroundPreviewIcon} class="fas fa-palette color-preview"></i>
-        <input bind:value={foregroundValue} type="text" id="foreground_color" placeholder="#1a1a1a" />
-      </label>
-      <ColorPicker bind:hex={foregroundValue} isTextInput={false} isAlpha={false} />
-    </fieldset>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.background_color()}</legend>
-      <label class="input w-full {isBackgroundValid ? 'input-success' : 'input-error'}">
-        <i bind:this={backgroundPreviewIcon} class="fas fa-palette color-preview"></i>
-        <input bind:value={backgroundValue} type="text" id="background_color" placeholder="#ffffff" />
-      </label>
-      <ColorPicker bind:hex={backgroundValue} isTextInput={false} isAlpha={false} />
-    </fieldset>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.language()}</legend>
-      <select class="select w-full" bind:value={language}>
-        {#each languageOptions as lang}
-          <option>{lang}</option>
-        {/each}
-      </select>
-      <p class="label">{L.language_description()}</p>
-    </fieldset>
-
-    <h2 class="text-xl font-semibold mt-2">{L.media()}</h2>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.camera_device()}</legend>
-      <select class="select w-full" bind:value={cameraDeviceId} id="camera_device">
-        <option value="">{L.default_media_device()}</option>
-        {#each cameras as device, index (device.deviceId)}
-          <option value={device.deviceId}>{deviceLabel(device, index)}</option>
-        {/each}
-      </select>
-    </fieldset>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.microphone_device()}</legend>
-      <select class="select w-full" bind:value={microphoneDeviceId} id="microphone_device">
-        <option value="">{L.default_media_device()}</option>
-        {#each microphones as device, index (device.deviceId)}
-          <option value={device.deviceId}>{deviceLabel(device, index)}</option>
-        {/each}
-      </select>
-    </fieldset>
-
-    <label class="label cursor-pointer justify-start gap-2">
-      <input
-        bind:checked={isMicrophoneEnabledOnConnect}
-        class="checkbox"
-        type="checkbox"
-        id="microphone_active_on_connect"
-      />
-      {L.is_microphone_active_on_connect()}
-    </label>
-
-    {#if isLinux}
-      <label class="label cursor-pointer justify-start gap-2">
-        <input
-          bind:checked={hardwareVideoAcceleration}
-          class="checkbox"
-          type="checkbox"
-          id="hardware_video_acceleration"
-        />
-        {L.hardware_video_acceleration()}
-      </label>
-      <p class="label">{L.hardware_video_acceleration_description()}</p>
-    {/if}
-
-    <h2 class="text-xl font-semibold mt-2">{L.advanced()}</h2>
-
-    <label class="label cursor-pointer justify-start gap-2">
-      <input bind:checked={bonjourEnabled} class="checkbox" type="checkbox" id="bonjour_enabled" />
-      {L.bonjour_enabled()}
-    </label>
-    <p class="label">{L.bonjour_enabled_description()}</p>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.bonjour_server_url()}</legend>
-      <input bind:value={bonjourServerUrl} class="input w-full" type="url" id="bonjour_server_url" />
-    </fieldset>
-
-    <label class="label cursor-pointer justify-start gap-2">
-      <input bind:checked={debugLogsEnabled} class="checkbox" type="checkbox" id="debug_logs" />
-      {L.debug_logs()}
-    </label>
-    <p class="label">{L.debug_logs_description()}</p>
-
-    <label class="label cursor-pointer justify-start gap-2">
-      <input bind:checked={e2eeEnabled} class="checkbox" type="checkbox" id="e2ee_enabled" />
-      {L.e2ee_enabled()}
-    </label>
-    <p class="label">{L.e2ee_enabled_description()}</p>
-
-    <label class="label cursor-pointer justify-start gap-2">
-      <input
-        bind:checked={mediaE2eeEnabled}
-        class="checkbox"
-        type="checkbox"
-        id="media_e2ee"
-        disabled={e2eeEnabled}
-      />
-      {L.media_e2ee()}
-    </label>
-    <p class="label">{L.media_e2ee_description()}</p>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{L.stun_turn_server_objects()}</legend>
-      <textarea
-        bind:value={iceServersValue}
-        class="textarea w-full {isIceServersValid ? 'textarea-success' : 'textarea-error'}"
-        id="ice_servers"
-        placeholder={'{ "urls": "stun:stun.l.google.com:19302" }'}
-      ></textarea>
-    </fieldset>
-
-    <button class="btn btn-primary w-fit">{L.save()}</button>
-  </form>
 </div>
 
 <style>
-  :global(.color-preview) {
-    color: var(--color, #ffffff);
+  .settings-page { min-height: calc(100vh - 4rem); background: #232428; color: #f2f3f5; }
+  .settings-shell { max-width: 72rem; margin: 0 auto; padding: 2rem; display: grid; grid-template-columns: 12rem minmax(0, 1fr); gap: 2rem; }
+  .settings-menu { position: sticky; top: 1.5rem; align-self: start; display: flex; flex-direction: column; gap: 0.25rem; }
+  .settings-menu h1 { font-size: 1.5rem; font-weight: 750; margin-bottom: 1rem; }
+  .settings-menu a { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem; border-radius: 0.6rem; color: #b5bac1; font-size: 0.85rem; }
+  .settings-menu a:hover { background: #35373c; color: #fff; }
+  .settings-content { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+  .settings-card { display: flex; flex-direction: column; gap: 1.1rem; padding: 1.5rem; border: 1px solid #41434a; border-radius: 1rem; background: #2b2d31; scroll-margin-top: 1rem; }
+  .settings-card h2 { font-size: 1.1rem; font-weight: 700; }
+  .settings-field { display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.85rem; }
+  .settings-field small { color: #b5bac1; font-size: 0.75rem; }
+  .settings-toggle { display: flex; align-items: center; gap: 0.8rem; font-size: 0.85rem; }
+  .color-fields { display: flex; gap: 1.5rem; }
+  .color-fields input { width: 3.5rem; height: 2.5rem; border: 0; padding: 0; background: transparent; cursor: pointer; }
+  .settings-save { align-self: flex-end; min-width: 8rem; }
+  @media (max-width: 700px) {
+    .settings-shell { grid-template-columns: 1fr; padding: 1rem; gap: 1rem; }
+    .settings-menu { position: static; }
+    .settings-menu a { display: none; }
   }
 </style>

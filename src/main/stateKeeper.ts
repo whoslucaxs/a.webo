@@ -74,6 +74,9 @@ export const settingsKeeper = async (): Promise<Settings> => {
         return {
           ...defaultSettings,
           ...data,
+          bonjourEnabled: false,
+          e2eeEnabled: true,
+          mediaE2eeEnabled: true,
         }
       },
       set: (data: SettingsData) => settings.set('settings', data),

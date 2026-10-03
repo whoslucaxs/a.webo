@@ -35,6 +35,8 @@ const pt_br = {
   remote_screen: 'Transmissão de Tela',
   report_a_bug: 'Reportar um bug',
   save: 'Salvar',
+  settings_saved: 'Configurações salvas',
+  settings_save_failed: 'Não foi possível salvar as configurações',
   screen_share_failed: 'Não foi possível iniciar o compartilhamento de tela',
   screens: 'Telas',
   see_the_code: 'Código Fonte',
@@ -47,7 +49,6 @@ const pt_br = {
     'p2p.kiwi Screen Sharing foi construído e desenvolvido em cima desses projetos open-source a seguir (sem ordem específica)',
   start_a_new_session: 'Iniciar uma sessão',
   streaming_your_display: 'Transmitindo sua tela',
-  stun_turn_server_objects: 'Objetos de servidor STUN/TURN (separado por linhas)',
   terms_of_service: 'Termos de Uso e Serviço',
   username: 'Nome de Usuário',
   website: 'Website',
@@ -101,8 +102,6 @@ const pt_br = {
   vote_remove_cooldown: 'Aguarde um momento antes de iniciar outra votação',
   you: 'Você',
   hardware_video_acceleration: 'Aceleração de vídeo por hardware (VA-API)',
-  hardware_video_acceleration_description:
-    'Usa a GPU para codificar e decodificar vídeo. Desative se o compartilhamento de tela ficar preto ou travar. Reinicie o aplicativo após alterar.',
   camera: 'Câmera',
   camera_on: 'Câmera ligada',
   camera_off: 'Câmera desligada',
@@ -111,20 +110,12 @@ const pt_br = {
   send: 'Enviar',
   debug: 'Depuração',
   debug_logs: 'Ativar logs de depuração',
-  debug_logs_description:
-    'Mostra uma página de Depuração com logs de conexão e WebRTC. Ative antes de reproduzir o problema e copie o log.',
   debug_clear: 'Limpar log',
   debug_copy: 'Copiar log',
   debug_empty: 'Nenhum log ainda. Reproduza o problema e copie o log.',
   camera_device: 'Câmera',
   microphone_device: 'Microfone',
   default_media_device: 'Padrão do sistema',
-  e2ee_enabled: 'Criptografia de ponta a ponta',
-  e2ee_enabled_description:
-    'Protege chat, votos, cursores e mídia com MLS. Se a criptografia não puder ser estabelecida, o tráfego é descartado em vez de enviado em texto puro.',
-  media_e2ee: 'Criptografar mídia (SFrame)',
-  media_e2ee_description:
-    'Obrigatório enquanto a criptografia de ponta a ponta estiver ligada. Tela, câmera e microfone nunca voltam a texto puro.',
   e2ee_on: 'Criptografado de ponta a ponta',
   e2ee_app_only: 'A criptografia é obrigatória; a mídia é retida até o SFrame ficar pronto',
   e2ee_off: 'Sem criptografia de ponta a ponta',
@@ -159,10 +150,6 @@ const pt_br = {
   bonjour_incoming_call: 'Chamada recebida',
   bonjour_incoming_join: 'Quer entrar',
   bonjour_error: 'Falha na solicitação Bonjour',
-  bonjour_enabled: 'Ativar Bonjour (servidor de contatos opcional)',
-  bonjour_enabled_description:
-    'Quando ativado, o app fala com o servidor Bonjour configurado. Mídia e chaves MLS ficam no dispositivo. Desligado por padrão.',
-  bonjour_server_url: 'URL do servidor Bonjour',
   bonjour_invites: 'Convidar com um código',
   bonjour_invites_description:
     'Compartilhe um código de uso único com alguém que usa o mesmo servidor Bonjour. Entrar na conta é opcional.',

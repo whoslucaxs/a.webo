@@ -35,6 +35,8 @@ const fr = {
   remote_screen: 'Écran distant',
   report_a_bug: 'Signaler un bug',
   save: 'Enregistrer',
+  settings_saved: 'Paramètres enregistrés',
+  settings_save_failed: 'Impossible d’enregistrer les paramètres',
   screen_share_failed: 'Impossible de démarrer le partage d’écran',
   screens: 'Écrans',
   see_the_code: 'Voir le code',
@@ -47,7 +49,6 @@ const fr = {
     'p2p.kiwi Screen Sharing est construit sur les projets open-source suivants (dans un ordre aléatoire)',
   start_a_new_session: 'Commencer une nouvelle session',
   streaming_your_display: 'Diffusion de votre écran',
-  stun_turn_server_objects: 'Objets du serveur STUN/TURN (séparés par des nouvelles lignes)',
   terms_of_service: 'Conditions de service',
   username: 'Nom d’utilisateur',
   website: 'Site web',
@@ -99,8 +100,6 @@ const fr = {
   vote_remove_cooldown: 'Veuillez patienter un instant avant de lancer un autre vote',
   you: 'Vous',
   hardware_video_acceleration: 'Accélération vidéo matérielle (VA-API)',
-  hardware_video_acceleration_description:
-    'Utilise le GPU pour encoder et décoder la vidéo. Désactivez cette option si le partage d’écran est noir ou plante. Redémarrez l’application après modification.',
   camera: 'Caméra',
   camera_on: 'Caméra activée',
   camera_off: 'Caméra désactivée',
@@ -109,20 +108,12 @@ const fr = {
   send: 'Envoyer',
   debug: 'Débogage',
   debug_logs: 'Activer les journaux de débogage',
-  debug_logs_description:
-    'Affiche une page Débogage avec les journaux de connexion et WebRTC. Activez-la avant de reproduire le problème, puis copiez le journal.',
   debug_clear: 'Effacer le journal',
   debug_copy: 'Copier le journal',
   debug_empty: 'Aucun journal pour le moment. Reproduisez le problème, puis copiez le journal.',
   camera_device: 'Caméra',
   microphone_device: 'Microphone',
   default_media_device: 'Par défaut du système',
-  e2ee_enabled: 'Chiffrement de bout en bout',
-  e2ee_enabled_description:
-    'Protège le chat, les votes, les curseurs et les médias avec MLS. Si le chiffrement ne peut pas être établi, le trafic est abandonné au lieu d’être envoyé en clair.',
-  media_e2ee: 'Chiffrer les médias (SFrame)',
-  media_e2ee_description:
-    'Obligatoire tant que le chiffrement de bout en bout est activé. L’écran, la caméra et le micro ne retombent jamais en clair.',
   e2ee_on: 'Chiffré de bout en bout',
   e2ee_app_only:
     'Le chiffrement est obligatoire ; les médias sont retenus jusqu’à ce que SFrame soit prêt',
@@ -158,10 +149,6 @@ const fr = {
   bonjour_incoming_call: 'Appel entrant',
   bonjour_incoming_join: 'Souhaite rejoindre',
   bonjour_error: 'Échec de la requête Bonjour',
-  bonjour_enabled: 'Activer Bonjour (serveur de contacts facultatif)',
-  bonjour_enabled_description:
-    'Une fois activé, l’application contacte le serveur Bonjour configuré. Les médias et les clés MLS restent sur l’appareil. Désactivé par défaut.',
-  bonjour_server_url: 'URL du serveur Bonjour',
   bonjour_invites: 'Inviter avec un code',
   bonjour_invites_description:
     'Partagez un code à usage unique avec quelqu’un qui utilise le même serveur Bonjour. La connexion est facultative.',

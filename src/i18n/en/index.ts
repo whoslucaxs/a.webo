@@ -35,6 +35,8 @@ const en = {
   remote_screen: 'Remote screen',
   report_a_bug: 'Report a bug',
   save: 'Save',
+  settings_saved: 'Settings saved',
+  settings_save_failed: 'Could not save settings',
   screen_share_failed: 'Could not start screen sharing',
   screens: 'Screens',
   search: 'Search',
@@ -48,7 +50,6 @@ const en = {
     'p2p.kiwi Screen Sharing is built on top of the following open-source projects (in no particular order)',
   start_a_new_session: 'Start a new session',
   streaming_your_display: 'Streaming your display',
-  stun_turn_server_objects: 'STUN/TURN Server Objects (separated by new lines)',
   terms_of_service: 'Terms of service',
   username: 'Username',
   website: 'Website',
@@ -100,8 +101,6 @@ const en = {
   vote_remove_cooldown: 'Please wait a moment before starting another vote',
   you: 'You',
   hardware_video_acceleration: 'Hardware video acceleration (VA-API)',
-  hardware_video_acceleration_description:
-    'Use the GPU to encode and decode video. Turn this off if screen sharing is black or crashes. Restart the app after changing.',
   camera: 'Camera',
   camera_on: 'Camera on',
   camera_off: 'Camera off',
@@ -110,20 +109,12 @@ const en = {
   send: 'Send',
   debug: 'Debug',
   debug_logs: 'Enable debug logs',
-  debug_logs_description:
-    'Show a Debug page with connection and WebRTC logs. Turn this on before reproducing a problem, then copy the log.',
   debug_clear: 'Clear log',
   debug_copy: 'Copy log',
   debug_empty: 'No debug log entries yet. Reproduce the issue, then copy the log.',
   camera_device: 'Camera',
   microphone_device: 'Microphone',
   default_media_device: 'System default',
-  e2ee_enabled: 'End-to-end encryption',
-  e2ee_enabled_description:
-    'Protect chat, votes, cursors, and media with MLS. If encryption cannot be established, traffic is dropped instead of sent in plaintext.',
-  media_e2ee: 'Encrypt media (SFrame)',
-  media_e2ee_description:
-    'Required while end-to-end encryption is on. Screen, camera, and microphone never fall back to plaintext.',
   e2ee_on: 'End-to-end encrypted',
   e2ee_app_only: 'Encryption is required; media is held until SFrame is ready',
   e2ee_off: 'Not end-to-end encrypted',
@@ -157,10 +148,6 @@ const en = {
   bonjour_incoming_call: 'Incoming call',
   bonjour_incoming_join: 'Wants to join',
   bonjour_error: 'Bonjour request failed',
-  bonjour_enabled: 'Enable Bonjour (optional contacts server)',
-  bonjour_enabled_description:
-    'When enabled, this app talks to the Bonjour server you configure. Media and MLS keys stay on your device. Off by default.',
-  bonjour_server_url: 'Bonjour server URL',
   bonjour_invites: 'Invite with a code',
   bonjour_invites_description:
     'Share a one-time code with someone using this same Bonjour server. Signing in is optional.',

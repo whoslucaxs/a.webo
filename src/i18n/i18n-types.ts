@@ -149,6 +149,14 @@ type RootTranslation = {
    */
   save: string;
   /**
+   * S​e​t​t​i​n​g​s​ ​s​a​v​e​d
+   */
+  settings_saved: string;
+  /**
+   * C​o​u​l​d​ ​n​o​t​ ​s​a​v​e​ ​s​e​t​t​i​n​g​s
+   */
+  settings_save_failed: string;
+  /**
    * C​o​u​l​d​ ​n​o​t​ ​s​t​a​r​t​ ​s​c​r​e​e​n​ ​s​h​a​r​i​n​g
    */
   screen_share_failed: string;
@@ -196,10 +204,6 @@ type RootTranslation = {
    * S​t​r​e​a​m​i​n​g​ ​y​o​u​r​ ​d​i​s​p​l​a​y
    */
   streaming_your_display: string;
-  /**
-   * S​T​U​N​/​T​U​R​N​ ​S​e​r​v​e​r​ ​O​b​j​e​c​t​s​ ​(​s​e​p​a​r​a​t​e​d​ ​b​y​ ​n​e​w​ ​l​i​n​e​s​)
-   */
-  stun_turn_server_objects: string;
   /**
    * T​e​r​m​s​ ​o​f​ ​s​e​r​v​i​c​e
    */
@@ -385,10 +389,6 @@ type RootTranslation = {
    */
   hardware_video_acceleration: string;
   /**
-   * U​s​e​ ​t​h​e​ ​G​P​U​ ​t​o​ ​e​n​c​o​d​e​ ​a​n​d​ ​d​e​c​o​d​e​ ​v​i​d​e​o​.​ ​T​u​r​n​ ​t​h​i​s​ ​o​f​f​ ​i​f​ ​s​c​r​e​e​n​ ​s​h​a​r​i​n​g​ ​i​s​ ​b​l​a​c​k​ ​o​r​ ​c​r​a​s​h​e​s​.​ ​R​e​s​t​a​r​t​ ​t​h​e​ ​a​p​p​ ​a​f​t​e​r​ ​c​h​a​n​g​i​n​g​.
-   */
-  hardware_video_acceleration_description: string;
-  /**
    * C​a​m​e​r​a
    */
   camera: string;
@@ -421,10 +421,6 @@ type RootTranslation = {
    */
   debug_logs: string;
   /**
-   * S​h​o​w​ ​a​ ​D​e​b​u​g​ ​p​a​g​e​ ​w​i​t​h​ ​c​o​n​n​e​c​t​i​o​n​ ​a​n​d​ ​W​e​b​R​T​C​ ​l​o​g​s​.​ ​T​u​r​n​ ​t​h​i​s​ ​o​n​ ​b​e​f​o​r​e​ ​r​e​p​r​o​d​u​c​i​n​g​ ​a​ ​p​r​o​b​l​e​m​,​ ​t​h​e​n​ ​c​o​p​y​ ​t​h​e​ ​l​o​g​.
-   */
-  debug_logs_description: string;
-  /**
    * C​l​e​a​r​ ​l​o​g
    */
   debug_clear: string;
@@ -448,22 +444,6 @@ type RootTranslation = {
    * S​y​s​t​e​m​ ​d​e​f​a​u​l​t
    */
   default_media_device: string;
-  /**
-   * E​n​d​-​t​o​-​e​n​d​ ​e​n​c​r​y​p​t​i​o​n
-   */
-  e2ee_enabled: string;
-  /**
-   * P​r​o​t​e​c​t​ ​c​h​a​t​,​ ​v​o​t​e​s​,​ ​c​u​r​s​o​r​s​,​ ​a​n​d​ ​m​e​d​i​a​ ​w​i​t​h​ ​M​L​S​.​ ​I​f​ ​e​n​c​r​y​p​t​i​o​n​ ​c​a​n​n​o​t​ ​b​e​ ​e​s​t​a​b​l​i​s​h​e​d​,​ ​t​r​a​f​f​i​c​ ​i​s​ ​d​r​o​p​p​e​d​ ​i​n​s​t​e​a​d​ ​o​f​ ​s​e​n​t​ ​i​n​ ​p​l​a​i​n​t​e​x​t​.
-   */
-  e2ee_enabled_description: string;
-  /**
-   * E​n​c​r​y​p​t​ ​m​e​d​i​a​ ​(​S​F​r​a​m​e​)
-   */
-  media_e2ee: string;
-  /**
-   * R​e​q​u​i​r​e​d​ ​w​h​i​l​e​ ​e​n​d​-​t​o​-​e​n​d​ ​e​n​c​r​y​p​t​i​o​n​ ​i​s​ ​o​n​.​ ​S​c​r​e​e​n​,​ ​c​a​m​e​r​a​,​ ​a​n​d​ ​m​i​c​r​o​p​h​o​n​e​ ​n​e​v​e​r​ ​f​a​l​l​ ​b​a​c​k​ ​t​o​ ​p​l​a​i​n​t​e​x​t​.
-   */
-  media_e2ee_description: string;
   /**
    * E​n​d​-​t​o​-​e​n​d​ ​e​n​c​r​y​p​t​e​d
    */
@@ -592,18 +572,6 @@ type RootTranslation = {
    * B​o​n​j​o​u​r​ ​r​e​q​u​e​s​t​ ​f​a​i​l​e​d
    */
   bonjour_error: string;
-  /**
-   * E​n​a​b​l​e​ ​B​o​n​j​o​u​r​ ​(​o​p​t​i​o​n​a​l​ ​c​o​n​t​a​c​t​s​ ​s​e​r​v​e​r​)
-   */
-  bonjour_enabled: string;
-  /**
-   * W​h​e​n​ ​e​n​a​b​l​e​d​,​ ​t​h​i​s​ ​a​p​p​ ​t​a​l​k​s​ ​t​o​ ​t​h​e​ ​B​o​n​j​o​u​r​ ​s​e​r​v​e​r​ ​y​o​u​ ​c​o​n​f​i​g​u​r​e​.​ ​M​e​d​i​a​ ​a​n​d​ ​M​L​S​ ​k​e​y​s​ ​s​t​a​y​ ​o​n​ ​y​o​u​r​ ​d​e​v​i​c​e​.​ ​O​f​f​ ​b​y​ ​d​e​f​a​u​l​t​.
-   */
-  bonjour_enabled_description: string;
-  /**
-   * B​o​n​j​o​u​r​ ​s​e​r​v​e​r​ ​U​R​L
-   */
-  bonjour_server_url: string;
   /**
    * I​n​v​i​t​e​ ​w​i​t​h​ ​a​ ​c​o​d​e
    */
@@ -820,6 +788,14 @@ export type TranslationFunctions = {
    */
   save: () => LocalizedString;
   /**
+   * Settings saved
+   */
+  settings_saved: () => LocalizedString;
+  /**
+   * Could not save settings
+   */
+  settings_save_failed: () => LocalizedString;
+  /**
    * Could not start screen sharing
    */
   screen_share_failed: () => LocalizedString;
@@ -867,10 +843,6 @@ export type TranslationFunctions = {
    * Streaming your display
    */
   streaming_your_display: () => LocalizedString;
-  /**
-   * STUN/TURN Server Objects (separated by new lines)
-   */
-  stun_turn_server_objects: () => LocalizedString;
   /**
    * Terms of service
    */
@@ -1048,10 +1020,6 @@ export type TranslationFunctions = {
    */
   hardware_video_acceleration: () => LocalizedString;
   /**
-   * Use the GPU to encode and decode video. Turn this off if screen sharing is black or crashes. Restart the app after changing.
-   */
-  hardware_video_acceleration_description: () => LocalizedString;
-  /**
    * Camera
    */
   camera: () => LocalizedString;
@@ -1084,10 +1052,6 @@ export type TranslationFunctions = {
    */
   debug_logs: () => LocalizedString;
   /**
-   * Show a Debug page with connection and WebRTC logs. Turn this on before reproducing a problem, then copy the log.
-   */
-  debug_logs_description: () => LocalizedString;
-  /**
    * Clear log
    */
   debug_clear: () => LocalizedString;
@@ -1111,22 +1075,6 @@ export type TranslationFunctions = {
    * System default
    */
   default_media_device: () => LocalizedString;
-  /**
-   * End-to-end encryption
-   */
-  e2ee_enabled: () => LocalizedString;
-  /**
-   * Protect chat, votes, cursors, and media with MLS. If encryption cannot be established, traffic is dropped instead of sent in plaintext.
-   */
-  e2ee_enabled_description: () => LocalizedString;
-  /**
-   * Encrypt media (SFrame)
-   */
-  media_e2ee: () => LocalizedString;
-  /**
-   * Required while end-to-end encryption is on. Screen, camera, and microphone never fall back to plaintext.
-   */
-  media_e2ee_description: () => LocalizedString;
   /**
    * End-to-end encrypted
    */
@@ -1255,18 +1203,6 @@ export type TranslationFunctions = {
    * Bonjour request failed
    */
   bonjour_error: () => LocalizedString;
-  /**
-   * Enable Bonjour (optional contacts server)
-   */
-  bonjour_enabled: () => LocalizedString;
-  /**
-   * When enabled, this app talks to the Bonjour server you configure. Media and MLS keys stay on your device. Off by default.
-   */
-  bonjour_enabled_description: () => LocalizedString;
-  /**
-   * Bonjour server URL
-   */
-  bonjour_server_url: () => LocalizedString;
   /**
    * Invite with a code
    */
