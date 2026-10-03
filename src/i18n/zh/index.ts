@@ -48,7 +48,6 @@ const zh = {
   shoulders_of_giants_description:
     'p2p.kiwi Screen Sharing是建立在以下开源项目之上的（没有特定顺序）',
   start_a_new_session: '开始一个新共享',
-  start_without_sharing: '不共享屏幕开始',
   streaming_your_display: '流式传输您的显示器',
   stun_turn_server_objects: 'STUN/TURN服务器对象（用新行分隔）',
   terms_of_service: '服务条款',

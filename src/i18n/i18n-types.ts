@@ -205,7 +205,6 @@ type RootTranslation = {
 	 * S​t​a​r​t​ ​a​ ​n​e​w​ ​s​e​s​s​i​o​n
 	 */
 	start_a_new_session: string
-	start_without_sharing: string
 	/**
 	 * S​t​r​e​a​m​i​n​g​ ​y​o​u​r​ ​d​i​s​p​l​a​y
 	 */
@@ -980,7 +979,6 @@ export type TranslationFunctions = {
 	 * Start a new session
 	 */
 	start_a_new_session: () => LocalizedString
-	start_without_sharing: () => LocalizedString
 	/**
 	 * Streaming your display
 	 */

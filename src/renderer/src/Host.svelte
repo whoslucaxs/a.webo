@@ -68,7 +68,7 @@
     }
   }
 
-  const onStartSessionButtonClick = async (captureDisplay = true): Promise<void> => {
+  const onStartSessionButtonClick = async (): Promise<void> => {
     if (startingSession) return
     startingSession = true
     try {
@@ -78,10 +78,10 @@
       roomId = created.roomId
       hostKey = created.hostKey
       const iceServers = await roomIceServers(server, roomId)
-      const setup = await room.Setup(null, { iceServers, captureDisplay })
+      const setup = await room.Setup(null, { iceServers, captureDisplay: false })
       if (setup !== 'ok') {
         await closeRoom(server, roomId, hostKey)
-        if (setup === 'failed') toast.show('error', L.screen_share_failed())
+        if (setup === 'failed') toast.show('error', L.connection_failed())
         return
       }
       roomLink = makeRoomLink(server, roomId, room.roomInviteFragment)
@@ -129,15 +129,10 @@
 <div class="container mx-auto p-5">
   <h1 class="text-3xl font-bold mb-4">{!room.isLive ? L.host_a_session() : L.hosting_a_session()}</h1>
   {#if !sessionStarted}
-    <div class="flex flex-wrap gap-2">
-      <button class="btn btn-primary" disabled={startingSession} onclick={() => onStartSessionButtonClick(true)}>
-        {#if startingSession}<span class="loading loading-spinner"></span>{/if}
-        {L.start_a_new_session()}
-      </button>
-      <button class="btn btn-outline" disabled={startingSession} onclick={() => onStartSessionButtonClick(false)}>
-        {L.start_without_sharing()}
-      </button>
-    </div>
+    <button class="btn btn-primary" disabled={startingSession} onclick={onStartSessionButtonClick}>
+      {#if startingSession}<span class="loading loading-spinner"></span>{/if}
+      {L.start_a_new_session()}
+    </button>
   {:else if !room.sessionEndedReason}
     <div class="flex flex-wrap gap-2 mb-4">
       <button class="btn btn-primary" onclick={() => void navigator.clipboard.writeText(roomLink)}>

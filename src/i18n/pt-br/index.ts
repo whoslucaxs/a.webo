@@ -50,7 +50,6 @@ const pt_br = {
   shoulders_of_giants_description:
     'p2p.kiwi Screen Sharing foi construído e desenvolvido em cima desses projetos open-source a seguir (sem ordem específica)',
   start_a_new_session: 'Iniciar uma sessão',
-  start_without_sharing: 'Iniciar sem compartilhar',
   streaming_your_display: 'Transmitindo sua tela',
   stun_turn_server_objects: 'Objetos de servidor STUN/TURN (separado por linhas)',
   terms_of_service: 'Termos de Uso e Serviço',
