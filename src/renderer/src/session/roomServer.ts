@@ -1,6 +1,7 @@
 import { parseInviteFragment, type InviteCrypto } from '../crypto/invite'
 
 export type RoomLink = { server: string; roomId: string; invite: InviteCrypto | null }
+export type ChannelLink = { server: string; roomId: string; invite: InviteCrypto }
 type HostJoin = { joinId: string; status: 'waiting' | 'offered' | 'answered' | 'done'; answer: string | null }
 
 const roomPath = (server: string, roomId: string, suffix = ''): string =>
@@ -48,21 +49,53 @@ export const parseRoomLink = (text: string): RoomLink | null => {
 export const makeRoomLink = (server: string, roomId: string, fragment: string): string =>
   `kiwi://room/${roomId}?server=${encodeURIComponent(server)}${fragment ? `#${fragment}` : ''}`
 
+export const parseChannelLink = (text: string): ChannelLink | null => {
+  try {
+    const url = new URL(text.trim())
+    if (url.protocol !== 'kiwi:' || url.hostname !== 'channel') return null
+    const roomId = url.pathname.slice(1)
+    if (!/^[a-f0-9-]{36}$/.test(roomId)) return null
+    const server = normalizeRoomServer(url.searchParams.get('server') ?? '')
+    const invite = parseInviteFragment(url.hash)
+    return invite ? { server, roomId, invite } : null
+  } catch {
+    return null
+  }
+}
+
+export const makeChannelLink = (server: string, roomId: string, fragment: string): string =>
+  `kiwi://channel/${roomId}?server=${encodeURIComponent(server)}#${fragment}`
+
+export const createChannel = (server: string, joinAuth: string): Promise<{ roomId: string; hostKey: string }> =>
+  request(`${server}/channels`, 'POST', { joinAuth })
+
+export const claimChannel = (
+  server: string,
+  roomId: string,
+  joinAuth: string,
+  joinId?: string,
+): Promise<{ role: 'host' | 'guest'; hostKey?: string }> =>
+  request(roomPath(server, roomId, '/claim'), 'POST', { joinId }, joinAuth)
+
+export const releaseChannel = (server: string, roomId: string, hostKey: string): Promise<unknown> =>
+  request(roomPath(server, roomId, '/release'), 'POST', {}, hostKey)
+
 export const createRoom = (server: string): Promise<{ roomId: string; hostKey: string }> =>
   request(`${server}/rooms`, 'POST')
 
-export const roomIceServers = async (server: string, roomId: string): Promise<RTCIceServer[]> =>
-  (await request<{ iceServers: RTCIceServer[] }>(roomPath(server, roomId, '/ice'))).iceServers
+export const roomIceServers = async (server: string, roomId: string, token?: string): Promise<RTCIceServer[]> =>
+  (await request<{ iceServers: RTCIceServer[] }>(roomPath(server, roomId, '/ice'), 'GET', undefined, token)).iceServers
 
-export const joinRoom = (server: string, roomId: string): Promise<{ joinId: string }> =>
-  request(roomPath(server, roomId, '/join'), 'POST')
+export const joinRoom = (server: string, roomId: string, token?: string): Promise<{ joinId: string }> =>
+  request(roomPath(server, roomId, '/join'), 'POST', undefined, token)
 
 export const joinStatus = (
   server: string,
   roomId: string,
   joinId: string,
+  token?: string,
 ): Promise<{ status: HostJoin['status']; offer: string | null }> =>
-  request(roomPath(server, roomId, `/join/${joinId}`))
+  request(roomPath(server, roomId, `/join/${joinId}`), 'GET', undefined, token)
 
 export const hostStatus = (
   server: string,
@@ -84,7 +117,8 @@ export const sendAnswer = (
   roomId: string,
   joinId: string,
   answer: string,
-): Promise<unknown> => request(roomPath(server, roomId, '/answer'), 'POST', { joinId, answer })
+  token?: string,
+): Promise<unknown> => request(roomPath(server, roomId, '/answer'), 'POST', { joinId, answer }, token)
 
 export const finishJoin = (
   server: string,

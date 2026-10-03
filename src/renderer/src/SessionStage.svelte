@@ -147,7 +147,7 @@
 
   const onCopyInvite = async (): Promise<void> => {
     if (inviteInFlight) return
-    if (appState.sessionSource === 'host' && appState.roomLink) {
+    if ((appState.sessionSource === 'host' || appState.sessionSource === 'channel') && appState.roomLink) {
       await navigator.clipboard.writeText(appState.roomLink)
       toast.show('success', L.copy_my_connection_string())
       return
@@ -290,7 +290,7 @@
       </span>
       <span>{L.chat()}</span>
     </button>
-    {#if showInvite && room.isCoordinator}
+    {#if showInvite && (room.isCoordinator || appState.sessionSource === 'channel')}
       <div class="flex flex-wrap gap-2 mb-4">
         <div class="join w-full mb-4">
           <span class="tooltip tooltip-top {inviteFormIsVisible ? 'hidden' : ''}" data-tip={inviteAnotherTextLoading === '' ? L.invite_another() : inviteAnotherTextLoading}>
@@ -343,7 +343,7 @@
       </span>
       <span>{L.leave()}</span>
     </button>
-    {#if room.isCoordinator}
+    {#if room.isCoordinator && appState.sessionSource !== 'channel'}
       <button class="btn btn-error" onclick={onEndSessionClick}>
         <span>{L.end_session()}</span>
       </button>
@@ -454,7 +454,7 @@
 
   </aside>
   <main class="call-stage">
-{#if appState.sessionSource === 'host' && !room.isLive && appState.roomLink}
+{#if (appState.sessionSource === 'host' || appState.sessionSource === 'channel') && !room.isLive && appState.roomLink}
   <div class="room-invite">
     <div>
       <strong>{L.session_started()}</strong>

@@ -229,6 +229,34 @@ type RootTranslation = {
    */
   profile_photo_invalid: string;
   /**
+   * P​e​r​m​a​n​e​n​t​ ​c​h​a​n​n​e​l​s
+   */
+  permanent_channels: string;
+  /**
+   * C​h​a​n​n​e​l
+   */
+  channel: string;
+  /**
+   * C​h​a​n​n​e​l​ ​n​a​m​e
+   */
+  channel_name: string;
+  /**
+   * C​h​a​n​n​e​l​ ​l​i​n​k
+   */
+  channel_link: string;
+  /**
+   * C​r​e​a​t​e​ ​c​h​a​n​n​e​l
+   */
+  create_channel: string;
+  /**
+   * R​e​m​o​v​e​ ​f​r​o​m​ ​s​a​v​e​d​ ​c​h​a​n​n​e​l​s
+   */
+  remove_channel: string;
+  /**
+   * I​n​v​a​l​i​d​ ​c​h​a​n​n​e​l​ ​l​i​n​k
+   */
+  invalid_channel_link: string;
+  /**
    * W​e​b​s​i​t​e
    */
   website: string;
@@ -883,6 +911,34 @@ export type TranslationFunctions = {
    * Choose a PNG, JPEG, or WebP image under 5 MB
    */
   profile_photo_invalid: () => LocalizedString;
+  /**
+   * Permanent channels
+   */
+  permanent_channels: () => LocalizedString;
+  /**
+   * Channel
+   */
+  channel: () => LocalizedString;
+  /**
+   * Channel name
+   */
+  channel_name: () => LocalizedString;
+  /**
+   * Channel link
+   */
+  channel_link: () => LocalizedString;
+  /**
+   * Create channel
+   */
+  create_channel: () => LocalizedString;
+  /**
+   * Remove from saved channels
+   */
+  remove_channel: () => LocalizedString;
+  /**
+   * Invalid channel link
+   */
+  invalid_channel_link: () => LocalizedString;
   /**
    * Website
    */

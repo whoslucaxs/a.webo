@@ -166,6 +166,7 @@ export class Room {
   private identity: DeviceIdentity | null = null
   private invite: InviteCrypto | null = null
   private roomIceServers: RTCIceServer[] | null = null
+  private persistent = false
   private joinAuth = ''
   private seenFingerprints = new Map<string, string>()
   private pendingKeyPackages = new Map<string, Uint8Array>()
@@ -284,7 +285,7 @@ export class Room {
 
   async Setup(
     v: HTMLVideoElement | null = null,
-    opts?: { captureDisplay?: boolean; iceServers?: RTCIceServer[] },
+    opts?: { captureDisplay?: boolean; iceServers?: RTCIceServer[]; invite?: InviteCrypto; persistent?: boolean },
   ): Promise<'ok' | 'cancelled' | 'failed'> {
     debugLog.info('room', 'Setup start', {
       hasVideoEl: Boolean(v),
@@ -293,6 +294,7 @@ export class Room {
     })
     this.bindCallIpc()
     await this.teardown(true)
+    this.persistent = opts?.persistent === true
     this.roomIceServers = opts?.iceServers ?? null
     this.userSettings = await window.KiwiApi.getSettings()
     this.username = this.userSettings.username
@@ -309,7 +311,7 @@ export class Room {
     this.identityChanged = false
     await this.loadDeviceIdentity()
     if (!v && this.e2eeFailClosed()) {
-      await this.initHostCrypto()
+      await this.initHostCrypto(opts?.invite)
       if (!this.e2eeActive) {
         this.e2eeError = 'crypto-init-failed'
         debugLog.error('room', 'e2ee is required but host crypto init failed')
@@ -1021,9 +1023,9 @@ export class Room {
     this.mediaE2ee = this.mediaE2eeActive && this.crypto ? new MediaE2EE(this.crypto) : null
   }
 
-  private async initHostCrypto(): Promise<void> {
+  private async initHostCrypto(invite?: InviteCrypto): Promise<void> {
     if (!this.identity) return
-    this.invite = randomInviteCrypto()
+    this.invite = invite ?? randomInviteCrypto()
     this.joinAuth = toBase64Url(await deriveJoinAuthenticator(this.invite))
     this.crypto = new RoomCrypto()
     await this.crypto.createRoom(this.invite.roomId, this.localPeerId, this.identity)
@@ -2220,7 +2222,7 @@ export class Room {
       remainingRemoteCount: remaining,
       wasEstablished: link.established,
     })
-    if (reason) {
+    if (reason && !(this.persistent && reason === 'everyone-left')) {
       this.sessionEndedReason = reason
       this.isLive = false
       this.setConnectionState('closed')
@@ -2687,6 +2689,7 @@ export class Room {
     this.verification = null
     this.invite = null
     this.roomIceServers = null
+    this.persistent = false
     this.joinAuth = ''
     this.bonjourCallId = null
     this.bonjourCallIds.clear()

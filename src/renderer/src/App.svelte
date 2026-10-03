@@ -2,6 +2,7 @@
   import Navigation from './Navigation.svelte'
   import Join from './Join.svelte'
   import Host from './Host.svelte'
+  import Channels from './Channels.svelte'
   import Settings from './Settings.svelte'
   import Debug from './Debug.svelte'
   import Bonjour from './Bonjour.svelte'
@@ -12,15 +13,15 @@
   import { appState } from './appState.svelte'
   import { debugLog } from './debugLog.svelte'
   import { getDataFromKiwiUrl } from './Utils'
-  import { parseRoomLink } from './session/roomServer'
+  import { parseChannelLink, parseRoomLink } from './session/roomServer'
   import { sessionRoom as room } from './session/sessionStore.svelte'
   import { onMount } from 'svelte'
 
   let screenPicker: ScreenPicker | undefined = $state()
   let closedDrawerForCall = false
 
-  const presenting = $derived(Boolean(appState.sessionSource === 'host' || room.isLive || room.sessionEndedReason))
-  const showInvite = $derived(room.isCoordinator)
+  const presenting = $derived(Boolean(appState.sessionSource === 'host' || appState.sessionSource === 'channel' || room.isLive || room.sessionEndedReason))
+  const showInvite = $derived(room.isCoordinator || appState.sessionSource === 'channel')
 
   $effect(() => {
     const liveBonjour = appState.sessionSource === 'bonjour' && room.isLive
@@ -48,6 +49,11 @@
     if (parseRoomLink(data.url)) {
       appState.activeView = 'home'
       appState.participantUrl = data.url
+      return
+    }
+    if (parseChannelLink(data.url)) {
+      appState.activeView = 'home'
+      appState.channelUrl = data.url
       return
     }
     const urlData = await getDataFromKiwiUrl(data.url)
@@ -80,6 +86,7 @@
           <div class="home-options">
             <section class="home-card"><Host /></section>
             <section class="home-card"><Join /></section>
+            <section class="home-card" style="grid-column: 1 / -1"><Channels /></section>
           </div>
         </main>
       {:else if appState.activeView === 'settings'}
