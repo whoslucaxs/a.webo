@@ -351,6 +351,17 @@ describe('displayCaptureReady', () => {
 })
 
 describe('pickRemoteCameraAndDisplay', () => {
+  it('keeps a participant screen separate from their camera', () => {
+    expect(
+      pickRemoteCameraAndDisplay({
+        streamIds: ['camera', 'screen'],
+        camera: { enabled: true, streamId: 'camera' },
+        isPresenter: false,
+        announcedDisplayStreamId: 'screen',
+      }),
+    ).toEqual({ cameraStreamId: 'camera', displayStreamId: 'screen' })
+  })
+
   it('uses the announced stream id when it is present', () => {
     expect(
       pickRemoteCameraAndDisplay({

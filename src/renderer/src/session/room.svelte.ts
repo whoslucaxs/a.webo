@@ -117,6 +117,7 @@ const errorHandler = (e: unknown): void => {
 }
 
 export type RoomPeer = RosterPeer
+export type ScreenShare = { peerId: string; name: string; stream: MediaStream }
 
 export class Room {
   connectionState = $state('disconnected')
@@ -129,6 +130,7 @@ export class Room {
   presenterId = $state('')
   peers = $state<RoomPeer[]>([])
   displayStreamActive = $state(false)
+  screenShares = $state.raw<ScreenShare[]>([])
   remoteScreenActive = $state(false)
   /** Null until the presenter reports it. False means they paused the picture. */
   remoteDisplayActive = $state<boolean | null>(null)
@@ -180,6 +182,8 @@ export class Room {
   private links = new Map<string, PeerLink>()
   private selectedPairLogged = new WeakSet<PeerLink>()
   private remoteVideoStreams = new Map<string, MediaStream>()
+  private remoteDisplayStates = new Map<string, boolean>()
+  private remoteDisplayStreamIds = new Map<string, string>()
   private remoteVideoByStreamId = new Map<string, { peerId: string; stream: MediaStream }>()
   private remoteCameraState = new Map<string, { enabled: boolean; streamId: string }>()
   private remoteCameraStreams = new Map<string, MediaStream>()
@@ -337,6 +341,7 @@ export class Room {
     }
     this.displayStreamActive = this.displayStream.getVideoTracks().some((track) => track.enabled)
     this.broadcastDisplayState()
+    this.refreshScreenShares()
     if (!this.displayStreamActive) {
       this.ToggleRemoteCursors(false)
       void this.revokeAllRemoteControl('sharing-stopped')
@@ -647,6 +652,7 @@ export class Room {
         this.displayStream = captured
         this.displayStreamActive = true
         this.broadcastDisplayState()
+        this.refreshScreenShares()
         this.bindDisplayEnded(captured)
       }
     } else {
@@ -1254,13 +1260,10 @@ export class Room {
   }
 
   async changeScreen(): Promise<'ok' | 'cancelled' | 'failed'> {
-    if (!this.isPresenter) return 'failed'
+    if (!this.localPeerId) return 'failed'
     debugLog.info('room', 'changeScreen start')
-    const captured = await this.acquireDisplayStream({ releasePrevious: true })
+    const captured = await this.acquireDisplayStream()
     if (captured === 'cancelled') {
-      this.displayStreamActive = false
-      this.broadcastDisplayState()
-      await this.pushVideoToAll(null, null)
       debugLog.warn('room', 'changeScreen cancelled')
       return 'cancelled'
     }
@@ -1270,11 +1273,14 @@ export class Room {
       this.stopStream(captured)
       return 'failed'
     }
+    const previous = this.displayStream
     this.displayStream = captured
     this.displayStreamActive = true
     this.broadcastDisplayState()
+    this.refreshScreenShares()
     this.bindDisplayEnded(captured)
     await this.pushVideoToAll(track, captured)
+    this.stopStream(previous)
     await this.revokeAllRemoteControl('sharing-stopped')
     debugLog.info('room', 'changeScreen ok')
     return 'ok'
@@ -1623,7 +1629,7 @@ export class Room {
         link.addTrack(track, this.audioStream)
       }
     }
-    if (this.isPresenter && this.displayStream) {
+    if (this.displayStream) {
       for (const track of this.displayStream.getVideoTracks()) {
         await link.setDisplayTrack(track, this.displayStream)
       }
@@ -2164,6 +2170,7 @@ export class Room {
     this.displayStream = stream
     this.displayStreamActive = true
     this.bindDisplayEnded(stream)
+    this.refreshScreenShares()
     this.presenterId = this.localPeerId
     this.presenterGone = false
     this.broadcastDisplayState()
@@ -2199,6 +2206,8 @@ export class Room {
     this.stopStream(this.displayStream)
     this.displayStream = null
     this.displayStreamActive = false
+    this.broadcastDisplayState()
+    this.refreshScreenShares()
   }
 
   private async onPeerLeftMessage(peerId: string): Promise<void> {
@@ -2249,27 +2258,30 @@ export class Room {
   }
 
   private onDisplayState(msg: Extract<ControlMessage, { t: 'display-state' }>): void {
-    if (this.isPresenter || msg.peerId !== this.presenterId) return
-    this.remoteDisplayActive = msg.active
+    this.remoteDisplayStates.set(msg.peerId, msg.active)
+    if (msg.streamId) this.remoteDisplayStreamIds.set(msg.peerId, msg.streamId)
+    if (msg.peerId === this.presenterId) this.remoteDisplayActive = msg.active
+    this.refreshRemoteScreenActive()
+    this.classifyRemoteVideos(msg.peerId)
   }
 
   private broadcastDisplayState(): void {
-    if (!this.isPresenter) return
     this.broadcast({
       t: 'display-state',
       v: PROTOCOL_VERSION,
       peerId: this.localPeerId,
       active: this.displayStreamActive,
+      streamId: this.displayStream?.id ?? '',
     })
   }
 
   private sendDisplayState(link: PeerLink): void {
-    if (!this.isPresenter) return
     void this.sendEncrypted(link, {
       t: 'display-state',
       v: PROTOCOL_VERSION,
       peerId: this.localPeerId,
       active: this.displayStreamActive,
+      streamId: this.displayStream?.id ?? '',
     })
   }
 
@@ -2330,13 +2342,15 @@ export class Room {
         height: settings?.height,
       })
       if (event.track.kind === 'video') {
-        this.attachPresenterVideo()
-        this.refreshRemoteScreenActive()
+        this.classifyRemoteVideos(peerId)
       }
       if (event.track.kind === 'audio') this.attachRemoteAudio(peerId, stream)
     })
     event.track.addEventListener('mute', () => {
-      if (event.track.kind === 'video') this.refreshRemoteScreenActive()
+      if (event.track.kind === 'video') {
+        this.refreshRemoteScreenActive()
+        this.refreshScreenShares()
+      }
     })
     event.track.addEventListener('ended', () => {
       if (event.track.kind !== 'video') return
@@ -2348,6 +2362,7 @@ export class Room {
         return
       }
       this.refreshRemoteScreenActive()
+      this.refreshScreenShares()
     })
   }
 
@@ -2361,6 +2376,7 @@ export class Room {
       camera: cam,
       isPresenter: peerId === this.presenterId,
       existingDisplayStreamId: this.remoteVideoStreams.get(peerId)?.id ?? null,
+      announcedDisplayStreamId: this.remoteDisplayStreamIds.get(peerId) ?? null,
     })
     const cameraEntry = entries.find(([streamId]) => streamId === picked.cameraStreamId)
     const displayEntry = entries.find(([streamId]) => streamId === picked.displayStreamId)
@@ -2370,19 +2386,33 @@ export class Room {
     else this.remoteVideoStreams.delete(peerId)
     this.attachPresenterVideo()
     this.refreshRemoteScreenActive()
+    this.refreshScreenShares()
     this.syncCallOverlay()
   }
 
+  private refreshScreenShares(): void {
+    const shares: ScreenShare[] = []
+    if (this.displayStreamActive && this.displayStream) {
+      shares.push({ peerId: this.localPeerId, name: this.username, stream: this.displayStream })
+    }
+    for (const [peerId, stream] of this.remoteVideoStreams) {
+      if (this.remoteDisplayStates.get(peerId) === false) continue
+      if (!stream.getVideoTracks().some((track) => track.readyState === 'live' && track.enabled && !track.muted)) continue
+      shares.push({
+        peerId,
+        name: this.peers.find((peer) => peer.id === peerId)?.username ?? peerId,
+        stream,
+      })
+    }
+    this.screenShares = shares
+  }
+
   private presenterDisplayStream(): MediaStream | null {
-    return (
-      this.remoteVideoStreams.get(this.presenterId) ??
-      [...this.remoteVideoStreams.values()].at(-1) ??
-      null
-    )
+    return this.remoteVideoStreams.get(this.presenterId) ?? null
   }
 
   private refreshRemoteScreenActive(): void {
-    if (this.isPresenter) {
+    if (this.isPresenter || this.remoteDisplayStates.get(this.presenterId) === false) {
       this.remoteScreenActive = false
       return
     }
@@ -2519,11 +2549,14 @@ export class Room {
       delete this.inboundRemoteSeq[peerId]
       if (this.isPresenter) void this.syncSidecarArm()
       this.remoteVideoStreams.delete(peerId)
+      this.remoteDisplayStates.delete(peerId)
+      this.remoteDisplayStreamIds.delete(peerId)
       this.remoteCameraStreams.delete(peerId)
       this.remoteCameraState.delete(peerId)
       for (const [streamId, entry] of this.remoteVideoByStreamId) {
         if (entry.peerId === peerId) this.remoteVideoByStreamId.delete(streamId)
       }
+      this.refreshScreenShares()
       const audio = this.remoteAudioElements.get(peerId)
       if (audio) {
         audio.srcObject = null
@@ -2618,6 +2651,17 @@ export class Room {
       this.remoteVideoStreams.delete(link.pendingId)
       this.remoteVideoStreams.set(remotePeerId, pendingStream)
       this.attachPresenterVideo()
+      this.refreshScreenShares()
+    }
+    const pendingDisplayState = this.remoteDisplayStates.get(link.pendingId)
+    if (pendingDisplayState !== undefined) {
+      this.remoteDisplayStates.delete(link.pendingId)
+      this.remoteDisplayStates.set(remotePeerId, pendingDisplayState)
+    }
+    const pendingDisplayStreamId = this.remoteDisplayStreamIds.get(link.pendingId)
+    if (pendingDisplayStreamId) {
+      this.remoteDisplayStreamIds.delete(link.pendingId)
+      this.remoteDisplayStreamIds.set(remotePeerId, pendingDisplayStreamId)
     }
     const pendingCamera = this.remoteCameraStreams.get(link.pendingId)
     if (pendingCamera) {
@@ -2632,6 +2676,7 @@ export class Room {
     for (const entry of this.remoteVideoByStreamId.values()) {
       if (entry.peerId === link.pendingId) entry.peerId = remotePeerId
     }
+    this.classifyRemoteVideos(remotePeerId)
     const pendingAudio = this.remoteAudioElements.get(link.pendingId)
     if (pendingAudio) {
       this.remoteAudioElements.delete(link.pendingId)
@@ -2688,7 +2733,7 @@ export class Room {
     const peerId = link.remotePeerId
     const grant = peerId ? getPeerRemoteControl(this.remoteControl, peerId) : null
     return {
-      screenActive: this.isPresenter && this.displayStreamActive,
+      screenActive: this.displayStreamActive,
       cameraIntent: this.cameraActive,
       microphoneActive: this.microphoneActive || this.IsMicrophoneActive(),
       speaking: this.speechActivity.speaking,
@@ -2707,6 +2752,7 @@ export class Room {
   private upsertPeer(peer: RoomPeer): void {
     const others = this.peers.filter((item) => item.id !== peer.id)
     this.peers = uniquePeersById([...others, peer])
+    this.refreshScreenShares()
   }
 
   private removePeerById(peerId: string): void {
@@ -3117,6 +3163,7 @@ export class Room {
         if (this.displayStream !== stream) return
         this.displayStreamActive = false
         this.broadcastDisplayState()
+        this.refreshScreenShares()
         void this.revokeAllRemoteControl('sharing-stopped')
       })
     }
@@ -3251,6 +3298,9 @@ export class Room {
     this.cameraActive = false
     this.chatMessages = []
     this.remoteVideoStreams.clear()
+    this.remoteDisplayStates.clear()
+    this.remoteDisplayStreamIds.clear()
+    this.screenShares = []
     this.remoteVideoByStreamId.clear()
     this.remoteCameraStreams.clear()
     this.remoteCameraState.clear()

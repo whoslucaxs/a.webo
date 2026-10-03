@@ -98,6 +98,9 @@ describe('controlProtocol', () => {
       ),
     ).toMatchObject({ t: 'display-state', active: false })
     expect(parseControlMessage('{"t":"display-state","v":1,"peerId":"host"}')).toBeNull()
+    expect(
+      parseControlMessage(JSON.stringify({ t: 'display-state', v: 1, peerId: 'guest', active: true, streamId: 'screen' })),
+    ).toMatchObject({ t: 'display-state', streamId: 'screen' })
   })
 
   it('accepts camera-state', () => {

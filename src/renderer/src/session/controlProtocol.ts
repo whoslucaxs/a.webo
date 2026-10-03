@@ -171,6 +171,7 @@ export type DisplayStateMessage = Envelope & {
   t: 'display-state'
   peerId: string
   active: boolean
+  streamId?: string
 }
 
 export type MlsControlMessage = Envelope & {
@@ -322,7 +323,8 @@ export const isControlMessage = (value: unknown): value is ControlMessage => {
         isString(value.peerId) && typeof value.enabled === 'boolean' && isString(value.streamId)
       )
     case 'display-state':
-      return isString(value.peerId) && typeof value.active === 'boolean'
+      return isString(value.peerId) && typeof value.active === 'boolean' &&
+        (value.streamId === undefined || isString(value.streamId))
     case 'e2ee':
       return (
         typeof value.epoch === 'number' &&

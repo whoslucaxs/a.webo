@@ -50,6 +50,7 @@ const en = {
   shoulders_of_giants_description:
     'p2p.kiwi Screen Sharing baut auf den folgenden Open-Source-Projekten auf (in keiner bestimmten Reihenfolge)',
   start_a_new_session: 'Eine neue Sitzung starten',
+  start_without_sharing: 'Ohne Bildschirmfreigabe starten',
   streaming_your_display: 'Dein Bildschirm wird gestreamt',
   stun_turn_server_objects: 'STUN/TURN Objekte (getrennt durch Zeilenumbruch)',
   terms_of_service: 'Nutzungsbedingungen',

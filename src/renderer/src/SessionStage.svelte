@@ -42,11 +42,24 @@
   let inviteInFlight = false
   let inviteFormIsVisible = $state(false)
 
-  const showVideo = $derived(!room.isPresenter || Boolean(room.sessionEndedReason))
+  const presenterShare = $derived(room.screenShares.find((share) =>
+    share.peerId === room.presenterId && share.peerId !== room.localPeerId,
+  ))
+  const otherShares = $derived(room.screenShares.filter((share) => share !== presenterShare))
+  const showVideo = $derived(Boolean(presenterShare))
   const videoClass = $derived(room.sessionEndedReason ? 'video video-ended' : 'video')
-  const showBrokenVideo = $derived(
-    !room.isPresenter && (room.remoteDisplayActive === false || !room.remoteScreenActive),
-  )
+  const showBrokenVideo = $derived(!room.remoteScreenActive)
+  const attachScreen = (video: HTMLVideoElement, stream: MediaStream) => {
+    video.srcObject = stream
+    void video.play().catch(() => undefined)
+    return {
+      update(next: MediaStream) {
+        if (video.srcObject !== next) video.srcObject = next
+        void video.play().catch(() => undefined)
+      },
+      destroy() { video.srcObject = null },
+    }
+  }
   const localGrant = $derived(room.localRemoteGrant)
   const controlling = $derived(Boolean(localGrant && (localGrant.mouse || localGrant.keyboard)))
 
@@ -374,14 +387,6 @@
     onReset()
   }
 
-  const onRequestPresent = async (): Promise<void> => {
-    if (room.presentCapturePending) return
-    const result = await room.requestToPresent()
-    if (result === 'cooldown') toast.show('info', L.vote_cooldown())
-    if (result === 'blocked') toast.show('info', L.vote_rejected())
-    if (result === 'failed') toast.show('error', L.screen_share_failed())
-  }
-
   const onRequestKick = async (peerId: string): Promise<void> => {
     const result = await room.requestKick(peerId)
     if (result === 'cooldown') toast.show('info', L.vote_remove_cooldown())
@@ -492,9 +497,9 @@
 
 <div class="flex justify-between items-center mb-4 gap-2 flex-wrap">
   <div class="flex gap-2 flex-wrap">
-    {#if room.isPresenter}
       <button
-        title={L.streaming_your_display()}
+        title={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}
+        aria-label={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}
         class="btn {room.displayStreamActive ? 'btn-success' : 'btn-error'}"
         onclick={() => room.displayStreamActive ? onDisplayStreamToggle() : onChangeScreen()}
       >
@@ -509,6 +514,7 @@
           </span>
           <span>{L.change_screen()}</span>
         </button>
+        {#if room.isPresenter}
         <button
           title={room.windowShare
             ? L.fullscreen_pointer_only()
@@ -523,15 +529,9 @@
             <i class="fas fa-mouse-pointer"></i>
           </span>
         </button>
+        {/if}
       {/if}
-    {:else}
-      <button
-        class="btn btn-primary"
-        onclick={onRequestPresent}
-        disabled={Boolean(room.activeVote) || room.presentCapturePending}
-      >
-        <span>{L.request_to_present()}</span>
-      </button>
+    {#if !room.isPresenter}
       {#if room.remoteScreenActive}
         <button
           class="btn {controlling ? 'btn-success' : 'btn-warning'}"
@@ -882,9 +882,10 @@
   </div>
 </div>
 
+<div class="screen-grid">
 <div class={showVideo ? 'relative' : 'hidden'}>
   <fieldset class="fieldset px-0">
-    <legend class="fieldset-legend">{L.remote_screen()}</legend>
+    <legend class="fieldset-legend">{presenterShare?.name ?? L.remote_screen()}</legend>
     <div bind:this={videoStage} class="video-overflow video-stage relative">
       {#if showBrokenVideo}
         <div class="broken-video" aria-hidden="true">
@@ -945,6 +946,20 @@
     </button>
   </div>
 </div>
+{#each otherShares as share (share.peerId)}
+  <fieldset class="fieldset px-0 min-w-0">
+    <legend class="fieldset-legend">{share.name}</legend>
+    <video
+      class="video rounded-lg bg-black"
+      use:attachScreen={share.stream}
+      autoplay
+      playsinline
+      muted
+      disablepictureinpicture
+    ></video>
+  </fieldset>
+{/each}
+</div>
 
 <SessionEndedOverlay
   reason={room.sessionEndedReason}
@@ -957,6 +972,12 @@
 <PresenterVoteModal {room} />
 
 <style>
+  .screen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
   .video {
     width: 100%;
     height: auto;

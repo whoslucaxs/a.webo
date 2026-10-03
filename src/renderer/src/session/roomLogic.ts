@@ -159,8 +159,17 @@ export const pickRemoteCameraAndDisplay = (params: {
   camera?: { enabled: boolean; streamId: string } | null
   isPresenter: boolean
   existingDisplayStreamId?: string | null
+  announcedDisplayStreamId?: string | null
 }): { cameraStreamId: string | null; displayStreamId: string | null } => {
-  const { streamIds, camera, isPresenter, existingDisplayStreamId } = params
+  const { streamIds, camera, isPresenter, existingDisplayStreamId, announcedDisplayStreamId } = params
+  if (announcedDisplayStreamId && streamIds.includes(announcedDisplayStreamId)) {
+    return {
+      cameraStreamId: camera?.enabled
+        ? (streamIds.find((id) => id !== announcedDisplayStreamId) ?? null)
+        : null,
+      displayStreamId: announcedDisplayStreamId,
+    }
+  }
   let cameraStreamId: string | null = null
   if (camera?.enabled) {
     if (camera.streamId && streamIds.includes(camera.streamId)) {
