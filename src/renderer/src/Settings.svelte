@@ -5,6 +5,7 @@
   import { debugLog } from './debugLog.svelte'
   import { toast } from './toastState.svelte'
   import { normalizeRoomServer } from './session/roomServer'
+  import { cloneForIpc } from './Utils'
   import { isAvatarDataUrl } from '../../shared/avatar'
   type StoredSettings = Awaited<ReturnType<typeof window.KiwiApi.getSettings>>
 
@@ -86,7 +87,7 @@
         e2eeEnabled: true,
         mediaE2eeEnabled: true,
       }
-      await window.KiwiApi.updateSettings(settings)
+      await window.KiwiApi.updateSettings(cloneForIpc(settings))
       savedSettings = settings
       appState.debugLogsEnabled = debugLogsEnabled
       appState.bonjourEnabled = false

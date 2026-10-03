@@ -421,7 +421,8 @@ describe('connection strings', () => {
 
 describe('cloneForIpc', () => {
   it('returns a structured-cloneable plain object', () => {
-    const proxyLike = { id: 'a', nested: { n: 1 } }
+    const proxyLike = new Proxy({ id: 'a', nested: new Proxy({ n: 1 }, {}) }, {})
+    expect(() => structuredClone(proxyLike)).toThrow()
     const cloned = cloneForIpc(proxyLike)
     expect(cloned).toEqual(proxyLike)
     expect(cloned).not.toBe(proxyLike)
