@@ -22,8 +22,13 @@ extraResources:
   - from: build/udev/70-p2p-kiwi-input.rules
     to: udev/70-p2p-kiwi-input.rules
 win:
+  target:
+    - nsis
+    - portable
   executableName: p2p-kiwi
   icon: build/icon.ico
+portable:
+  artifactName: p2p-kiwi-portable_${arch}.${ext}
 nsis:
   include: build/installer.nsh
   artifactName: p2p-kiwi-setup_${arch}.${ext}
