@@ -1,14 +1,5 @@
 import { truncateChatText } from './constants'
 import type { AppDomain, CryptoCapabilities } from '../crypto/constants'
-import {
-  isRemoteControlGrantMessage,
-  isRemoteControlRequestMessage,
-  isRemoteControlRevokeMessage,
-  type RemoteControlGrantMessage,
-  type RemoteControlRequestMessage,
-  type RemoteControlRevokeMessage,
-} from './remoteInputProtocol'
-
 export const PROTOCOL_VERSION = 1 as const
 
 export const PLAINTEXT_CONTROL_TYPES = new Set([
@@ -20,15 +11,7 @@ export const PLAINTEXT_CONTROL_TYPES = new Set([
   'mls',
 ])
 
-export const APP_DOMAINS: AppDomain[] = [
-  'chat',
-  'cursor',
-  'control',
-  'drawing',
-  'remote-input',
-  'camera-state',
-  'media',
-]
+export const APP_DOMAINS: AppDomain[] = ['chat', 'control', 'drawing', 'camera-state', 'media']
 
 export type RosterPeer = {
   id: string
@@ -125,17 +108,6 @@ export type SessionEndedMessage = Envelope & {
   byPeerId: string
 }
 
-export type CursorMessage = Envelope & {
-  t: 'cursor'
-  id: string
-  name: string
-  foregroundColor: string
-  backgroundColor: string
-  x: number
-  y: number
-  sourceId?: string
-}
-
 export type E2eeMessage = Envelope & {
   t: 'e2ee'
   epoch: number
@@ -144,11 +116,6 @@ export type E2eeMessage = Envelope & {
   seq: number
   iv: string
   ciphertext: string
-}
-
-export type CursorPingMessage = Envelope & {
-  t: 'cursor-ping'
-  cursorId: string
 }
 
 export type ChatMessage = Envelope & {
@@ -198,16 +165,11 @@ export type ControlMessage =
   | PeerLeftMessage
   | CoordinatorHandoffMessage
   | SessionEndedMessage
-  | CursorMessage
-  | CursorPingMessage
   | ChatMessage
   | CameraStateMessage
   | DisplayStateMessage
   | E2eeMessage
   | MlsControlMessage
-  | RemoteControlRequestMessage
-  | RemoteControlGrantMessage
-  | RemoteControlRevokeMessage
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -298,18 +260,6 @@ export const isControlMessage = (value: unknown): value is ControlMessage => {
       return isString(value.coordinatorId)
     case 'session-ended':
       return isString(value.byPeerId)
-    case 'cursor':
-      return (
-        isString(value.id) &&
-        isString(value.name) &&
-        isString(value.foregroundColor) &&
-        isString(value.backgroundColor) &&
-        typeof value.x === 'number' &&
-        typeof value.y === 'number' &&
-        (value.sourceId === undefined || isString(value.sourceId))
-      )
-    case 'cursor-ping':
-      return isString(value.cursorId)
     case 'chat':
       return (
         isString(value.id) &&
@@ -323,8 +273,11 @@ export const isControlMessage = (value: unknown): value is ControlMessage => {
         isString(value.peerId) && typeof value.enabled === 'boolean' && isString(value.streamId)
       )
     case 'display-state':
-      return isString(value.peerId) && typeof value.active === 'boolean' &&
+      return (
+        isString(value.peerId) &&
+        typeof value.active === 'boolean' &&
         (value.streamId === undefined || isString(value.streamId))
+      )
     case 'e2ee':
       return (
         typeof value.epoch === 'number' &&
@@ -345,12 +298,6 @@ export const isControlMessage = (value: unknown): value is ControlMessage => {
         (value.to === undefined || isString(value.to)) &&
         (value.fingerprint === undefined || isString(value.fingerprint))
       )
-    case 'remote-control-request':
-      return isRemoteControlRequestMessage(value)
-    case 'remote-control-grant':
-      return isRemoteControlGrantMessage(value)
-    case 'remote-control-revoke':
-      return isRemoteControlRevokeMessage(value)
     default:
       return false
   }
@@ -375,15 +322,8 @@ export const domainForControl = (msg: ControlMessage): AppDomain => {
   switch (msg.t) {
     case 'chat':
       return 'chat'
-    case 'cursor':
-    case 'cursor-ping':
-      return 'cursor'
     case 'camera-state':
       return 'camera-state'
-    case 'remote-control-request':
-    case 'remote-control-grant':
-    case 'remote-control-revoke':
-      return 'remote-input'
     default:
       return 'control'
   }

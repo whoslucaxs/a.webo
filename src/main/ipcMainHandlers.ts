@@ -1,274 +1,25 @@
 import type { SettingsData } from './stateKeeper'
-import { app, BrowserWindow, ipcMain, screen } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { createCallOverlayWindow } from './callOverlay'
 import { settingsKeeper } from './stateKeeper'
-import { OverlayBridge } from './sidecar/overlayBridge'
-import { createAppSidecarManager } from './sidecar/sidecarManager'
-import {
-  displayPixelSize,
-  lastShareSource,
-  noteShareSurface,
-  shareSurfaceFromFrame,
-} from './screenPicker'
-import type { OverlaySource } from './sidecar/protocol'
-import { RemoteControlBridge, parseGrant } from './sidecar/remoteControlBridge'
-import { capturedSidecarKeyToLocal, setLocalKeyCapture } from './sidecar/localKeyCapture'
-import { DEFAULT_EMERGENCY_HOTKEY, isEmergencyHotkey } from '../shared/emergencyHotkey'
 import { loadOrCreateIdentity } from './identityStore'
 import { hasRoutableIpv6 } from './networkFamily'
 import { bonjourClient } from './bonjour/client'
 import { isClosedStreamError } from './bonjour/trpc'
 import type { CallKind, PresenceStatus, SignalType } from './bonjour/types'
 
-export const sidecarManager = createAppSidecarManager()
-const overlayBridge = new OverlayBridge(sidecarManager)
-const remoteControlBridge = new RemoteControlBridge(sidecarManager, () => sourceFromDisplay())
-
-const sourceFromDisplay = (): OverlaySource => {
-  const remembered = lastShareSource()
-  if (remembered) return remembered
-  const display = screen.getPrimaryDisplay()
-  return {
-    displayId: String(display.id),
-    bounds: {
-      x: display.bounds.x,
-      y: display.bounds.y,
-      width: display.bounds.width,
-      height: display.bounds.height,
-    },
-    scaleFactor: display.scaleFactor,
-    rotation: display.rotation,
-  }
-}
-
 export const ipcMainHandlersInit = (): void => {
   let callOverlayWindow: BrowserWindow | null = null
   let callMainWindow: BrowserWindow | null = null
-  let localCaptureTarget: Electron.WebContents | null = null
-  overlayBridge.setShareSource(sourceFromDisplay())
-
-  sidecarManager.on('captured-key', (payload) => {
-    const wc = localCaptureTarget
-    if (!wc || wc.isDestroyed()) return
-    const event = capturedSidecarKeyToLocal(payload)
-    if (!event) return
-    wc.send('remoteControl:local-key', event)
-  })
-  let captureEpoch = 0
-  let captureBlocked = false
-  sidecarManager.on('remote-control-disabled', (event) => {
-    captureEpoch += 1
-    captureBlocked = true
-    if (typeof event.generation === 'number' && Number.isFinite(event.generation)) {
-      /* generation is owned by the sidecar; Electron only stops forwarding. */
-    }
-    const wc = localCaptureTarget
-    localCaptureTarget = null
-    if (wc && !wc.isDestroyed()) setLocalKeyCapture(wc, false)
-  })
-  sidecarManager.onStopped(() => {
-    captureEpoch += 1
-    captureBlocked = true
-    const wc = localCaptureTarget
-    localCaptureTarget = null
-    if (wc && !wc.isDestroyed()) setLocalKeyCapture(wc, false)
-  })
-  screen.on('display-metrics-changed', () => {
-    overlayBridge.setShareSource(sourceFromDisplay())
-  })
-
   const fromCallOverlay = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean =>
     Boolean(callOverlayWindow && event.sender.id === callOverlayWindow.webContents.id)
 
   const fromCallMain = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean =>
     Boolean(callMainWindow && event.sender.id === callMainWindow.webContents.id)
 
-  const fromMainSession = (event: Electron.IpcMainInvokeEvent): boolean => {
-    if (fromCallOverlay(event)) return false
-    const win = BrowserWindow.fromWebContents(event.sender)
-    if (!win || win.isDestroyed()) return false
-    if (callMainWindow) return fromCallMain(event)
-    remoteControlBridge.setMainWindow(win)
-    return true
-  }
-
-  void settingsKeeper().then((keeper) => {
-    const hotkey = keeper.get().emergencyHotkey
-    if (isEmergencyHotkey(hotkey)) remoteControlBridge.setHotkey(hotkey)
-    else remoteControlBridge.setHotkey(DEFAULT_EMERGENCY_HOTKEY)
-  })
-
-  ipcMain.handle('toggleRemoteCursors', async (_, state) => {
-    const source = sourceFromDisplay()
-    overlayBridge.setShareSource(source)
-    console.info('[share-surface] toggle cursors', {
-      enabled: Boolean(state),
-      windowShare: Boolean(source.windowShare),
-      sourceId: source.sourceId ?? null,
-      bounds: source.bounds,
-      scaleFactor: source.scaleFactor,
-    })
-    await overlayBridge.toggle(Boolean(state))
-  })
-  ipcMain.handle('updateRemoteCursor', async (_, state): Promise<void> => {
-    await overlayBridge.updateCursor(state)
-  })
-  ipcMain.handle('remoteCursorPing', async (_, cursorId): Promise<void> => {
-    await overlayBridge.ping(cursorId)
-  })
-  ipcMain.handle('removeRemoteCursor', async (_, peerId): Promise<void> => {
-    await overlayBridge.removeCursor(peerId)
-  })
-  ipcMain.handle('setCursorShareSource', async (_, source: OverlaySource | null): Promise<void> => {
-    overlayBridge.setShareSource(source)
-  })
-  ipcMain.handle(
-    'setShareDisplaySurface',
-    async (
-      _,
-      reported: unknown,
-      width: unknown,
-      height: unknown,
-    ): Promise<'monitor' | 'window' | 'browser' | null> => {
-      const surface = typeof reported === 'string' ? reported : undefined
-      const frame = {
-        width: typeof width === 'number' && Number.isFinite(width) ? width : 0,
-        height: typeof height === 'number' && Number.isFinite(height) ? height : 0,
-      }
-      const displays = screen.getAllDisplays().map((display) => ({
-        id: display.id,
-        bounds: display.bounds,
-        scaleFactor: display.scaleFactor,
-        pixel: displayPixelSize(display.bounds, display.scaleFactor),
-      }))
-      const resolved = shareSurfaceFromFrame(
-        surface,
-        frame,
-        displays.map((display) => display.pixel),
-      )
-      const before = lastShareSource()
-      console.info('[share-surface] classify', {
-        reported: surface ?? null,
-        frame,
-        displays,
-        resolved,
-        rememberedBefore: before
-          ? {
-              sourceId: before.sourceId ?? null,
-              windowShare: Boolean(before.windowShare),
-              bounds: before.bounds,
-              scaleFactor: before.scaleFactor,
-            }
-          : null,
-      })
-      if (!resolved) return null
-      noteShareSurface(resolved)
-      const after = sourceFromDisplay()
-      overlayBridge.setShareSource(after)
-      console.info('[share-surface] applied', {
-        resolved,
-        windowShare: Boolean(after.windowShare),
-        sourceId: after.sourceId ?? null,
-        bounds: after.bounds,
-        scaleFactor: after.scaleFactor,
-      })
-      return resolved
-    },
-  )
-  ipcMain.handle('getSidecarCapabilities', async () => sidecarManager.getCapabilities())
-  ipcMain.handle('remoteControl:getCapabilities', async (event) => {
-    if (!fromMainSession(event)) return sidecarManager.getCapabilities()
-    if (sidecarManager.isStarted()) await sidecarManager.refreshCapabilities()
-    return remoteControlBridge.getCapabilities()
-  })
-  ipcMain.handle('remoteControl:arm', async (event, grant) => {
-    if (!fromMainSession(event)) throw new Error('unauthorized')
-    const parsed = parseGrant(grant)
-    if (!parsed) throw new Error('invalid grant')
-    const record = grant && typeof grant === 'object' ? (grant as Record<string, unknown>) : {}
-    const generation = typeof record.generation === 'number' ? record.generation : undefined
-    const sessionId = typeof record.sessionId === 'string' ? record.sessionId : undefined
-    const peerId = typeof record.peerId === 'string' ? record.peerId : undefined
-    await remoteControlBridge.arm({ ...parsed, generation, sessionId, peerId })
-  })
-  ipcMain.handle('remoteControl:disarm', async (event) => {
-    if (!fromMainSession(event)) throw new Error('unauthorized')
-    await remoteControlBridge.disarm()
-  })
-  ipcMain.handle('remoteControl:pointerMove', async (event, input) => {
-    if (!fromMainSession(event)) return
-    await remoteControlBridge.pointerMove(input)
-  })
-  ipcMain.handle('remoteControl:pointerButton', async (event, input) => {
-    if (!fromMainSession(event)) return
-    await remoteControlBridge.pointerButton(input)
-  })
-  ipcMain.handle('remoteControl:wheel', async (event, input) => {
-    if (!fromMainSession(event)) return
-    await remoteControlBridge.wheel(input)
-  })
-  ipcMain.handle('remoteControl:key', async (event, input) => {
-    if (!fromMainSession(event)) return
-    await remoteControlBridge.key(input)
-  })
-  ipcMain.handle('remoteControl:releaseAll', async (event) => {
-    if (!fromMainSession(event)) return
-    await remoteControlBridge.releaseAll()
-  })
-  ipcMain.handle('remoteControl:recheck', async (event) => {
-    if (!fromMainSession(event)) return sidecarManager.getCapabilities()
-    return remoteControlBridge.recheck()
-  })
-  ipcMain.handle('remoteControl:requestPermission', async (event, capability: unknown) => {
-    if (!fromMainSession(event)) return
-    await remoteControlBridge.requestPermission(capability === 'listen' ? 'listen' : 'post')
-  })
-  ipcMain.handle('remoteControl:setLocalCapture', async (event, enabled: boolean) => {
-    if (!fromMainSession(event)) return
-    const wc = event.sender
-    if (!enabled) {
-      captureBlocked = false
-      if (localCaptureTarget === wc) localCaptureTarget = null
-      if (sidecarManager.isStarted()) {
-        await sidecarManager.send('keyboard-capture-disarm', {}).catch(() => undefined)
-      }
-      setLocalKeyCapture(wc, false)
-      return
-    }
-    if (captureBlocked) {
-      setLocalKeyCapture(wc, false)
-      return
-    }
-    const epoch = captureEpoch
-    localCaptureTarget = wc
-    let sidecarOk = false
-    if (sidecarManager.isStarted()) {
-      try {
-        const res = await sidecarManager.send('keyboard-capture-arm', {
-          emergencyGeneration: remoteControlBridge.getEmergencyGeneration(),
-        })
-        sidecarOk = res.type === 'ok'
-      } catch {
-        sidecarOk = false
-      }
-    }
-    if (epoch !== captureEpoch || captureBlocked) {
-      if (sidecarManager.isStarted()) {
-        await sidecarManager.send('keyboard-capture-disarm', {}).catch(() => undefined)
-      }
-      if (localCaptureTarget === wc) localCaptureTarget = null
-      setLocalKeyCapture(wc, false)
-      return
-    }
-    setLocalKeyCapture(wc, true, { forward: !sidecarOk })
-  })
   ipcMain.handle('updateSettings', async (_, settings): Promise<void> => {
     const settingsKeeperInstance = await settingsKeeper()
     settingsKeeperInstance.set(settings)
-    sidecarManager.setDebugLogs(Boolean(settings?.debugLogsEnabled))
-    if (isEmergencyHotkey(settings?.emergencyHotkey)) {
-      remoteControlBridge.setHotkey(settings.emergencyHotkey)
-    }
     if (settings?.bonjourEnabled && settings?.bonjourServerUrl) {
       bonjourClient.configured(String(settings.bonjourServerUrl))
     }
@@ -292,7 +43,6 @@ export const ipcMainHandlersInit = (): void => {
 
   ipcMain.handle('toggleCallOverlay', async (event, open: boolean): Promise<void> => {
     callMainWindow = BrowserWindow.fromWebContents(event.sender)
-    remoteControlBridge.setMainWindow(callMainWindow)
     if (open) {
       if (callOverlayWindow && !callOverlayWindow.isDestroyed()) {
         callOverlayWindow.show()

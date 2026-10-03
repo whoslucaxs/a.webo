@@ -167,7 +167,6 @@ export const allocateProfiles = (input: {
   cameraIntent: boolean
   microphoneActive: boolean
   speaking: boolean
-  remoteControlActive: boolean
   cpuCeiling?: AdaptiveTickContext['cpuCeiling']
 }): AdaptiveDecision => {
   const reasons: string[] = [`network:${input.network}`, `cpu:${input.cpu}`]
@@ -182,10 +181,6 @@ export const allocateProfiles = (input: {
   if (input.speaking && input.cameraIntent && cameraId !== 'suspended') {
     cameraId = demoteCamera(cameraId)
     reasons.push('speech:camera-yield')
-  }
-  if (input.remoteControlActive && input.cameraIntent && cameraId !== 'suspended') {
-    cameraId = demoteCamera(cameraId)
-    reasons.push('remote-control:camera-yield')
   }
 
   if (input.cpu === 'constrained') {
@@ -214,11 +209,7 @@ export const allocateProfiles = (input: {
   if (!input.screenActive) screenId = 'survival'
   if (!input.cameraIntent) cameraId = 'suspended'
 
-  let screen = getScreenProfile(screenId)
-  if (input.remoteControlActive && input.screenActive && screenId !== 'survival') {
-    screen = { ...screen, maxFramerate: Math.min(screen.maxFramerate, 20) }
-    reasons.push('remote-control:screen-fps')
-  }
+  const screen = getScreenProfile(screenId)
 
   return {
     screenProfile: screen,
@@ -272,7 +263,6 @@ export class AdaptiveController {
       network: this.hysteresis.network,
       cpu: this.hysteresis.cpu,
       speaking: false,
-      remoteControlActive: false,
     }
   }
 
@@ -406,7 +396,6 @@ export class AdaptiveController {
       cameraIntent: context.cameraIntent,
       microphoneActive: context.microphoneActive,
       speaking: context.speaking,
-      remoteControlActive: context.remoteControlActive,
       cpuCeiling: context.cpuCeiling,
     })
 
@@ -418,7 +407,6 @@ export class AdaptiveController {
       availableOutgoingBitrate: this.ewma.availableOutgoingBitrate,
       retransmitRate: this.ewma.retransmitRate,
       speaking: context.speaking,
-      remoteControlActive: context.remoteControlActive,
     }
 
     const changed =

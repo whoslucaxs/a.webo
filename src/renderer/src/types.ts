@@ -1,13 +1,3 @@
-export type RemoteCursorData = {
-  id: string
-  name: string
-  foregroundColor: string
-  backgroundColor: string
-  x: number
-  y: number
-  sourceId?: string
-}
-
 type IceServer = {
   urls: string
   username?: string
@@ -30,13 +20,6 @@ export type SettingsData = {
   roomServerUrl?: string
   bonjourEnabled?: boolean
   bonjourServerUrl?: string
-  emergencyHotkey?: {
-    ctrl: boolean
-    alt: boolean
-    shift: boolean
-    meta: boolean
-    key: 'Escape'
-  }
 }
 
 export type ScreenShareSource = {

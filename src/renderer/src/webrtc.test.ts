@@ -98,7 +98,6 @@ beforeEach(() => {
         fingerprint: 'aa'.repeat(16),
       })),
       updateRemoteCursor: vi.fn(),
-      remoteCursorPing: vi.fn(),
       toggleRemoteCursors: vi.fn(),
       removeRemoteCursor: vi.fn(),
       toggleCallOverlay: vi.fn(),

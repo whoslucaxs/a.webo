@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   PROTOCOL_VERSION,
-  domainForControl,
   parseControlMessage,
   serializeControlMessage,
   shouldEncryptControl,
@@ -99,7 +98,15 @@ describe('controlProtocol', () => {
     ).toMatchObject({ t: 'display-state', active: false })
     expect(parseControlMessage('{"t":"display-state","v":1,"peerId":"host"}')).toBeNull()
     expect(
-      parseControlMessage(JSON.stringify({ t: 'display-state', v: 1, peerId: 'guest', active: true, streamId: 'screen' })),
+      parseControlMessage(
+        JSON.stringify({
+          t: 'display-state',
+          v: 1,
+          peerId: 'guest',
+          active: true,
+          streamId: 'screen',
+        }),
+      ),
     ).toMatchObject({ t: 'display-state', streamId: 'screen' })
   })
 
@@ -308,18 +315,6 @@ describe('controlProtocol', () => {
     ).toBe(true)
     expect(
       shouldEncryptControl({
-        t: 'cursor',
-        v: 1,
-        id: 'a',
-        name: 'Kiwi',
-        foregroundColor: '#1a1a1a',
-        backgroundColor: '#fff',
-        x: 0,
-        y: 0,
-      }),
-    ).toBe(true)
-    expect(
-      shouldEncryptControl({
         t: 'hello',
         v: 1,
         peerId: 'a',
@@ -330,32 +325,15 @@ describe('controlProtocol', () => {
     ).toBe(false)
   })
 
-  it('accepts remote-control grant messages on the remote-input domain', () => {
-    const grant = parseControlMessage(
-      JSON.stringify({
-        t: 'remote-control-grant',
-        v: 1,
-        peerId: 'a',
-        mouse: true,
-        keyboard: false,
-        generation: 3,
-      }),
-    )
-    expect(grant?.t).toBe('remote-control-grant')
-    if (grant?.t === 'remote-control-grant') {
-      expect(domainForControl(grant)).toBe('remote-input')
-      expect(shouldEncryptControl(grant)).toBe(true)
+  it('rejects legacy remote-control and cursor messages', () => {
+    for (const t of [
+      'remote-control-request',
+      'remote-control-grant',
+      'remote-control-revoke',
+      'cursor',
+      'cursor-ping',
+    ]) {
+      expect(parseControlMessage(JSON.stringify({ t, v: 1, peerId: 'a', active: true }))).toBeNull()
     }
-    expect(
-      parseControlMessage(
-        JSON.stringify({
-          t: 'remote-control-revoke',
-          v: 1,
-          peerId: 'a',
-          generation: 4,
-          reason: 'emergency',
-        }),
-      )?.t,
-    ).toBe('remote-control-revoke')
   })
 })

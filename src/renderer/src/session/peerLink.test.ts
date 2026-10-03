@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PeerLink, MOTION_BACKPRESSURE_BYTES } from './peerLink'
+import { PeerLink } from './peerLink'
 import { CAMERA_PROFILES, SCREEN_PROFILES, AUDIO_PROFILE } from './adaptive/qualityProfiles'
 import { ICE_GATHERING_TIMEOUT_MS } from './constants'
 
@@ -178,7 +178,7 @@ describe('PeerLink video senders', () => {
     expect(onIceCandidate).toHaveBeenCalledWith(null)
   })
 
-  it('creates dedicated remote-input data channels as the offerer', () => {
+  it('creates only signaling channels', () => {
     const link = new PeerLink({
       rtcConfig: { iceServers: [] },
       localPeerId: 'local',
@@ -187,32 +187,7 @@ describe('PeerLink video senders', () => {
       events,
     })
     const pc = link.pc as unknown as MockRTCPeerConnection
-    const labels = pc.createDataChannel.mock.calls.map((call) => call[0])
-    expect(labels).toEqual(['control', 'mls', 'remote-input-motion', 'remote-input-actions'])
-    expect(pc.createDataChannel.mock.calls[2]?.[1]).toEqual({
-      ordered: false,
-      maxRetransmits: 0,
-    })
-    expect(pc.createDataChannel.mock.calls[3]?.[1]).toEqual({ ordered: true })
-  })
-
-  it('sends remote-input payloads on the matching channel', () => {
-    const link = new PeerLink({
-      rtcConfig: { iceServers: [] },
-      localPeerId: 'local',
-      pendingId: 'pending',
-      isOfferer: true,
-      events,
-    })
-    const pc = link.pc as unknown as MockRTCPeerConnection
-    const motion = pc.createDataChannel.mock.results[2]?.value as MockDataChannel
-    const actions = pc.createDataChannel.mock.results[3]?.value as MockDataChannel
-    motion.readyState = 'open'
-    actions.readyState = 'open'
-    expect(link.sendRemoteInputMotion('{"t":"pointer-move"}')).toBe(true)
-    expect(link.sendRemoteInputAction('{"t":"key"}')).toBe(true)
-    expect(motion.send).toHaveBeenCalledWith('{"t":"pointer-move"}')
-    expect(actions.send).toHaveBeenCalledWith('{"t":"key"}')
+    expect(pc.createDataChannel.mock.calls.map((call) => call[0])).toEqual(['control', 'mls'])
   })
 })
 
@@ -297,33 +272,6 @@ describe('PeerLink adaptive profiles', () => {
     await link.applyDisplayProfile(SCREEN_PROFILES.high)
     expect(attachSender).toHaveBeenCalledTimes(1)
     expect(sender).toBe(link.getAdaptiveSenders().display)
-  })
-
-  it('coalesces pointer motion under data-channel backpressure and never coalesces actions', () => {
-    const link = new PeerLink({
-      rtcConfig: { iceServers: [] },
-      localPeerId: 'local',
-      pendingId: 'pending',
-      isOfferer: true,
-      events,
-    })
-    const pc = link.pc as unknown as MockRTCPeerConnection
-    const motion = pc.createDataChannel.mock.results[2]?.value as MockDataChannel
-    const actions = pc.createDataChannel.mock.results[3]?.value as MockDataChannel
-    motion.readyState = 'open'
-    actions.readyState = 'open'
-    motion.bufferedAmount = MOTION_BACKPRESSURE_BYTES + 1
-    expect(link.sendRemoteInputMotion('move-1')).toBe(true)
-    expect(link.sendRemoteInputMotion('move-2')).toBe(true)
-    expect(motion.send).not.toHaveBeenCalled()
-    expect(link.sendRemoteInputAction('key-down')).toBe(true)
-    expect(link.sendRemoteInputAction('key-up')).toBe(true)
-    expect(actions.send).toHaveBeenCalledWith('key-down')
-    expect(actions.send).toHaveBeenCalledWith('key-up')
-    motion.bufferedAmount = 0
-    motion.onbufferedamountlow?.()
-    expect(motion.send).toHaveBeenCalledTimes(1)
-    expect(motion.send).toHaveBeenCalledWith('move-2')
   })
 })
 

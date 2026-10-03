@@ -1,24 +1,20 @@
 ---
 title: End-to-end encryption threat model
 excerpt: |
-  p2p.kiwi is a desktop WebRTC mesh. There is no application signaling
-  server. Invite URLs carry SDP out of band. STUN/TURN may still observe
+  p2p.kiwi is a desktop WebRTC mesh. Signaling and STUN/TURN may observe
   connection metadata.
 description: |
-  p2p.kiwi is a desktop WebRTC mesh. There is no application signaling
-  server. Invite URLs carry SDP out of band. STUN/TURN may still observe
+  p2p.kiwi is a desktop WebRTC mesh. Signaling and STUN/TURN may observe
   connection metadata.
 order: 1
 ---
 
-p2p.kiwi is a desktop WebRTC mesh. There is no application signaling
-server. Invite URLs carry SDP out of band. STUN/TURN may still observe
+p2p.kiwi is a desktop WebRTC mesh. Signaling and STUN/TURN may observe
 connection metadata.
 
 ## Assets
 
-- Chat, cursor, vote, presenter, kick, camera-state, and remote-input
-  messages
+- Chat, vote, presenter, kick, and camera-state messages
 - Screen, camera, and microphone media
 - Device identity keys
 - MLS epoch secrets and exporters
@@ -33,7 +29,7 @@ connection metadata.
 - A passive network observer
 - A removed peer who still has old epoch material
 - A newly joined peer who should not read earlier traffic
-- A peer who replays votes, kicks, or grants
+- A peer who replays votes or kicks
 
 ## Guarantees
 
@@ -47,16 +43,6 @@ connection metadata.
 - Control operations bind epoch, sender, room, and operation id.
 - Invite bootstrap secrets stay in the URL fragment and are never
   logged or sent as HTTP query parameters.
-- Native overlay IPC receives only decrypted, sanitized cursor state.
-- Remote control is never granted automatically. A host grant lets a
-  selected peer operate the machine as the logged-in user for the
-  current share only.
-- The emergency hotkey (`Ctrl+Esc` by default) is implemented in the
-  Odin sidecar, outside Electron. Pressing it is a one-way off switch.
-- Keyboard grab on the controlling peer is local OS capture. Key events
-  still leave that machine only on the E2EE `remote-input` channel.
-- The sidecar has no network listener and does not learn room
-  membership or MLS state.
 
 ## Non-goals
 
@@ -64,5 +50,3 @@ connection metadata.
 - E2EE does not hide ICE/SDP/TURN metadata.
 - An unverified invite can still be socially redirected.
 - Screen content is plaintext at the capturing and viewing endpoints.
-- The Odin sidecar is part of the trusted local computing base for
-  overlay content and for host-authorized remote input injection.

@@ -19,17 +19,16 @@ order: 3
 group membership and epoch key management.
 
 Media keys and high-frequency application keys are derived with MLS
-exporters (`mlsExporter`) and domain-separated labels. The Odin sidecar
-does not implement MLS.
+exporters (`mlsExporter`) and domain-separated labels.
 
 ## Options considered
 
-| Option                                 | Result                                                                                                                                                                 |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ts-mls                                 | Selected. TypeScript, Electron/Chromium compatible, `mlsExporter`, active maintenance, MIT. Not a formal audit.                                                        |
-| OpenMLS (Rust/WASM)                    | Most established MLS library. Official WASM wrapper is experimental. Rejected for the first integration to avoid a second native toolchain beside the overlay sidecar. |
-| mls-rs                                 | Strong Rust implementation; same WASM/native packaging cost as OpenMLS.                                                                                                |
-| Custom group ratchet / static room AES | Forbidden.                                                                                                                                                             |
+| Option                                 | Result                                                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| ts-mls                                 | Selected. TypeScript, Electron/Chromium compatible, `mlsExporter`, active maintenance, MIT. Not a formal audit.                             |
+| OpenMLS (Rust/WASM)                    | Most established MLS library. Official WASM wrapper is experimental. Rejected for the first integration to avoid a second native toolchain. |
+| mls-rs                                 | Strong Rust implementation; same WASM/native packaging cost as OpenMLS.                                                                     |
+| Custom group ratchet / static room AES | Forbidden.                                                                                                                                  |
 
 ## Cipher suite
 

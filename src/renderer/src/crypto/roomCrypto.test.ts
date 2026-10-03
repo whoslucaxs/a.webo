@@ -40,9 +40,9 @@ describe('RoomCrypto MLS', () => {
     const chat = await alice.encryptApplication('chat', text('hello bob'))
     expect(decode(await bob.decryptApplication(chat))).toBe('hello bob')
 
-    const cursor = await alice.encryptApplication('cursor', text('xy'))
-    expect(cursor.domain).toBe('cursor')
-    await expect(bob.decryptApplication({ ...cursor, domain: 'chat' })).rejects.toThrow()
+    const control = await alice.encryptApplication('control', text('xy'))
+    expect(control.domain).toBe('control')
+    await expect(bob.decryptApplication({ ...control, domain: 'chat' })).rejects.toThrow()
 
     const tampered = { ...chat, ciphertext: chat.ciphertext.slice(0, -2) + 'aa' }
     await expect(bob.decryptApplication(tampered)).rejects.toThrow()
@@ -124,16 +124,16 @@ describe('RoomCrypto MLS', () => {
 })
 
 describe('adversarial control', () => {
-  it('drops rewritten sender ids and injected cursor ciphertext', async () => {
+  it('drops rewritten sender ids and injected control ciphertext', async () => {
     const alice = new RoomCrypto()
     const bob = new RoomCrypto()
     await alice.createRoom('room-4', 'alice', identity('alice'))
     await bob.prepareJoiner('room-4', 'bob', identity('bob'))
     const add = await alice.addMember(alice.decodeKeyPackage(bob.encodeKeyPackage()!)!, 'bob', 'fp')
     await bob.handleHandshakeMessage(add!.welcome!)
-    const msg = await alice.encryptApplication('cursor', text('{"x":1}'))
+    const msg = await alice.encryptApplication('control', text('{"x":1}'))
     await expect(bob.decryptApplication({ ...msg, sender: 'mallory' })).rejects.toThrow()
-    const injected = await alice.encryptApplication('cursor', text('{"x":0}'))
+    const injected = await alice.encryptApplication('control', text('{"x":0}'))
     injected.sender = 'mallory'
     await expect(bob.decryptApplication(injected)).rejects.toThrow()
   }, 30000)

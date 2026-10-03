@@ -1,6 +1,5 @@
 import { screen } from 'electron'
 import settings from 'electron-settings'
-import { DEFAULT_EMERGENCY_HOTKEY, type EmergencyHotkey } from '../shared/emergencyHotkey'
 import { debounce } from './utils'
 
 type IceServer = {
@@ -25,7 +24,6 @@ export type SettingsData = {
   roomServerUrl: string
   bonjourEnabled: boolean
   bonjourServerUrl: string
-  emergencyHotkey: EmergencyHotkey
 }
 
 type Settings = {
@@ -65,7 +63,6 @@ export const defaultSettings: SettingsData = {
   roomServerUrl: 'https://signal.nyxlink.online',
   bonjourEnabled: false,
   bonjourServerUrl: 'https://bonjour.p2p.kiwi',
-  emergencyHotkey: DEFAULT_EMERGENCY_HOTKEY,
 }
 
 export const settingsKeeper = async (): Promise<Settings> => {

@@ -4,8 +4,6 @@
   import { L } from './translations'
   import { appState } from './appState.svelte'
   import { debugLog } from './debugLog.svelte'
-  import { DEFAULT_EMERGENCY_HOTKEY, type EmergencyHotkey } from './session/emergencyHotkey'
-  import MacSidecarPermissions from './MacSidecarPermissions.svelte'
 
   let foregroundPreviewIcon: HTMLElement | undefined = $state()
   let backgroundPreviewIcon: HTMLElement | undefined = $state()
@@ -27,11 +25,9 @@
   let microphoneDeviceId = $state('')
   let bonjourEnabled = $state(false)
   let bonjourServerUrl = $state('https://bonjour.p2p.kiwi')
-  let emergencyHotkey = $state<EmergencyHotkey>({ ...DEFAULT_EMERGENCY_HOTKEY })
   let cameras = $state<MediaDeviceInfo[]>([])
   let microphones = $state<MediaDeviceInfo[]>([])
   const isLinux = window.electron.process.platform === 'linux'
-  const isMac = window.electron.process.platform === 'darwin'
 
   const isUsernameValid = $derived(usernameValue.length > 0 && usernameValue.length < 32)
   const isForegroundValid = $derived(/^#[0-9A-F]{6}$/i.test(foregroundValue))
@@ -78,8 +74,7 @@
         iceServers: iceServersValue.split('\n').map((srv) => JSON.parse(srv)),
         roomServerUrl: roomServerValue.trim(),
         bonjourEnabled,
-        bonjourServerUrl,
-        emergencyHotkey: Object.assign({}, emergencyHotkey)
+        bonjourServerUrl
       })
       appState.debugLogsEnabled = debugLogsEnabled
       appState.bonjourEnabled = bonjourEnabled
@@ -119,7 +114,6 @@
       roomServerValue = settings.roomServerUrl ?? ''
       bonjourEnabled = settings.bonjourEnabled === true
       bonjourServerUrl = settings.bonjourServerUrl || 'https://bonjour.p2p.kiwi'
-      if (settings.emergencyHotkey) emergencyHotkey = settings.emergencyHotkey
       await refreshMediaDevices()
     })()
     navigator.mediaDevices.addEventListener('devicechange', onDeviceChange)
@@ -317,11 +311,6 @@
         placeholder={'{ "urls": "stun:stun.l.google.com:19302" }'}
       ></textarea>
     </fieldset>
-
-    {#if isMac}
-      <h2 class="text-xl font-semibold mt-2">{L.remote_control()}</h2>
-      <MacSidecarPermissions />
-    {/if}
 
     <button class="btn btn-primary w-fit">{L.save()}</button>
   </form>

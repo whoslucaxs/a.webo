@@ -32,10 +32,6 @@ const en = {
   not_streaming_your_display: 'Dein Bildschirm wird nicht gestreamt',
   participant_connection_string: 'Teilnehmer-Verbindungszeichenfolge',
   privacty_policy: 'Privatsphärenrichtlinie',
-  remote_cursors_disabled: 'Remote cursors deaktiviert',
-  remote_cursors_enabled: 'Remote cursors aktiviert',
-  fullscreen_pointer_only:
-    'Cursor und Remote-Maus sind nur verfügbar, wenn der ganze Bildschirm geteilt wird.',
   remote_screen: 'Remote screen',
   report_a_bug: 'Einen Fehler melden',
   save: 'Speichern',
@@ -178,7 +174,8 @@ const en = {
   bonjour_invite_join: 'Mit Code beitreten',
   bonjour_invite_code: 'Einladungscode',
   bonjour_invite_expires: 'Läuft ab',
-  bonjour_invite_rate_limited: 'Zu viele Einladungscodes. Warte eine Minute und versuche es erneut.',
+  bonjour_invite_rate_limited:
+    'Zu viele Einladungscodes. Warte eine Minute und versuche es erneut.',
   bonjour_invite_invalid: 'Dieser Einladungscode ist ungültig.',
   bonjour_invite_expired: 'Dieser Einladungscode ist abgelaufen.',
   bonjour_invite_used: 'Dieser Einladungscode wurde bereits verwendet.',
@@ -189,31 +186,6 @@ const en = {
   bonjour_invite_unavailable: 'Zu dieser Sitzung kann niemand hinzugefügt werden.',
   bonjour_invite_busy: 'Verlasse die aktuelle Sitzung, bevor du mit einem Code beitrittst.',
   bonjour_invite_full: 'Diese Sitzung ist voll.',
-  remote_control: 'Fernsteuerung',
-  remote_control_mouse: 'Maus',
-  remote_control_keyboard: 'Tastatur',
-  remote_control_request: '{name} möchte die Steuerung',
-  remote_control_allow_mouse: 'Maus erlauben',
-  remote_control_allow_keyboard: 'Tastatur erlauben',
-  remote_control_allow_both: 'Beides erlauben',
-  remote_control_deny: 'Ablehnen',
-  remote_control_active: 'Fernsteuerung aktiv',
-  remote_control_controlling: 'Steuert {name}',
-  remote_control_emergency: 'Fernsteuerung durch Host-Hotkey deaktiviert',
-  remote_control_emergency_hotkey: 'Not-Aus: {hotkey}',
-  remote_control_unavailable: 'Fernsteuerung ist nicht verfügbar',
-  remote_control_evdev_permission:
-    'Der Notstopp sieht nicht jede Tastatur. Installiere build/udev/70-p2p-kiwi-input.rules nach /etc/udev/rules.d/ und melde dich erneut an.',
-  remote_control_request_permission: 'Bedienungshilfen erlauben',
-  remote_control_request_listen: 'Eingabeüberwachung erlauben',
-  remote_control_permission_helper:
-    'Erlaube p2p.kiwi Sidecar (kiwi.p2p.desktop.sidecar) in den Systemeinstellungen. Das Zeichnen der Overlay braucht keine dieser Berechtigungen. Bedienungshilfen erlauben Tippen und Mausbewegung. Die Eingabeüberwachung gilt nur für den Notstopp.',
-  remote_control_restart_required:
-    'Wenn du den Zugriff schon erlaubt hast, beende p2p.kiwi und öffne es erneut.',
-  remote_control_open_accessibility: 'Bedienungshilfen öffnen',
-  remote_control_open_input_monitoring: 'Eingabeüberwachung öffnen',
-  remote_control_recheck: 'Berechtigungen erneut prüfen',
-  remote_control_request_button: 'Steuerung anfragen',
 } satisfies BaseTranslation
 
 export default en

@@ -18,7 +18,6 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: 'src/preload/index.ts',
-          cursors: 'src/preload/cursors.ts',
           call: 'src/preload/call.ts',
         },
       },
@@ -30,7 +29,6 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: 'src/renderer/index.html',
-          cursors: 'src/renderer/cursors.html',
           call: 'src/renderer/call.html',
         },
       },

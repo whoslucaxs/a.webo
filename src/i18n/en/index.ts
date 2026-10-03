@@ -32,10 +32,6 @@ const en = {
   not_streaming_your_display: 'Not streaming your display',
   participant_connection_string: 'Participant connection string',
   privacty_policy: 'Privacy policy',
-  remote_cursors_disabled: 'Remote cursors disabled',
-  remote_cursors_enabled: 'Remote cursors enabled',
-  fullscreen_pointer_only:
-    'Cursors and remote mouse are only available when sharing the full screen.',
   remote_screen: 'Remote screen',
   report_a_bug: 'Report a bug',
   save: 'Save',
@@ -186,31 +182,6 @@ const en = {
   bonjour_invite_unavailable: 'Cannot add someone to this session.',
   bonjour_invite_busy: 'Leave the current session before joining with a code.',
   bonjour_invite_full: 'This session is full.',
-  remote_control: 'Remote control',
-  remote_control_mouse: 'Mouse',
-  remote_control_keyboard: 'Keyboard',
-  remote_control_request: '{name} is requesting control',
-  remote_control_allow_mouse: 'Allow mouse',
-  remote_control_allow_keyboard: 'Allow keyboard',
-  remote_control_allow_both: 'Allow both',
-  remote_control_deny: 'Deny',
-  remote_control_active: 'Remote control active',
-  remote_control_controlling: 'Controlling {name}',
-  remote_control_emergency: 'Remote control disabled by host hotkey',
-  remote_control_emergency_hotkey: 'Emergency stop: {hotkey}',
-  remote_control_unavailable: 'Remote control is unavailable',
-  remote_control_evdev_permission:
-    'The emergency stop cannot see every keyboard. Install build/udev/70-p2p-kiwi-input.rules into /etc/udev/rules.d/, then sign in again.',
-  remote_control_request_permission: 'Allow Accessibility',
-  remote_control_request_listen: 'Allow Input Monitoring',
-  remote_control_permission_helper:
-    'Approve p2p.kiwi Sidecar (kiwi.p2p.desktop.sidecar) in System Settings. Overlay drawing does not need either permission. Accessibility lets the helper type and move the pointer. Input Monitoring lets it see only the emergency-stop shortcut.',
-  remote_control_restart_required:
-    'If you already approved access, quit p2p.kiwi and open it again.',
-  remote_control_open_accessibility: 'Open Accessibility settings',
-  remote_control_open_input_monitoring: 'Open Input Monitoring settings',
-  remote_control_recheck: 'Recheck permissions',
-  remote_control_request_button: 'Request control',
 } satisfies BaseTranslation
 
 export default en

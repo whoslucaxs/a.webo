@@ -21,9 +21,6 @@ never be logged. Removed members lose later epochs.
 ts-mls is not a formal audit of this application. Do not treat rooms as
 formally audited.
 
-The overlay sidecar never sees WebRTC, MLS secrets, or ciphertext from the
-network. Native remote input is not enabled.
-
 See `docs/security/e2ee-threat-model.md` and `docs/security/adr-mls.md`.
 
 ## Reporting a Vulnerability

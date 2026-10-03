@@ -14,7 +14,6 @@ const fullMedia = {
   cameraIntent: true,
   microphoneActive: true,
   speaking: false,
-  remoteControlActive: false,
   cpuCeiling: UNLIMITED_CPU_CEILING,
 }
 
@@ -85,20 +84,6 @@ describe('allocateProfiles', () => {
     expect(decision.screenProfile.id).toBe('ultra')
     expect(decision.cameraProfile.id).toBe('suspended')
     expect(decision.cameraProfile.active).toBe(false)
-  })
-
-  it('yields camera earlier during remote control and keeps screen readable', () => {
-    const idle = allocateProfiles({ network: 'good', cpu: 'normal', ...fullMedia })
-    const controlling = allocateProfiles({
-      network: 'good',
-      cpu: 'normal',
-      ...fullMedia,
-      remoteControlActive: true,
-    })
-    expect(controlling.cameraProfile.id).not.toBe(idle.cameraProfile.id)
-    expect(controlling.screenProfile.id).toBe('high')
-    expect(controlling.screenProfile.maxFramerate).toBeLessThanOrEqual(20)
-    expect(controlling.screenProfile.maxHeight).toBe(1440)
   })
 
   it('reduces video complexity under CPU pressure without touching audio', () => {

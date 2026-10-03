@@ -77,20 +77,3 @@ tasks:
     cmds:
       - pnpm run check
     silent: true
-  sidecar:build:
-    desc: Builds the native overlay sidecar
-    cmds:
-      - ./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist
-  sidecar:test:
-    desc: Tests the native overlay sidecar
-    cmds:
-      - ./native/overlay-sidecar/scripts/test.sh
-  sidecar:dev:
-    desc: Builds the sidecar for local development
-    cmds:
-      - ./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist
-  sidecar:package:
-    desc: Builds the sidecar into extraResources
-    cmds:
-      - ./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist
-    silent: true

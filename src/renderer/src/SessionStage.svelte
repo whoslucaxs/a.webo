@@ -6,7 +6,6 @@
   import {
     ConnectionType,
     getDataFromKiwiUrl,
-    getUUIDv4,
     makeVideoDraggable,
     mayBeConnectionString
   } from './Utils'
@@ -14,10 +13,7 @@
   import SessionEndedOverlay from './SessionEndedOverlay.svelte'
   import PresenterVoteModal from './PresenterVoteModal.svelte'
   import type { Room } from './session/room.svelte'
-  import { debugLog } from './debugLog.svelte'
-  import MacSidecarPermissions from './MacSidecarPermissions.svelte'
   import { connectThrownText } from './session/connectionFailureText'
-  import { pointInVideoContent } from './session/videoContentPoint'
   import brokenVideoUrl from '../../assets/broken-video.svg?url'
 
   let {
@@ -32,13 +28,10 @@
     onReset: () => void
   } = $props()
 
-  const UUID = getUUIDv4()
   let zoomFactor = $state(1)
   let visualizerIsActive = $state(true)
   let connectionStringIsValid = $state<boolean | null>(null)
   let username = $state('')
-  let foregroundColor = $state('#1a1a1a')
-  let backgroundColor = $state('#ffffff')
   let inviteInFlight = false
   let inviteFormIsVisible = $state(false)
 
@@ -60,249 +53,7 @@
       destroy() { video.srcObject = null },
     }
   }
-  const localGrant = $derived(room.localRemoteGrant)
-  const controlling = $derived(Boolean(localGrant && (localGrant.mouse || localGrant.keyboard)))
-
-  let pendingMove = $state<{ x: number; y: number } | null>(null)
-  let moveFrame = 0
-  let captureFocus = $state(false)
   let videoStage: HTMLDivElement | undefined = $state()
-
-  const pointDetail = (point: { x: number; y: number } | null) =>
-    point
-      ? { x: Math.round(point.x * 1000) / 1000, y: Math.round(point.y * 1000) / 1000 }
-      : null
-
-  const contentPoint = (
-    e: MouseEvent,
-    opts?: { clamp?: boolean },
-  ): { x: number; y: number } | null => {
-    if (!remoteScreen) return null
-    return pointInVideoContent(
-      e.clientX,
-      e.clientY,
-      remoteScreen.getBoundingClientRect(),
-      remoteScreen.videoWidth,
-      remoteScreen.videoHeight,
-      opts,
-    )
-  }
-
-  const flushMove = (): void => {
-    moveFrame = 0
-    if (!pendingMove || !localGrant?.mouse) return
-    room.sendRemotePointerMove(pendingMove.x, pendingMove.y)
-    pendingMove = null
-  }
-
-  const queueMove = (e: MouseEvent): void => {
-    if (!localGrant?.mouse) {
-      onRemoteScreenMouseMove(e)
-      return
-    }
-    const holding = e.buttons !== 0
-    const point = contentPoint(e, { clamp: holding })
-    if (!point) {
-      debugLog.sample('remote-input', 'viewer pointer move dropped', {
-        buttons: e.buttons,
-        type: e.type,
-      })
-      return
-    }
-    debugLog.sample('remote-input', 'viewer pointer move', {
-      type: e.type,
-      buttons: e.buttons,
-      ...pointDetail(point),
-    })
-    pendingMove = point
-    if (!moveFrame) moveFrame = requestAnimationFrame(flushMove)
-  }
-
-  const buttonName = (button: number): 'left' | 'middle' | 'right' | 'back' | 'forward' | null => {
-    if (button === 0) return 'left'
-    if (button === 1) return 'middle'
-    if (button === 2) return 'right'
-    if (button === 3) return 'back'
-    if (button === 4) return 'forward'
-    return null
-  }
-
-  const videoIsFullscreen = (): boolean =>
-    Boolean(videoStage && document.fullscreenElement === videoStage)
-
-  const typingInPageField = (e: KeyboardEvent): boolean => {
-    const target = e.target
-    if (!(target instanceof HTMLElement)) return false
-    const tag = target.tagName
-    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
-  }
-
-  const onRemotePointerDown = (e: PointerEvent): void => {
-    if (!localGrant?.mouse && !localGrant?.keyboard) return
-    captureFocus = true
-    if (!localGrant?.mouse) return
-    const name = buttonName(e.button)
-    if (!name) return
-    e.preventDefault()
-    const target = e.currentTarget
-    if (target instanceof HTMLElement) {
-      try {
-        target.setPointerCapture(e.pointerId)
-      } catch {
-        // Capture is best-effort so a drag still ends on pointerup/cancel.
-      }
-    }
-    const point = contentPoint(e, { clamp: true })
-    debugLog.info('remote-input', 'viewer pointer down', {
-      button: name,
-      pointerId: e.pointerId,
-      pointerType: e.pointerType,
-      buttons: e.buttons,
-      captured: target instanceof HTMLElement && target.hasPointerCapture(e.pointerId),
-      ...pointDetail(point),
-    })
-    if (point) {
-      pendingMove = point
-      flushMove()
-    }
-    room.sendRemotePointerButton(name, 'down')
-  }
-
-  const onRemotePointerUp = (e: PointerEvent): void => {
-    if (!localGrant?.mouse) return
-    const name = buttonName(e.button)
-    if (!name) return
-    e.preventDefault()
-    debugLog.info('remote-input', 'viewer pointer up', {
-      button: name,
-      type: e.type,
-      pointerId: e.pointerId,
-      buttons: e.buttons,
-      ...pointDetail(contentPoint(e, { clamp: true })),
-    })
-    room.sendRemotePointerButton(name, 'up')
-  }
-
-  const onLostPointerCapture = (e: PointerEvent): void => {
-    debugLog.warn('remote-input', 'viewer lost pointer capture', {
-      pointerId: e.pointerId,
-      buttons: e.buttons,
-    })
-  }
-
-  const onRemoteWheel = (e: WheelEvent): void => {
-    if (!localGrant?.mouse) return
-    e.preventDefault()
-    room.sendRemoteWheel(e.deltaX, e.deltaY)
-  }
-
-  const onRemoteContextMenu = (e: MouseEvent): void => {
-    if (localGrant?.mouse) e.preventDefault()
-  }
-
-  const onWindowKey = (e: KeyboardEvent, action: 'down' | 'up'): void => {
-    const fullscreen = videoIsFullscreen()
-    if (fullscreen && e.key === 'Escape') {
-      e.preventDefault()
-      e.stopImmediatePropagation()
-    }
-    if (!localGrant?.keyboard) return
-    if (!fullscreen && !captureFocus) return
-    if (!fullscreen && typingInPageField(e)) return
-    forwardRemoteKey({
-      action,
-      code: e.code,
-      location: e.location,
-      repeat: e.repeat,
-      modifiers: { ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey }
-    })
-    e.preventDefault()
-    e.stopImmediatePropagation()
-  }
-
-  const forwardRemoteKey = (event: {
-    action: 'down' | 'up'
-    code: string
-    location?: number
-    repeat?: boolean
-    modifiers?: { ctrl: boolean; alt: boolean; shift: boolean; meta: boolean }
-  }): void => {
-    room.sendRemoteKey(event)
-  }
-
-  const fieldIsFocused = (): boolean => {
-    const target = document.activeElement
-    if (!(target instanceof HTMLElement)) return false
-    const tag = target.tagName
-    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
-  }
-
-  $effect(() => {
-    void remoteScreen
-    void videoStage
-    void captureFocus
-    const keyboardGrant = Boolean(localGrant?.keyboard)
-    if (!keyboardGrant) captureFocus = false
-    const down = (e: KeyboardEvent): void => {
-      const capturing = keyboardGrant && (videoIsFullscreen() || captureFocus) && !fieldIsFocused()
-      if (capturing) {
-        if (videoIsFullscreen() && e.key === 'Escape') {
-          e.preventDefault()
-          e.stopImmediatePropagation()
-        }
-        return
-      }
-      onWindowKey(e, 'down')
-    }
-    const up = (e: KeyboardEvent): void => {
-      const capturing = keyboardGrant && (videoIsFullscreen() || captureFocus) && !fieldIsFocused()
-      if (capturing) return
-      onWindowKey(e, 'up')
-    }
-    let keyboardLock: 'all' | 'escape' | 'off' = 'off'
-    const requestKeyboardLock = (mode: 'all' | 'escape' | 'off'): void => {
-      if (mode === keyboardLock) return
-      keyboardLock = mode
-      if (mode === 'off') {
-        navigator.keyboard?.unlock()
-        return
-      }
-      const pending =
-        mode === 'all' ? navigator.keyboard?.lock() : navigator.keyboard?.lock(['Escape'])
-      void pending?.catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        console.error(error)
-      })
-    }
-    const syncCapture = (): void => {
-      const fullscreen = videoIsFullscreen()
-      if (fullscreen) captureFocus = true
-      const capturing = keyboardGrant && (fullscreen || captureFocus) && !fieldIsFocused()
-      void window.KiwiApi.remoteControl.setLocalCapture(capturing)
-      requestKeyboardLock(fullscreen ? (keyboardGrant ? 'all' : 'escape') : 'off')
-    }
-    const unsubLocalKey = window.KiwiApi.remoteControl.onLocalKey((event) => {
-      if (!localGrant?.keyboard) return
-      forwardRemoteKey(event)
-    })
-    window.addEventListener('keydown', down, true)
-    window.addEventListener('keyup', up, true)
-    document.addEventListener('fullscreenchange', syncCapture)
-    document.addEventListener('focusin', syncCapture)
-    document.addEventListener('focusout', syncCapture)
-    syncCapture()
-    return (): void => {
-      unsubLocalKey()
-      void window.KiwiApi.remoteControl.setLocalCapture(false)
-      window.removeEventListener('keydown', down, true)
-      window.removeEventListener('keyup', up, true)
-      document.removeEventListener('fullscreenchange', syncCapture)
-      document.removeEventListener('focusin', syncCapture)
-      document.removeEventListener('focusout', syncCapture)
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
-      navigator.keyboard?.unlock()
-    }
-  })
 
   $effect(() => {
     if (remoteScreen) {
@@ -336,8 +87,6 @@
   onMount(async () => {
     const settings = await window.KiwiApi.getSettings()
     username = settings.username
-    foregroundColor = settings.foregroundColor
-    backgroundColor = settings.backgroundColor
   })
 
   const onMicrophoneToggle = (): void => {
@@ -355,11 +104,6 @@
 
   const onDisplayStreamToggle = (): void => {
     room.ToggleDisplayStream()
-  }
-
-  const toggleRemoteCursors = (): void => {
-    const next = !room.cursorsEnabled
-    room.ToggleRemoteCursors(next)
   }
 
   const leaveFullscreen = async (): Promise<void> => {
@@ -436,24 +180,6 @@
     }
   }
 
-  const onRemoteScreenDblClick = (): void => {
-    room.PingRemoteCursor(room.localPeerId || 'cursor-' + UUID)
-  }
-
-  const onRemoteScreenMouseMove = (e: MouseEvent): void => {
-    if (!remoteScreen || room.isPresenter) return
-    const point = contentPoint(e)
-    if (!point) return
-    room.UpdateRemoteCursor({
-      x: point.x,
-      y: point.y,
-      name: username,
-      id: 'cursor-' + UUID,
-      foregroundColor,
-      backgroundColor
-    })
-  }
-
   const onFullscreenClick = async (): Promise<void> => {
     if (!videoStage) return
     if (document.fullscreenElement === videoStage) {
@@ -461,7 +187,6 @@
       return
     }
     await videoStage.requestFullscreen()
-    captureFocus = true
   }
 
   const onExitFullscreenClick = (e: MouseEvent): void => {
@@ -514,34 +239,7 @@
           </span>
           <span>{L.change_screen()}</span>
         </button>
-        {#if room.isPresenter}
-        <button
-          title={room.windowShare
-            ? L.fullscreen_pointer_only()
-            : room.cursorsEnabled
-              ? L.remote_cursors_enabled()
-              : L.remote_cursors_disabled()}
-          class="btn {room.cursorsEnabled ? 'btn-success' : 'btn-error'}"
-          disabled={room.windowShare}
-          onclick={toggleRemoteCursors}
-        >
-          <span class="icon">
-            <i class="fas fa-mouse-pointer"></i>
-          </span>
-        </button>
-        {/if}
       {/if}
-    {#if !room.isPresenter}
-      {#if room.remoteScreenActive}
-        <button
-          class="btn {controlling ? 'btn-success' : 'btn-warning'}"
-          onclick={() => room.requestRemoteControl(true, true)}
-          disabled={Boolean(room.localRemoteGrant)}
-        >
-          <span>{L.remote_control_request_button()}</span>
-        </button>
-      {/if}
-    {/if}
     {#if room.hasAudioInput}
       <button
         aria-label={room.microphoneActive ? L.microphone_active() : L.microphone_inactive()}
@@ -648,82 +346,6 @@
   <div class="alert alert-warning mb-4">{L.identity_changed()}</div>
 {/if}
 
-{#if room.emergencyStopMessage}
-  <div class="alert alert-error mb-4">{L.remote_control_emergency()}</div>
-{/if}
-
-{#if controlling}
-  <div class="alert alert-info mb-4">
-    {L.remote_control_controlling({ name: room.presenterUsername() || L.presenter() })}
-    {#if localGrant?.mouse}· {L.remote_control_mouse()}{/if}
-    {#if localGrant?.keyboard}· {L.remote_control_keyboard()}{/if}
-  </div>
-{/if}
-
-{#if room.isPresenter && room.activeRemoteController}
-  {@const controller = room.peers.find((peer) => peer.id === room.activeRemoteController?.peerId)}
-  <div class="alert alert-warning mb-4">
-    <div>
-      <p class="font-semibold">{L.remote_control_active()}</p>
-      <p>
-        {controller?.username ?? room.activeRemoteController.peerId.slice(0, 8)}:
-        {#if room.activeRemoteController.mouse}{L.remote_control_mouse()}{/if}
-        {#if room.activeRemoteController.mouse && room.activeRemoteController.keyboard} + {/if}
-        {#if room.activeRemoteController.keyboard}{L.remote_control_keyboard()}{/if}
-      </p>
-      <p class="text-sm opacity-80">{L.remote_control_emergency_hotkey({ hotkey: room.emergencyHotkeyLabel })}</p>
-    </div>
-  </div>
-{/if}
-
-{#if room.isPresenter && room.remoteControlCaps && !room.remoteControlCaps.emergencyHotkey}
-  <div class="alert alert-warning mb-4">
-    <span>{L.remote_control_unavailable()}</span>
-    {#if room.remoteControlCaps.backend === 'macos'}
-      <MacSidecarPermissions
-        caps={room.remoteControlCaps}
-        onRequest={(capability) => room.requestRemoteControlPermission(capability)}
-      />
-    {:else if room.remoteControlCaps.unavailableReason === 'evdev-permission'}
-      <p class="text-sm">{L.remote_control_evdev_permission()}</p>
-    {:else if room.remoteControlCaps.unavailableReason === 'accessibility-permission'}
-      <button class="btn btn-sm" onclick={() => room.requestRemoteControlPermission('post')}>
-        {L.remote_control_request_permission()}
-      </button>
-    {/if}
-  </div>
-{/if}
-
-{#each room.remoteControlRequests as request (request.peerId)}
-  <div class="alert mb-4">
-    <span>{L.remote_control_request({ name: request.username })}</span>
-    <div class="flex flex-wrap gap-2">
-      <button
-        class="btn btn-sm"
-        disabled={room.windowShare}
-        title={room.windowShare ? L.fullscreen_pointer_only() : undefined}
-        onclick={() => room.grantRemoteControl(request.peerId, { mouse: true, keyboard: false })}
-      >
-        {L.remote_control_allow_mouse()}
-      </button>
-      <button class="btn btn-sm" onclick={() => room.grantRemoteControl(request.peerId, { mouse: false, keyboard: true })}>
-        {L.remote_control_allow_keyboard()}
-      </button>
-      <button
-        class="btn btn-sm btn-primary"
-        disabled={room.windowShare}
-        title={room.windowShare ? L.fullscreen_pointer_only() : undefined}
-        onclick={() => room.grantRemoteControl(request.peerId, { mouse: true, keyboard: true })}
-      >
-        {L.remote_control_allow_both()}
-      </button>
-      <button class="btn btn-sm btn-ghost" onclick={() => room.denyRemoteControlRequest(request.peerId)}>
-        {L.remote_control_deny()}
-      </button>
-    </div>
-  </div>
-{/each}
-
 <div class="mb-4">
   <h2 class="font-semibold mb-2">{L.e2ee_status()}</h2>
   {#if room.e2eeActive && room.mediaE2eeActive}
@@ -789,8 +411,6 @@
       <thead>
         <tr class="bg-base-300">
           <th><span class="fa-solid fa-user"></span> {L.username()}</th>
-          <th><span class="fa-solid fa-computer-mouse"></span> {L.remote_control_mouse()}</th>
-          <th><span class="fa-solid fa-keyboard"></span> {L.remote_control_keyboard()}</th>
           <th><span class="fa-solid fa-people-group"></span> Actions</th>
         </tr>
       </thead>
@@ -810,54 +430,6 @@
               </span>
             {/if}
           </td>
-          {#if room.isPresenter && peer.id !== room.localPeerId}
-            <td>
-              <label
-                class="flex items-center gap-1"
-                title={room.windowShare ? L.fullscreen_pointer_only() : undefined}
-              >
-                <input
-                  type="checkbox"
-                  class="checkbox"
-                  disabled={!room.displayStreamActive || room.windowShare}
-                  checked={Boolean(room.remoteControl[peer.id]?.mouse)}
-                  onchange={(e) => {
-                    const mouse = e.currentTarget.checked
-                    const keyboard = Boolean(room.remoteControl[peer.id]?.keyboard)
-                    if (mouse || keyboard) void room.grantRemoteControl(peer.id, { mouse, keyboard })
-                    else void room.revokeRemoteControl(peer.id, 'host')
-                  }}
-                />
-                </label>
-            </td>
-            <td>
-              <label class="flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  class="checkbox"
-                  disabled={room.displayStreamActive ? false : true}
-                  checked={Boolean(room.remoteControl[peer.id]?.keyboard)}
-                  onchange={(e) => {
-                    const keyboard = e.currentTarget.checked
-                    const mouse = Boolean(room.remoteControl[peer.id]?.mouse)
-                    if (mouse || keyboard) void room.grantRemoteControl(peer.id, { mouse, keyboard })
-                    else void room.revokeRemoteControl(peer.id, 'host')
-                  }}
-                />
-              </label>
-            </td>
-            {:else}
-              <td>
-                {#if room.remoteControl[peer.id]?.mouse}
-                  <span class="text-success fa-solid fa-check"></span>
-                {/if}
-              </td>
-              <td>
-                {#if room.remoteControl[peer.id]?.keyboard}
-                  <span class="text-success fa-solid fa-check"></span>
-                {/if}
-              </td>
-            {/if}
             <td>
             {#if peer.id !== room.localPeerId}
               <span class="tooltip tooltip-top" data-tip={L.remove_from_session()}>
@@ -900,15 +472,6 @@
         playsinline
         muted
         disablepictureinpicture
-        ondblclick={onRemoteScreenDblClick}
-        onmousemove={queueMove}
-        onpointermove={queueMove}
-        onpointerdown={onRemotePointerDown}
-        onpointerup={onRemotePointerUp}
-        onpointercancel={onRemotePointerUp}
-        onlostpointercapture={onLostPointerCapture}
-        onwheel={onRemoteWheel}
-        oncontextmenu={onRemoteContextMenu}
       ></video>
       <button
         type="button"

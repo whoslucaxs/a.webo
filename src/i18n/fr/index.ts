@@ -32,10 +32,6 @@ const fr = {
   not_streaming_your_display: 'Ne diffuse pas votre écran',
   participant_connection_string: 'Chaîne de connexion du participant',
   privacty_policy: 'Politique de confidentialité',
-  remote_cursors_disabled: 'Curseurs distants désactivés',
-  remote_cursors_enabled: 'Curseurs distants activés',
-  fullscreen_pointer_only:
-    'Les curseurs et la souris distante ne sont disponibles que lors du partage de tout l’écran.',
   remote_screen: 'Écran distant',
   report_a_bug: 'Signaler un bug',
   save: 'Enregistrer',
@@ -187,31 +183,6 @@ const fr = {
   bonjour_invite_unavailable: 'Impossible d’ajouter quelqu’un à cette session.',
   bonjour_invite_busy: 'Quittez la session en cours avant de rejoindre avec un code.',
   bonjour_invite_full: 'Cette session est pleine.',
-  remote_control: 'Contrôle à distance',
-  remote_control_mouse: 'Souris',
-  remote_control_keyboard: 'Clavier',
-  remote_control_request: '{name} demande le contrôle',
-  remote_control_allow_mouse: 'Autoriser la souris',
-  remote_control_allow_keyboard: 'Autoriser le clavier',
-  remote_control_allow_both: 'Autoriser les deux',
-  remote_control_deny: 'Refuser',
-  remote_control_active: 'Contrôle à distance actif',
-  remote_control_controlling: 'Contrôle de {name}',
-  remote_control_emergency: 'Contrôle à distance désactivé par le raccourci hôte',
-  remote_control_emergency_hotkey: 'Arrêt d’urgence : {hotkey}',
-  remote_control_unavailable: 'Le contrôle à distance est indisponible',
-  remote_control_evdev_permission:
-    'L’arrêt d’urgence ne voit pas tous les claviers. Installez build/udev/70-p2p-kiwi-input.rules dans /etc/udev/rules.d/, puis reconnectez-vous.',
-  remote_control_request_permission: 'Autoriser l’accessibilité',
-  remote_control_request_listen: 'Autoriser la surveillance de l’entrée',
-  remote_control_permission_helper:
-    'Autorisez p2p.kiwi Sidecar (kiwi.p2p.desktop.sidecar) dans Réglages Système. Dessiner le curseur ne demande aucune de ces autorisations. L’accessibilité permet la saisie. La surveillance de l’entrée ne sert qu’au raccourci d’arrêt.',
-  remote_control_restart_required:
-    'Si vous avez déjà autorisé l’accès, quittez p2p.kiwi puis rouvrez-le.',
-  remote_control_open_accessibility: 'Ouvrir Accessibilité',
-  remote_control_open_input_monitoring: 'Ouvrir Surveillance de l’entrée',
-  remote_control_recheck: 'Revérifier les autorisations',
-  remote_control_request_button: 'Demander le contrôle',
 } satisfies BaseTranslation
 
 export default fr

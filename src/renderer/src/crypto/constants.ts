@@ -2,14 +2,7 @@ export const CRYPTO_PROTOCOL_VERSION = 1
 export const E2EE_PROTOCOL = 'mls-v1' as const
 export const CIPHERSUITE = 'MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519' as const
 
-export type AppDomain =
-  | 'chat'
-  | 'cursor'
-  | 'control'
-  | 'drawing'
-  | 'remote-input'
-  | 'camera-state'
-  | 'media'
+export type AppDomain = 'chat' | 'control' | 'drawing' | 'camera-state' | 'media'
 
 export const exporterLabel = (domain: AppDomain, extra = ''): string =>
   extra ? `p2p.kiwi/v1/${domain}/${extra}` : `p2p.kiwi/v1/${domain}`

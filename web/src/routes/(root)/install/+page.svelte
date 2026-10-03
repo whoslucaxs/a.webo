@@ -254,35 +254,6 @@
 						>, before installing.</span
 					>
 				</div>
-				<div role="alert" class="alert alert-info">
-					<span class="fa-solid fa-circle-info mr-2"></span>
-					<span
-						>As of now (2026-09-23) the AUR package doesn't install the necessary
-						<a
-							class="link text-info-content link-external"
-							href="https://raw.githubusercontent.com/dont-be-evil-company/p2p.kiwi/refs/heads/main/build/udev/70-p2p-kiwi-input.rules"
-							>udev rules</a
-						>
-						for reading keyboard input events, so remote control won't work out of the box.
-					</span>
-				</div>
-				<details class="mt-5 mb-5">
-					<summary class="cursor-pointer">Show instructions for installing udev rules</summary>
-					<p class="mt-5 mb-5 text-sm">
-						If you want to use remote control, please install the
-						<a
-							class="link text-info link-external"
-							href="https://raw.githubusercontent.com/dont-be-evil-company/p2p.kiwi/refs/heads/main/build/udev/70-p2p-kiwi-input.rules"
-							>udev rules</a
-						>
-						manually by copying the rules file to <code>/etc/udev/rules.d/</code>
-						and then
-					</p>
-					<CodeBlock
-						lang="sh"
-						code={`sudo chmod 644 /etc/udev/rules.d/70-p2p-kiwi-input.rules && sudo udevadm control --reload-rules || true && sudo udevadm trigger --subsystem-match=input --subsystem-match=misc || true`}
-					/>
-				</details>
 			</div>
 			<p>
 				<a href="/"><button class="btn btn-primary mt-8">Back home</button></a>

@@ -26,10 +26,6 @@ import type { MediaStreamIdentity } from '../crypto/roomCrypto'
 import type { AudioProfile, CameraProfile, ScreenProfile } from './adaptive/types'
 import { scaleResolutionDownBy } from './adaptive/qualityProfiles'
 
-export const REMOTE_INPUT_MOTION_LABEL = 'remote-input-motion'
-export const REMOTE_INPUT_ACTIONS_LABEL = 'remote-input-actions'
-export const MOTION_BACKPRESSURE_BYTES = 8 * 1024
-
 export type PeerLinkEvents = {
   onControl: (msg: ControlMessage) => void
   onTrack: (event: RTCTrackEvent) => void
@@ -40,8 +36,6 @@ export type PeerLinkEvents = {
   onMlsOpen?: () => void
   onMlsFrame?: (frame: MlsFrame) => void
   onIceCandidate?: (candidate: RTCIceCandidateInit | null) => void
-  onRemoteInputMotion?: (raw: string) => void
-  onRemoteInputAction?: (raw: string) => void
 }
 
 type PeerLinkOptions = {
@@ -65,8 +59,6 @@ export class PeerLink {
   established = false
   private control: RTCDataChannel | null = null
   private mls: RTCDataChannel | null = null
-  private remoteInputMotion: RTCDataChannel | null = null
-  private remoteInputActions: RTCDataChannel | null = null
   private readonly events: PeerLinkEvents
   private makingOffer = false
   private ignoreOffer = false
@@ -84,8 +76,6 @@ export class PeerLink {
     trackKind: string
     identity: MediaStreamIdentity
   }> = []
-  private pendingMotion: string | null = null
-  private motionFlushTimer: ReturnType<typeof setTimeout> | null = null
   private readonly candidates: IceCandidateEvidence[] = []
   private readonly serverErrors: IceServerError[] = []
   private gatheringTimedOut = false
@@ -162,15 +152,6 @@ export class PeerLink {
       this.bindControl(this.control)
       this.mls = this.pc.createDataChannel('mls')
       this.bindMls(this.mls)
-      this.remoteInputMotion = this.pc.createDataChannel(REMOTE_INPUT_MOTION_LABEL, {
-        ordered: false,
-        maxRetransmits: 0,
-      })
-      this.bindRemoteInput(this.remoteInputMotion, 'motion')
-      this.remoteInputActions = this.pc.createDataChannel(REMOTE_INPUT_ACTIONS_LABEL, {
-        ordered: true,
-      })
-      this.bindRemoteInput(this.remoteInputActions, 'action')
     } else {
       this.pc.ondatachannel = (event: RTCDataChannelEvent): void => {
         if (event.channel.label === 'control') {
@@ -180,14 +161,6 @@ export class PeerLink {
         if (event.channel.label === 'mls') {
           this.mls = event.channel
           this.bindMls(event.channel)
-        }
-        if (event.channel.label === REMOTE_INPUT_MOTION_LABEL) {
-          this.remoteInputMotion = event.channel
-          this.bindRemoteInput(event.channel, 'motion')
-        }
-        if (event.channel.label === REMOTE_INPUT_ACTIONS_LABEL) {
-          this.remoteInputActions = event.channel
-          this.bindRemoteInput(event.channel, 'action')
         }
       }
     }
@@ -253,31 +226,6 @@ export class PeerLink {
     if (!this.mls || this.mls.readyState !== 'open') return false
     this.mls.send(asBufferSource(encodeMlsFrame(frame)).buffer)
     return true
-  }
-
-  get motionBufferedAmount(): number {
-    return this.remoteInputMotion?.bufferedAmount ?? 0
-  }
-
-  sendRemoteInputMotion(raw: string): boolean {
-    if (!this.remoteInputMotion || this.remoteInputMotion.readyState !== 'open') return false
-    if (this.motionBufferedAmount > MOTION_BACKPRESSURE_BYTES) {
-      this.pendingMotion = raw
-      this.scheduleMotionFlush()
-      return true
-    }
-    return this.flushMotion(raw)
-  }
-
-  sendRemoteInputAction(raw: string): boolean {
-    if (!this.remoteInputActions || this.remoteInputActions.readyState !== 'open') return false
-    try {
-      this.remoteInputActions.send(raw)
-      return true
-    } catch (error) {
-      console.warn('remote-input action send failed', error)
-      return false
-    }
   }
 
   setMediaE2ee(media: MediaE2EE | null): void {
@@ -524,8 +472,6 @@ export class PeerLink {
   close(): void {
     if (this.closed) return
     this.closed = true
-    this.clearMotionFlush()
-    this.pendingMotion = null
     try {
       this.pc.close()
     } catch {
@@ -546,59 +492,6 @@ export class PeerLink {
     }
     channel.onopen = notifyOpen
     if (channel.readyState === 'open') queueMicrotask(notifyOpen)
-  }
-
-  private bindRemoteInput(channel: RTCDataChannel, kind: 'motion' | 'action'): void {
-    channel.onmessage = (event: MessageEvent<string>): void => {
-      const raw = String(event.data)
-      if (kind === 'motion') this.events.onRemoteInputMotion?.(raw)
-      else this.events.onRemoteInputAction?.(raw)
-    }
-    if (kind !== 'motion') return
-    try {
-      channel.bufferedAmountLowThreshold = MOTION_BACKPRESSURE_BYTES
-      channel.onbufferedamountlow = (): void => {
-        this.flushPendingMotion()
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  private scheduleMotionFlush(): void {
-    if (this.motionFlushTimer !== null) return
-    this.motionFlushTimer = setTimeout(() => {
-      this.motionFlushTimer = null
-      this.flushPendingMotion()
-    }, 16)
-  }
-
-  private clearMotionFlush(): void {
-    if (this.motionFlushTimer === null) return
-    clearTimeout(this.motionFlushTimer)
-    this.motionFlushTimer = null
-  }
-
-  private flushPendingMotion(): void {
-    const pending = this.pendingMotion
-    if (pending === null) return
-    if (this.motionBufferedAmount > MOTION_BACKPRESSURE_BYTES) {
-      this.scheduleMotionFlush()
-      return
-    }
-    this.pendingMotion = null
-    this.flushMotion(pending)
-  }
-
-  private flushMotion(raw: string): boolean {
-    if (!this.remoteInputMotion || this.remoteInputMotion.readyState !== 'open') return false
-    try {
-      this.remoteInputMotion.send(raw)
-      return true
-    } catch (error) {
-      console.warn('remote-input motion send failed', error)
-      return false
-    }
   }
 
   private async applyVideoSenderProfile(

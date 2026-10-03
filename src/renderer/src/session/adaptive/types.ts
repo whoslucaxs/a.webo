@@ -113,7 +113,6 @@ export type LinkHealth = {
   availableOutgoingBitrate?: number
   retransmitRate?: number
   speaking: boolean
-  remoteControlActive: boolean
 }
 
 export type AdaptiveDecision = {
@@ -128,7 +127,6 @@ export type AdaptiveTickContext = {
   cameraIntent: boolean
   microphoneActive: boolean
   speaking: boolean
-  remoteControlActive: boolean
   cpuCeiling: CpuCeiling
 }
 

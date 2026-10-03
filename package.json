@@ -29,10 +29,6 @@
     "build:linux-debug": "VERSION=0.0.1-debug make linux-debug",
     "build:arch": "./scripts/build-arch.sh",
     "test": "vp test",
-    "sidecar:build": "./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist",
-    "sidecar:test": "./native/overlay-sidecar/scripts/test.sh",
-    "sidecar:dev": "./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist",
-    "sidecar:package": "./native/overlay-sidecar/scripts/build.sh native/overlay-sidecar/dist",
     "translations:watch": "typesafe-i18n"
   },
   "dependencies": {

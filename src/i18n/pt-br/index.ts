@@ -32,10 +32,6 @@ const pt_br = {
   not_streaming_your_display: 'Não está transmitindo sua tela',
   participant_connection_string: 'Chave de conexão do participante',
   privacty_policy: 'Política de Privacidade',
-  remote_cursors_disabled: 'Cursor remoto desativado',
-  remote_cursors_enabled: 'Cursor remoto ativado',
-  fullscreen_pointer_only:
-    'Cursores e o mouse remoto só estão disponíveis ao compartilhar a tela inteira.',
   remote_screen: 'Transmissão de Tela',
   report_a_bug: 'Reportar um bug',
   save: 'Salvar',
@@ -188,31 +184,6 @@ const pt_br = {
   bonjour_invite_unavailable: 'Não é possível adicionar alguém a esta sessão.',
   bonjour_invite_busy: 'Saia da sessão atual antes de entrar com um código.',
   bonjour_invite_full: 'Esta sessão está cheia.',
-  remote_control: 'Controle remoto',
-  remote_control_mouse: 'Mouse',
-  remote_control_keyboard: 'Teclado',
-  remote_control_request: '{name} está pedindo controle',
-  remote_control_allow_mouse: 'Permitir mouse',
-  remote_control_allow_keyboard: 'Permitir teclado',
-  remote_control_allow_both: 'Permitir ambos',
-  remote_control_deny: 'Negar',
-  remote_control_active: 'Controle remoto ativo',
-  remote_control_controlling: 'Controlando {name}',
-  remote_control_emergency: 'Controle remoto desativado pelo atalho do anfitrião',
-  remote_control_emergency_hotkey: 'Parada de emergência: {hotkey}',
-  remote_control_unavailable: 'O controle remoto está indisponível',
-  remote_control_evdev_permission:
-    'A parada de emergência não vê todos os teclados. Instale build/udev/70-p2p-kiwi-input.rules em /etc/udev/rules.d/ e entre de novo.',
-  remote_control_request_permission: 'Permitir Acessibilidade',
-  remote_control_request_listen: 'Permitir Monitoramento de Entrada',
-  remote_control_permission_helper:
-    'Aprove p2p.kiwi Sidecar (kiwi.p2p.desktop.sidecar) em Ajustes do Sistema. Desenhar o cursor não exige essas permissões. Acessibilidade permite digitar e mover o ponteiro. O Monitoramento de Entrada vale só para o atalho de emergência.',
-  remote_control_restart_required:
-    'Se você já aprovou o acesso, encerre o p2p.kiwi e abra de novo.',
-  remote_control_open_accessibility: 'Abrir Acessibilidade',
-  remote_control_open_input_monitoring: 'Abrir Monitoramento de Entrada',
-  remote_control_recheck: 'Verificar permissões de novo',
-  remote_control_request_button: 'Pedir controle',
 } satisfies BaseTranslation
 
 export default pt_br

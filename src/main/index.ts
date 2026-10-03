@@ -5,7 +5,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { applyChromiumFlags } from './chromiumFlags'
 import { windowStateKeeper, settingsKeeper } from './stateKeeper'
-import { ipcMainHandlersInit, sidecarManager } from './ipcMainHandlers'
+import { ipcMainHandlersInit } from './ipcMainHandlers'
 import { installDisplayMediaHandler } from './screenPicker'
 import { isInProductionMode } from './utils'
 import { bonjourClient } from './bonjour/client'
@@ -141,8 +141,6 @@ if (!hasSingleInstanceLock) {
     ipcMainHandlersInit()
 
     const settings = await settingsKeeper()
-    sidecarManager.setDebugLogs(Boolean(settings.get().debugLogsEnabled))
-    void sidecarManager.start()
     const prefs = settings.get()
 
     const coldStartUrl = kiwiUrlFromArgv(process.argv)
@@ -161,9 +159,5 @@ if (!hasSingleInstanceLock) {
     if (process.platform !== 'darwin') {
       app.quit()
     }
-  })
-
-  app.on('before-quit', () => {
-    void sidecarManager.stop()
   })
 }
