@@ -213,6 +213,22 @@ type RootTranslation = {
    */
   username: string;
   /**
+   * P​r​o​f​i​l​e​ ​p​h​o​t​o
+   */
+  profile_photo: string;
+  /**
+   * C​h​o​o​s​e​ ​p​h​o​t​o
+   */
+  choose_photo: string;
+  /**
+   * R​e​m​o​v​e​ ​p​h​o​t​o
+   */
+  remove_photo: string;
+  /**
+   * C​h​o​o​s​e​ ​a​ ​P​N​G​,​ ​J​P​E​G​,​ ​o​r​ ​W​e​b​P​ ​i​m​a​g​e​ ​u​n​d​e​r​ ​5​ ​M​B
+   */
+  profile_photo_invalid: string;
+  /**
    * W​e​b​s​i​t​e
    */
   website: string;
@@ -851,6 +867,22 @@ export type TranslationFunctions = {
    * Username
    */
   username: () => LocalizedString;
+  /**
+   * Profile photo
+   */
+  profile_photo: () => LocalizedString;
+  /**
+   * Choose photo
+   */
+  choose_photo: () => LocalizedString;
+  /**
+   * Remove photo
+   */
+  remove_photo: () => LocalizedString;
+  /**
+   * Choose a PNG, JPEG, or WebP image under 5 MB
+   */
+  profile_photo_invalid: () => LocalizedString;
   /**
    * Website
    */

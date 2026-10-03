@@ -8,6 +8,7 @@ export type SettingsData = {
   username: string
   foregroundColor: string
   backgroundColor: string
+  avatar?: string
   language?: string
   isMicrophoneEnabledOnConnect: boolean
   hardwareVideoAcceleration: boolean

@@ -182,6 +182,10 @@
       <div class="rounded-box bg-base-100 p-2 flex flex-col items-center gap-1">
         {#if streams[peer.id]}
           <video class="w-full aspect-video rounded-box object-cover bg-black" autoplay playsinline muted use:attachStream={streams[peer.id]}></video>
+        {:else if peer.avatar}
+          <div class="w-full aspect-video rounded-box flex items-center justify-center bg-base-300">
+            <img class="h-20 w-20 rounded-full object-cover" src={peer.avatar} alt="" />
+          </div>
         {:else}
           <div
             class="w-full aspect-video rounded-box flex items-center justify-center text-xl font-bold"

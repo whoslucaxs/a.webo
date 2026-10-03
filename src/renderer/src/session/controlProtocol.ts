@@ -1,5 +1,6 @@
 import { truncateChatText } from './constants'
 import type { AppDomain, CryptoCapabilities } from '../crypto/constants'
+import { isAvatarDataUrl } from '../../../shared/avatar'
 export const PROTOCOL_VERSION = 1 as const
 
 export const PLAINTEXT_CONTROL_TYPES = new Set([
@@ -18,6 +19,7 @@ export type RosterPeer = {
   username: string
   foregroundColor: string
   backgroundColor: string
+  avatar?: string
 }
 
 type Envelope = {
@@ -37,6 +39,7 @@ export type HelloMessage = Envelope & {
   username: string
   foregroundColor: string
   backgroundColor: string
+  avatar?: string
   crypto?: HelloCrypto
 }
 
@@ -187,7 +190,8 @@ const isRosterPeer = (value: unknown): value is RosterPeer => {
     isString(value.id) &&
     isString(value.username) &&
     isString(value.foregroundColor) &&
-    isString(value.backgroundColor)
+    isString(value.backgroundColor) &&
+    (value.avatar === undefined || isAvatarDataUrl(value.avatar))
   )
 }
 
@@ -222,6 +226,7 @@ export const isControlMessage = (value: unknown): value is ControlMessage => {
         isString(value.username) &&
         isString(value.foregroundColor) &&
         isString(value.backgroundColor) &&
+        (value.avatar === undefined || isAvatarDataUrl(value.avatar)) &&
         (value.crypto === undefined || isHelloCrypto(value.crypto))
       )
     case 'roster':

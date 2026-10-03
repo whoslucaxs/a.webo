@@ -12,6 +12,7 @@ export type SettingsData = {
   username: string
   foregroundColor: string
   backgroundColor: string
+  avatar?: string
   language: string
   isMicrophoneEnabledOnConnect: boolean
   hardwareVideoAcceleration: boolean
@@ -28,7 +29,7 @@ export type SettingsData = {
 
 type Settings = {
   get: () => SettingsData
-  set: (data: SettingsData) => void
+  set: (data: SettingsData) => Promise<void>
 }
 
 type WindowState = {
@@ -47,6 +48,7 @@ export const defaultSettings: SettingsData = {
   username: 'Kiwi',
   foregroundColor: '#ffffff',
   backgroundColor: '#0099ff',
+  avatar: '',
   language: 'en',
   isMicrophoneEnabledOnConnect: true,
   hardwareVideoAcceleration: true,

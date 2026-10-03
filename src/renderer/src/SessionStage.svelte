@@ -425,9 +425,13 @@
   <div class="member-list">
     {#each room.peers as peer (peer.id)}
       <div class="member-row">
-        <span class="member-avatar" style:background={peer.backgroundColor} style:color={peer.foregroundColor}>
-          {peer.username.trim().charAt(0).toUpperCase() || '?'}
-        </span>
+        {#if peer.avatar}
+          <img class="member-avatar" src={peer.avatar} alt="" />
+        {:else}
+          <span class="member-avatar" style:background={peer.backgroundColor} style:color={peer.foregroundColor}>
+            {peer.username.trim().charAt(0).toUpperCase() || '?'}
+          </span>
+        {/if}
         <span class="member-name" title={peer.username}>
           {peer.username}{peer.id === room.localPeerId ? ` (${L.you()})` : ''}
           {#if peer.id === room.coordinatorId}<i class="fa-solid fa-crown" title={L.coordinator()}></i>{/if}
@@ -622,6 +626,7 @@
     border-radius: 50%;
     font-size: 0.8rem;
     font-weight: 700;
+    object-fit: cover;
   }
   .member-name {
     min-width: 0;

@@ -11,6 +11,7 @@ export type CallPeerInfo = {
   name: string
   foregroundColor: string
   backgroundColor: string
+  avatar?: string
   cameraEnabled: boolean
   isLocal: boolean
 }

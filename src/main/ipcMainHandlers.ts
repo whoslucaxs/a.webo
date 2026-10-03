@@ -19,7 +19,7 @@ export const ipcMainHandlersInit = (): void => {
 
   ipcMain.handle('updateSettings', async (_, settings): Promise<void> => {
     const settingsKeeperInstance = await settingsKeeper()
-    settingsKeeperInstance.set(settings)
+    await settingsKeeperInstance.set(settings)
     if (settings?.bonjourEnabled && settings?.bonjourServerUrl) {
       bonjourClient.configured(String(settings.bonjourServerUrl))
     }

@@ -5,10 +5,12 @@
   import { debugLog } from './debugLog.svelte'
   import { toast } from './toastState.svelte'
   import { normalizeRoomServer } from './session/roomServer'
+  import { isAvatarDataUrl } from '../../shared/avatar'
   type StoredSettings = Awaited<ReturnType<typeof window.KiwiApi.getSettings>>
 
   let savedSettings = $state<StoredSettings | null>(null)
   let username = $state('')
+  let avatar = $state('')
   let foregroundColor = $state('#ffffff')
   let backgroundColor = $state('#0099ff')
   let language = $state('en')
@@ -43,6 +45,7 @@
       const settings = await window.KiwiApi.getSettings()
       savedSettings = settings
       username = settings.username
+      avatar = isAvatarDataUrl(settings.avatar) ? settings.avatar : ''
       foregroundColor = settings.foregroundColor
       backgroundColor = settings.backgroundColor
       language = settings.language || 'en'
@@ -69,6 +72,7 @@
       const settings: StoredSettings = {
         ...savedSettings,
         username: username.trim(),
+        avatar,
         foregroundColor,
         backgroundColor,
         language,
@@ -96,6 +100,34 @@
       saving = false
     }
   }
+
+  const chooseAvatar = async (event: Event): Promise<void> => {
+    const input = event.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+    try {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5_000_000) throw new Error()
+      const bitmap = await createImageBitmap(file)
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = 96
+        canvas.height = 96
+        const context = canvas.getContext('2d')
+        if (!context) throw new Error()
+        const edge = Math.min(bitmap.width, bitmap.height)
+        context.drawImage(bitmap, (bitmap.width - edge) / 2, (bitmap.height - edge) / 2, edge, edge, 0, 0, 96, 96)
+        const next = canvas.toDataURL('image/webp', 0.78)
+        if (!isAvatarDataUrl(next)) throw new Error()
+        avatar = next
+      } finally {
+        bitmap.close()
+      }
+    } catch {
+      toast.show('error', L.profile_photo_invalid())
+    } finally {
+      input.value = ''
+    }
+  }
 </script>
 
 <div class="settings-page" data-theme="business">
@@ -115,6 +147,21 @@
           <span>{L.username()}</span>
           <input class="input w-full" class:input-error={!usernameValid} bind:value={username} maxlength="31" required />
         </label>
+        <div class="settings-field">
+          <span>{L.profile_photo()}</span>
+          <div class="avatar-row">
+            {#if avatar}
+              <img class="avatar-preview" src={avatar} alt="" />
+            {:else}
+              <span class="avatar-preview avatar-initial" style:background={backgroundColor} style:color={foregroundColor}>
+                {username.trim().charAt(0).toUpperCase() || '?'}
+              </span>
+            {/if}
+            <label class="btn btn-sm" for="profile-photo-input">{L.choose_photo()}</label>
+            <input id="profile-photo-input" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onchange={chooseAvatar} />
+            {#if avatar}<button class="btn btn-ghost btn-sm" type="button" onclick={() => avatar = ''}>{L.remove_photo()}</button>{/if}
+          </div>
+        </div>
         <div class="color-fields">
           <label class="settings-field">
             <span>{L.foreground_color()}</span>
@@ -205,6 +252,9 @@
   .settings-toggle { display: flex; align-items: center; gap: 0.8rem; font-size: 0.85rem; }
   .color-fields { display: flex; gap: 1.5rem; }
   .color-fields input { width: 3.5rem; height: 2.5rem; border: 0; padding: 0; background: transparent; cursor: pointer; }
+  .avatar-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+  .avatar-preview { width: 3.5rem; height: 3.5rem; flex: none; border-radius: 50%; object-fit: cover; }
+  .avatar-initial { display: grid; place-items: center; font-size: 1.25rem; font-weight: 700; }
   .settings-save { align-self: flex-end; min-width: 8rem; }
   @media (max-width: 700px) {
     .settings-shell { grid-template-columns: 1fr; padding: 1rem; gap: 1rem; }

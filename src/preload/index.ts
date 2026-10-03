@@ -50,6 +50,7 @@ type CallPeerInfo = {
   name: string
   foregroundColor: string
   backgroundColor: string
+  avatar?: string
   cameraEnabled: boolean
   isLocal: boolean
 }
@@ -101,6 +102,7 @@ const KiwiApi = {
     username: string
     foregroundColor: string
     backgroundColor: string
+    avatar?: string
     language: string
     isMicrophoneEnabledOnConnect: boolean
     hardwareVideoAcceleration: boolean
@@ -121,6 +123,7 @@ const KiwiApi = {
     language: string
     foregroundColor: string
     backgroundColor: string
+    avatar?: string
     isMicrophoneEnabledOnConnect: boolean
     hardwareVideoAcceleration: boolean
     debugLogsEnabled: boolean
@@ -133,7 +136,7 @@ const KiwiApi = {
     bonjourEnabled?: boolean
     bonjourServerUrl?: string
   }): Promise<void> => {
-    ipcRenderer.invoke('updateSettings', settings)
+    await ipcRenderer.invoke('updateSettings', settings)
   },
   getDeviceIdentity: async (): Promise<{
     publicKey: string

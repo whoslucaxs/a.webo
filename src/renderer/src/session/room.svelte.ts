@@ -1,5 +1,6 @@
 import type { CallChatMessage, CallPeerInfo } from '../callTypes'
 import type { SettingsData } from '../types'
+import { isAvatarDataUrl } from '../../../shared/avatar'
 import type { RTCSessionDescriptionOptions } from '../Utils'
 import {
   ConnectionType,
@@ -138,6 +139,7 @@ export class Room {
   private cameraSendStreamId = ''
   private userSettings: SettingsData | null = null
   private username = ''
+  private avatar = ''
   private foregroundColor = '#1a1a1a'
   private backgroundColor = '#ffffff'
   private links = new Map<string, PeerLink>()
@@ -294,6 +296,7 @@ export class Room {
     this.roomIceServers = opts?.iceServers ?? null
     this.userSettings = await window.KiwiApi.getSettings()
     this.username = this.userSettings.username
+    this.avatar = isAvatarDataUrl(this.userSettings.avatar) ? this.userSettings.avatar : ''
     this.foregroundColor = this.userSettings.foregroundColor
     this.backgroundColor = this.userSettings.backgroundColor
     this.remoteVideo = v
@@ -1325,6 +1328,7 @@ export class Room {
       v: PROTOCOL_VERSION,
       peerId: this.localPeerId,
       username: this.username,
+      avatar: this.avatar || undefined,
       foregroundColor: this.foregroundColor,
       backgroundColor: this.backgroundColor,
       crypto: this.helloCrypto(),
@@ -1579,6 +1583,7 @@ export class Room {
     this.upsertPeer({
       id: msg.peerId,
       username: msg.username,
+      avatar: msg.avatar,
       foregroundColor: msg.foregroundColor,
       backgroundColor: msg.backgroundColor,
     })
@@ -2404,6 +2409,7 @@ export class Room {
     this.upsertPeer({
       id: this.localPeerId,
       username: this.username,
+      avatar: this.avatar || undefined,
       foregroundColor: this.foregroundColor,
       backgroundColor: this.backgroundColor,
     })
@@ -2436,6 +2442,7 @@ export class Room {
           {
             id: this.localPeerId,
             username: this.username,
+            avatar: this.avatar || undefined,
             foregroundColor: this.foregroundColor,
             backgroundColor: this.backgroundColor,
           },
@@ -2828,6 +2835,7 @@ export class Room {
     return uniquePeersById(this.peers).map((peer) => ({
       id: peer.id,
       name: peer.username,
+      avatar: peer.avatar,
       foregroundColor: peer.foregroundColor,
       backgroundColor: peer.backgroundColor,
       cameraEnabled:

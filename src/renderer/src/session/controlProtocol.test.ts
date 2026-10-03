@@ -20,6 +20,21 @@ describe('controlProtocol', () => {
     expect(parsed).toEqual(msg)
   })
 
+  it('accepts a profile photo and rejects unsafe image data', () => {
+    const hello = {
+      t: 'hello' as const,
+      v: PROTOCOL_VERSION,
+      peerId: 'a',
+      username: 'Kiwi',
+      foregroundColor: '#1a1a1a',
+      backgroundColor: '#fff',
+      avatar: 'data:image/webp;base64,AAAA',
+    }
+    expect(parseControlMessage(serializeControlMessage(hello))).toEqual(hello)
+    expect(parseControlMessage(JSON.stringify({ ...hello, avatar: 'data:image/svg+xml;base64,AAAA' }))).toBeNull()
+    expect(parseControlMessage(JSON.stringify({ ...hello, avatar: hello.avatar + 'A'.repeat(24_000) }))).toBeNull()
+  })
+
   it('rejects unknown types and invalid payloads', () => {
     expect(parseControlMessage('{"t":"nope","v":1}')).toBeNull()
     expect(parseControlMessage('not-json')).toBeNull()

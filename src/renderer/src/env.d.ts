@@ -29,6 +29,7 @@ type CallPeerInfo = {
   name: string;
   foregroundColor: string;
   backgroundColor: string;
+  avatar?: string;
   cameraEnabled: boolean;
   isLocal: boolean;
 };
@@ -44,6 +45,7 @@ type KiwiApi = {
     language: string;
     foregroundColor: string;
     backgroundColor: string;
+    avatar?: string;
     isMicrophoneEnabledOnConnect: boolean;
     hardwareVideoAcceleration: boolean;
     debugLogsEnabled: boolean;
@@ -60,6 +62,7 @@ type KiwiApi = {
     username: string;
     foregroundColor: string;
     backgroundColor: string;
+    avatar?: string;
     language: string;
     isMicrophoneEnabledOnConnect: boolean;
     hardwareVideoAcceleration: boolean;
