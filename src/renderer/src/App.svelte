@@ -12,12 +12,15 @@
   import IncomingCallNotice from './IncomingCallNotice.svelte'
   import { appState } from './appState.svelte'
   import { debugLog } from './debugLog.svelte'
+  import { L } from './translations'
   import { getDataFromKiwiUrl } from './Utils'
   import { parseChannelLink, parseRoomLink } from './session/roomServer'
   import { sessionRoom as room } from './session/sessionStore.svelte'
   import { onMount } from 'svelte'
 
   let screenPicker: ScreenPicker | undefined = $state()
+  let channelsComponent: { join: (url: string) => Promise<void> } | undefined = $state()
+  let homeSection = $state('home')
   let closedDrawerForCall = false
 
   const presenting = $derived(Boolean(appState.sessionSource === 'host' || appState.sessionSource === 'channel' || room.isLive || room.sessionEndedReason))
@@ -53,7 +56,7 @@
     }
     if (parseChannelLink(data.url)) {
       appState.activeView = 'home'
-      appState.channelUrl = data.url
+      appState.participantUrl = data.url
       return
     }
     const urlData = await getDataFromKiwiUrl(data.url)
@@ -80,13 +83,24 @@
     <div class={presenting ? 'hidden' : ''}>
       {#if appState.activeView === 'home'}
         <main class="home-page" data-theme="business">
-          <div class="home-heading">
-            <h1>p2p.kiwi</h1>
-          </div>
-          <div class="home-options">
-            <section class="home-card"><Host /></section>
-            <section class="home-card"><Join /></section>
-            <section class="home-card" style="grid-column: 1 / -1"><Channels /></section>
+          <aside class="home-sidebar" aria-label={L.audio_chats()}>
+            <a class="home-sidebar-link" class:selected={homeSection === 'home'} href="#home-top" onclick={() => homeSection = 'home'}><i class="fa-solid fa-house"></i><span>{L.home()}</span></a>
+            <a class="home-sidebar-link" class:selected={homeSection === 'temporary'} href="#temporary-card" onclick={() => homeSection = 'temporary'}><i class="fa-regular fa-clock"></i><span>{L.temporary_chat()}</span></a>
+            <a class="home-sidebar-link" class:selected={homeSection === 'channels'} href="#channel-card" onclick={() => homeSection = 'channels'}><i class="fa-solid fa-hashtag"></i><span>{L.permanent_channels()}</span></a>
+            <a class="home-sidebar-link" class:selected={homeSection === 'saved'} href="#saved-channels" onclick={() => homeSection = 'saved'}><i class="fa-regular fa-bookmark"></i><span>{L.saved_channels()}</span></a>
+            <div class="home-sidebar-divider"></div>
+            <button class="home-sidebar-link" onclick={() => appState.activeView = 'settings'}><i class="fa-solid fa-gear"></i><span>{L.settings()}</span></button>
+          </aside>
+          <div id="home-top" class="home-main">
+            <div class="home-heading">
+              <div><h1>{L.audio_chats()}</h1><p>{L.audio_chats_description()}</p></div>
+              <span class="home-motto"><i class="fa-solid fa-wave-square"></i>{L.talk_share()}</span>
+            </div>
+            <div class="home-options">
+              <section id="temporary-card" class="home-card"><Host /></section>
+              <section id="channel-card" class="home-card home-card-channel"><Channels bind:this={channelsComponent} /></section>
+              <section id="join-card" class="home-card"><Join onChannelJoin={(url) => void channelsComponent?.join(url)} /></section>
+            </div>
           </div>
         </main>
       {:else if appState.activeView === 'settings'}

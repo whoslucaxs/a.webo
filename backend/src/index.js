@@ -38,14 +38,17 @@ export default {
     if ((url.pathname === '/rooms' || url.pathname === '/channels') && request.method === 'POST') {
       roomId = crypto.randomUUID()
       const permanent = url.pathname === '/channels'
-      const body = permanent ? await readBody(request).catch(() => null) : null
+      const body = await readBody(request).catch(() => null)
       if (permanent && (typeof body?.joinAuth !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(body.joinAuth))) {
         return error('invalid channel authentication')
+      }
+      if (!permanent && body && (!Number.isInteger(body.durationMinutes) || body.durationMinutes < 15 || body.durationMinutes > 240 || !Number.isInteger(body.maxParticipants) || body.maxParticipants < 2 || body.maxParticipants > 4)) {
+        return error('invalid room options')
       }
       forwarded = new Request(`${url.origin}/rooms/${roomId}/create`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ hostKey: crypto.randomUUID(), permanent, joinAuth: body?.joinAuth }),
+        body: JSON.stringify({ hostKey: crypto.randomUUID(), permanent, joinAuth: body?.joinAuth, durationMinutes: body?.durationMinutes, maxParticipants: body?.maxParticipants }),
       })
     }
     if (!roomId) return error('not found', 404)
@@ -72,10 +75,11 @@ export class Room {
       let room = await this.state.storage.get('room')
       if (action[0] === 'create' && request.method === 'POST') {
         if (room) return error('room already exists', 409)
-        const { hostKey, permanent, joinAuth } = await readBody(request)
+        const { hostKey, permanent, joinAuth, durationMinutes, maxParticipants } = await readBody(request)
         if (typeof hostKey !== 'string' || hostKey.length < 30) return error('invalid host key')
         if (permanent && (typeof joinAuth !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(joinAuth))) return error('invalid channel authentication')
-        room = { hostKey, permanent: Boolean(permanent), joinAuth, leaseUntil: permanent ? Date.now() + LEADER_LEASE_MS : 0, expiresAt: Date.now() + ROOM_LIFETIME_MS, joins: {}, iceIssues: 0, iceWindowAt: Date.now() }
+        if (!permanent && (durationMinutes !== undefined || maxParticipants !== undefined) && (!Number.isInteger(durationMinutes) || durationMinutes < 15 || durationMinutes > 240 || !Number.isInteger(maxParticipants) || maxParticipants < 2 || maxParticipants > 4)) return error('invalid room options')
+        room = { hostKey, permanent: Boolean(permanent), joinAuth, leaseUntil: permanent ? Date.now() + LEADER_LEASE_MS : 0, expiresAt: Date.now() + (durationMinutes ?? ROOM_LIFETIME_MS / 60000) * 60000, maxJoiners: permanent ? MAX_JOINERS : (maxParticipants ?? 4) - 1, joins: {}, iceIssues: 0, iceWindowAt: Date.now() }
         await this.state.storage.put('room', room)
         if (!permanent) await this.state.storage.setAlarm(room.expiresAt)
         return json({ roomId: url.pathname.split('/')[2], hostKey }, 201)
@@ -136,7 +140,7 @@ export class Room {
         const active = Object.values(room.joins).filter(
           (join) => (room.permanent ? join.createdAt + JOIN_LIFETIME_MS >= Date.now() : join.status === 'done' || join.createdAt + JOIN_LIFETIME_MS >= Date.now()),
         )
-        if (active.length >= MAX_JOINERS) return error('room is full', 409)
+        if (active.length >= (room.maxJoiners ?? MAX_JOINERS)) return error('room is full', 409)
         const joinId = crypto.randomUUID()
         room.joins[joinId] = { status: 'waiting', createdAt: Date.now() }
         await this.state.storage.put('room', room)

@@ -13,8 +13,9 @@ class AppState {
   bonjourVisible = $state(false)
   hostUrl = $state('')
   roomLink = $state('')
+  sessionTitle = $state('')
+  sessionDescription = $state('')
   participantUrl = $state('')
-  channelUrl = $state('')
   sessionSource = $state<SessionSource | null>(null)
   private sessionReset: (() => void) | null = null
 

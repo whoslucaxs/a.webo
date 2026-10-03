@@ -7,7 +7,9 @@
   import { encodeInviteFragment, stripInviteFragment } from './crypto/invite'
   import { sessionRoom as room } from './session/sessionStore.svelte'
   import { iceFailureText } from './session/connectionFailureText'
-  import { joinRoom, joinStatus, parseRoomLink, roomIceServers, sendAnswer } from './session/roomServer'
+  import { joinRoom, joinStatus, parseChannelLink, parseRoomLink, roomIceServers, sendAnswer } from './session/roomServer'
+
+  let { onChannelJoin }: { onChannelJoin: (url: string) => void } = $props()
 
   let connecting = $state(false)
   let waiting = $state(false)
@@ -15,7 +17,7 @@
   let polling = false
   let username = ''
   let joinId = ''
-  const valid = $derived(parseRoomLink(appState.participantUrl) !== null)
+  const valid = $derived(parseRoomLink(appState.participantUrl) !== null || parseChannelLink(appState.participantUrl) !== null)
 
   $effect(() => {
     if (appState.sessionSource !== 'join') return
@@ -54,11 +56,17 @@
 
   const onConnectClick = async (): Promise<void> => {
     if (connecting) return
+    if (parseChannelLink(appState.participantUrl)) {
+      onChannelJoin(appState.participantUrl)
+      return
+    }
     const link = parseRoomLink(appState.participantUrl)
     if (!link) return
     connecting = true
     try {
       const iceServers = await roomIceServers(link.server, link.roomId)
+      appState.sessionTitle = link.name || ''
+      appState.sessionDescription = ''
       username = (await window.KiwiApi.getSettings()).username
       const setup = await room.Setup(document.createElement('video'), { iceServers })
       if (setup !== 'ok') throw new Error(L.connection_failed())
@@ -84,6 +92,8 @@
     waiting = false
     joinId = ''
     appState.participantUrl = ''
+    appState.sessionTitle = ''
+    appState.sessionDescription = ''
     appState.navigationEnabled = true
     appState.isWatching = false
     appState.isCoordinator = false
@@ -96,15 +106,17 @@
   }
 </script>
 
-<div class="home-action">
-  <div class="home-action-icon"><i class="fa-solid fa-right-to-bracket"></i></div>
-  <h2>{L.join_a_session()}</h2>
+<div class="home-action home-action-join">
+  <div class="card-heading">
+    <div class="home-action-icon"><i class="fa-solid fa-right-to-bracket"></i></div>
+    <div class="card-heading-copy"><h2>{L.join_a_session()}</h2><p>{L.join_existing_description()}</p></div>
+  </div>
   {#if !waiting && !appState.isWatching && !room.sessionEndedReason}
     <div class="join w-full">
       <input
         bind:value={appState.participantUrl}
         class="input join-item flex-1 {valid ? 'input-success' : ''}"
-        placeholder={L.host_connection_string()}
+        placeholder={L.room_or_channel_link()}
         type="text"
       />
       <button class="btn btn-primary join-item" disabled={!valid || connecting} onclick={onConnectClick}>

@@ -37,6 +37,13 @@ assert.equal((await call('/host', 'GET', undefined, key)).data.joins[0].answer, 
 assert.equal((await call('/done', 'POST', { joinId }, key)).status, 200)
 assert.equal((await call('/', 'DELETE', undefined, key)).status, 200)
 assert.equal((await call('/host', 'GET', undefined, key)).status, 404)
+const customKey = 'temporary-host-token-with-enough-characters'
+assert.equal((await call('/create', 'POST', { hostKey: customKey, durationMinutes: 30, maxParticipants: 2 })).status, 201)
+assert.ok(values.get('room').expiresAt - Date.now() <= 30 * 60 * 1000)
+assert.equal((await call('/join', 'POST')).status, 201)
+assert.equal((await call('/join', 'POST')).status, 409)
+assert.equal((await call('/', 'DELETE', undefined, customKey)).status, 200)
+assert.equal((await call('/create', 'POST', { hostKey: customKey, durationMinutes: 300, maxParticipants: 2 })).status, 400)
 const channelAuth = 'A'.repeat(43)
 const channelKey = 'permanent-host-token-with-enough-characters'
 assert.equal((await call('/create', 'POST', { hostKey: channelKey, permanent: true, joinAuth: channelAuth })).status, 201)

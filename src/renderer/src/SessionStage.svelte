@@ -229,7 +229,8 @@
 <header class="call-header">
   <div>
     <span class="call-kicker">p2p.kiwi</span>
-    <h1>{appState.isHosting ? L.hosting_a_session() : L.joined_a_session()}</h1>
+    <h1>{appState.sessionTitle || (appState.isHosting ? L.hosting_a_session() : L.joined_a_session())}</h1>
+    {#if appState.sessionDescription}<p class="call-description">{appState.sessionDescription}</p>{/if}
   </div>
   <span class="call-count" title={L.peer_list()}><i class="fa-solid fa-user-group"></i> {room.peers.length}</span>
 </header>
@@ -580,6 +581,7 @@
     font-size: 1.1rem;
     font-weight: 700;
   }
+  .call-description { color: #b5bac1; font-size: 0.76rem; }
   .call-kicker {
     color: #b5bac1;
     font-size: 0.7rem;

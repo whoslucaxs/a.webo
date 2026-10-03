@@ -1,7 +1,7 @@
 import { parseInviteFragment, type InviteCrypto } from '../crypto/invite'
 
-export type RoomLink = { server: string; roomId: string; invite: InviteCrypto | null }
-export type ChannelLink = { server: string; roomId: string; invite: InviteCrypto }
+export type RoomLink = { server: string; roomId: string; invite: InviteCrypto | null; name?: string }
+export type ChannelLink = { server: string; roomId: string; invite: InviteCrypto; name?: string; description?: string }
 type HostJoin = { joinId: string; status: 'waiting' | 'offered' | 'answered' | 'done'; answer: string | null }
 
 const roomPath = (server: string, roomId: string, suffix = ''): string =>
@@ -40,14 +40,15 @@ export const parseRoomLink = (text: string): RoomLink | null => {
     const roomId = url.pathname.slice(1)
     if (!/^[a-f0-9-]{36}$/.test(roomId)) return null
     const server = normalizeRoomServer(url.searchParams.get('server') ?? '')
-    return { server, roomId, invite: parseInviteFragment(url.hash) }
+    const name = url.searchParams.get('name')?.trim().slice(0, 48)
+    return { server, roomId, invite: parseInviteFragment(url.hash), ...(name ? { name } : {}) }
   } catch {
     return null
   }
 }
 
-export const makeRoomLink = (server: string, roomId: string, fragment: string): string =>
-  `kiwi://room/${roomId}?server=${encodeURIComponent(server)}${fragment ? `#${fragment}` : ''}`
+export const makeRoomLink = (server: string, roomId: string, fragment: string, name = ''): string =>
+  `kiwi://room/${roomId}?server=${encodeURIComponent(server)}${name ? `&name=${encodeURIComponent(name)}` : ''}${fragment ? `#${fragment}` : ''}`
 
 export const parseChannelLink = (text: string): ChannelLink | null => {
   try {
@@ -57,14 +58,16 @@ export const parseChannelLink = (text: string): ChannelLink | null => {
     if (!/^[a-f0-9-]{36}$/.test(roomId)) return null
     const server = normalizeRoomServer(url.searchParams.get('server') ?? '')
     const invite = parseInviteFragment(url.hash)
-    return invite ? { server, roomId, invite } : null
+    const name = url.searchParams.get('name')?.trim().slice(0, 48)
+    const description = url.searchParams.get('description')?.trim().slice(0, 160)
+    return invite ? { server, roomId, invite, ...(name ? { name } : {}), ...(description ? { description } : {}) } : null
   } catch {
     return null
   }
 }
 
-export const makeChannelLink = (server: string, roomId: string, fragment: string): string =>
-  `kiwi://channel/${roomId}?server=${encodeURIComponent(server)}#${fragment}`
+export const makeChannelLink = (server: string, roomId: string, fragment: string, name = '', description = ''): string =>
+  `kiwi://channel/${roomId}?server=${encodeURIComponent(server)}${name ? `&name=${encodeURIComponent(name)}` : ''}${description ? `&description=${encodeURIComponent(description)}` : ''}#${fragment}`
 
 export const createChannel = (server: string, joinAuth: string): Promise<{ roomId: string; hostKey: string }> =>
   request(`${server}/channels`, 'POST', { joinAuth })
@@ -80,8 +83,8 @@ export const claimChannel = (
 export const releaseChannel = (server: string, roomId: string, hostKey: string): Promise<unknown> =>
   request(roomPath(server, roomId, '/release'), 'POST', {}, hostKey)
 
-export const createRoom = (server: string): Promise<{ roomId: string; hostKey: string }> =>
-  request(`${server}/rooms`, 'POST')
+export const createRoom = (server: string, durationMinutes = 240, maxParticipants = 4): Promise<{ roomId: string; hostKey: string }> =>
+  request(`${server}/rooms`, 'POST', { durationMinutes, maxParticipants })
 
 export const roomIceServers = async (server: string, roomId: string, token?: string): Promise<RTCIceServer[]> =>
   (await request<{ iceServers: RTCIceServer[] }>(roomPath(server, roomId, '/ice'), 'GET', undefined, token)).iceServers

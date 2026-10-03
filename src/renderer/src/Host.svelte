@@ -21,6 +21,12 @@
 
   let sessionStarted = $state(false)
   let startingSession = $state(false)
+  let roomName = $state('')
+  let durationChoice = $state<'30' | '60' | '180' | 'custom'>('30')
+  let customMinutes = $state(60)
+  let maxParticipants = $state(4)
+  const durationMinutes = $derived(durationChoice === 'custom' ? Number(customMinutes) : Number(durationChoice))
+  const durationValid = $derived(Number.isInteger(durationMinutes) && durationMinutes >= 15 && durationMinutes <= 240)
   let username = ''
   let server = ''
   let roomId = ''
@@ -68,12 +74,12 @@
   }
 
   const onStartSessionButtonClick = async (): Promise<void> => {
-    if (startingSession) return
+    if (startingSession || !durationValid) return
     startingSession = true
     try {
       const settings = await window.KiwiApi.getSettings()
       server = normalizeRoomServer(settings.roomServerUrl ?? '')
-      const created = await createRoom(server)
+      const created = await createRoom(server, durationMinutes, maxParticipants)
       roomId = created.roomId
       hostKey = created.hostKey
       const iceServers = await roomIceServers(server, roomId)
@@ -83,7 +89,9 @@
         if (setup === 'failed') toast.show('error', L.connection_failed())
         return
       }
-      appState.roomLink = makeRoomLink(server, roomId, room.roomInviteFragment)
+      appState.roomLink = makeRoomLink(server, roomId, room.roomInviteFragment, roomName.trim())
+      appState.sessionTitle = roomName.trim()
+      appState.sessionDescription = ''
       sessionStarted = true
       appState.navigationEnabled = false
       appState.isHosting = true
@@ -107,6 +115,8 @@
     roomId = ''
     hostKey = ''
     appState.roomLink = ''
+    appState.sessionTitle = ''
+    appState.sessionDescription = ''
     pending.clear()
     sessionStarted = false
     appState.navigationEnabled = true
@@ -118,12 +128,42 @@
 </script>
 
 <div class="home-action">
-  <div class="home-action-icon"><i class="fa-solid fa-video"></i></div>
-  <h2>{L.host_a_session()}</h2>
+  <div class="card-heading">
+    <div class="home-action-icon"><i class="fa-solid fa-video"></i></div>
+    <div class="card-heading-copy">
+      <div class="card-title-line"><h2>{L.temporary_chat()}</h2><span class="card-badge card-badge-blue">{L.ephemeral()}</span></div>
+      <p>{L.temporary_chat_description()}</p>
+    </div>
+  </div>
+  <label class="home-field">
+    <span>{L.room_name()}</span>
+    <input class="input w-full" bind:value={roomName} maxlength="48" placeholder={L.room_name()} />
+  </label>
+  <div class="room-options">
+    <div class="home-field">
+      <span>{L.duration()}</span>
+      <div class="duration-options" role="group" aria-label={L.duration()}>
+        <button class:selected={durationChoice === '30'} type="button" onclick={() => durationChoice = '30'}>30 {L.minutes_short()}</button>
+        <button class:selected={durationChoice === '60'} type="button" onclick={() => durationChoice = '60'}>1 {L.hour_short()}</button>
+        <button class:selected={durationChoice === '180'} type="button" onclick={() => durationChoice = '180'}>3 {L.hours_short()}</button>
+        <button class:selected={durationChoice === 'custom'} type="button" onclick={() => durationChoice = 'custom'}>{L.custom_duration()}</button>
+      </div>
+      {#if durationChoice === 'custom'}<input class="input w-full" type="number" min="15" max="240" step="1" bind:value={customMinutes} aria-label={L.duration_minutes()} />{/if}
+    </div>
+    <label class="home-field">
+      <span>{L.max_participants()}</span>
+      <select class="select w-full" bind:value={maxParticipants}>
+        <option value={2}>2</option>
+        <option value={3}>3</option>
+        <option value={4}>4</option>
+      </select>
+    </label>
+  </div>
   {#if !sessionStarted}
-    <button class="btn btn-primary w-full" disabled={startingSession} onclick={onStartSessionButtonClick}>
+    <button class="home-primary home-primary-blue" disabled={startingSession || !durationValid} onclick={onStartSessionButtonClick}>
       {#if startingSession}<span class="loading loading-spinner"></span>{/if}
-      {L.start_a_new_session()}
+      <i class="fa-solid fa-play"></i>{L.start_a_new_session()}
     </button>
   {/if}
+  <div class="home-info"><i class="fa-solid fa-link"></i><span>{L.room_link_after_creation()}</span></div>
 </div>

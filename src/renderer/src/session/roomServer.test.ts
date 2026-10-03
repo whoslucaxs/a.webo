@@ -28,4 +28,11 @@ describe('room link', () => {
     })
     expect(parseChannelLink(link.split('#')[0])).toBeNull()
   })
+
+  it('carries display names in invitation links', () => {
+    expect(parseRoomLink(makeRoomLink('https://signal.nyxlink.online', roomId, '', 'Coffee chat'))?.name).toBe('Coffee chat')
+    const channel = parseChannelLink(makeChannelLink('https://signal.nyxlink.online', roomId, 'YWJj.ZGZmZ2hpamtsbW5vcHFyc3R1dnd4eXo', 'Study room', 'Weekly study group'))
+    expect(channel?.name).toBe('Study room')
+    expect(channel?.description).toBe('Weekly study group')
+  })
 })

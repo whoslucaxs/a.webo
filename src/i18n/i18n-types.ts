@@ -257,6 +257,102 @@ type RootTranslation = {
    */
   invalid_channel_link: string;
   /**
+   * H​o​m​e
+   */
+  home: string;
+  /**
+   * A​u​d​i​o​ ​c​h​a​t​s
+   */
+  audio_chats: string;
+  /**
+   * C​r​e​a​t​e​ ​a​ ​t​e​m​p​o​r​a​r​y​ ​r​o​o​m​ ​f​o​r​ ​a​ ​q​u​i​c​k​ ​c​o​n​v​e​r​s​a​t​i​o​n​ ​o​r​ ​a​ ​p​e​r​m​a​n​e​n​t​ ​c​h​a​n​n​e​l​ ​f​o​r​ ​y​o​u​r​ ​g​r​o​u​p​.
+   */
+  audio_chats_description: string;
+  /**
+   * T​a​l​k​.​ ​S​h​a​r​e​.​ ​B​e​ ​h​e​r​e​ ​n​o​w​.
+   */
+  talk_share: string;
+  /**
+   * T​e​m​p​o​r​a​r​y​ ​a​u​d​i​o​ ​c​h​a​t
+   */
+  temporary_chat: string;
+  /**
+   * C​r​e​a​t​e​ ​a​ ​r​o​o​m​ ​f​o​r​ ​a​ ​q​u​i​c​k​ ​c​o​n​v​e​r​s​a​t​i​o​n​.​ ​I​t​ ​c​l​o​s​e​s​ ​w​h​e​n​ ​y​o​u​ ​l​e​a​v​e​ ​o​r​ ​w​h​e​n​ ​i​t​s​ ​t​i​m​e​r​ ​e​n​d​s​.
+   */
+  temporary_chat_description: string;
+  /**
+   * T​e​m​p​o​r​a​r​y
+   */
+  ephemeral: string;
+  /**
+   * P​e​r​m​a​n​e​n​t
+   */
+  persistent: string;
+  /**
+   * R​o​o​m​ ​n​a​m​e​ ​(​o​p​t​i​o​n​a​l​)
+   */
+  room_name: string;
+  /**
+   * D​u​r​a​t​i​o​n
+   */
+  duration: string;
+  /**
+   * m​i​n
+   */
+  minutes_short: string;
+  /**
+   * h​o​u​r
+   */
+  hour_short: string;
+  /**
+   * h​o​u​r​s
+   */
+  hours_short: string;
+  /**
+   * C​u​s​t​o​m
+   */
+  custom_duration: string;
+  /**
+   * D​u​r​a​t​i​o​n​ ​i​n​ ​m​i​n​u​t​e​s​ ​(​1​5​–​2​4​0​)
+   */
+  duration_minutes: string;
+  /**
+   * M​a​x​ ​p​a​r​t​i​c​i​p​a​n​t​s
+   */
+  max_participants: string;
+  /**
+   * D​e​s​c​r​i​p​t​i​o​n​ ​(​o​p​t​i​o​n​a​l​)
+   */
+  description_optional: string;
+  /**
+   * C​o​p​y​ ​t​h​e​ ​i​n​v​i​t​a​t​i​o​n​ ​l​i​n​k​ ​a​f​t​e​r​ ​c​r​e​a​t​i​n​g​ ​t​h​e​ ​r​o​o​m​.
+   */
+  room_link_after_creation: string;
+  /**
+   * U​s​e​ ​t​h​e​ ​s​a​m​e​ ​l​i​n​k​ ​a​g​a​i​n​.​ ​A​n​y​o​n​e​ ​w​i​t​h​ ​i​t​ ​c​a​n​ ​o​p​e​n​ ​t​h​e​ ​c​h​a​n​n​e​l​,​ ​e​v​e​n​ ​w​h​e​n​ ​y​o​u​ ​a​r​e​ ​o​f​f​l​i​n​e​.
+   */
+  permanent_channel_description: string;
+  /**
+   * A​n​y​o​n​e​ ​w​i​t​h​ ​t​h​e​ ​c​h​a​n​n​e​l​ ​l​i​n​k​ ​c​a​n​ ​j​o​i​n​.
+   */
+  link_access: string;
+  /**
+   * S​a​v​e​d​ ​c​h​a​n​n​e​l​s
+   */
+  saved_channels: string;
+  /**
+   * Y​o​u​r​ ​c​h​a​n​n​e​l​s​ ​w​i​l​l​ ​a​p​p​e​a​r​ ​h​e​r​e​.
+   */
+  no_saved_channels: string;
+  /**
+   * P​a​s​t​e​ ​a​ ​r​o​o​m​ ​o​r​ ​c​h​a​n​n​e​l​ ​l​i​n​k​ ​t​o​ ​j​o​i​n​.
+   */
+  join_existing_description: string;
+  /**
+   * R​o​o​m​ ​o​r​ ​c​h​a​n​n​e​l​ ​l​i​n​k
+   */
+  room_or_channel_link: string;
+  /**
    * W​e​b​s​i​t​e
    */
   website: string;
@@ -939,6 +1035,102 @@ export type TranslationFunctions = {
    * Invalid channel link
    */
   invalid_channel_link: () => LocalizedString;
+  /**
+   * Home
+   */
+  home: () => LocalizedString;
+  /**
+   * Audio chats
+   */
+  audio_chats: () => LocalizedString;
+  /**
+   * Create a temporary room for a quick conversation or a permanent channel for your group.
+   */
+  audio_chats_description: () => LocalizedString;
+  /**
+   * Talk. Share. Be here now.
+   */
+  talk_share: () => LocalizedString;
+  /**
+   * Temporary audio chat
+   */
+  temporary_chat: () => LocalizedString;
+  /**
+   * Create a room for a quick conversation. It closes when you leave or when its timer ends.
+   */
+  temporary_chat_description: () => LocalizedString;
+  /**
+   * Temporary
+   */
+  ephemeral: () => LocalizedString;
+  /**
+   * Permanent
+   */
+  persistent: () => LocalizedString;
+  /**
+   * Room name (optional)
+   */
+  room_name: () => LocalizedString;
+  /**
+   * Duration
+   */
+  duration: () => LocalizedString;
+  /**
+   * min
+   */
+  minutes_short: () => LocalizedString;
+  /**
+   * hour
+   */
+  hour_short: () => LocalizedString;
+  /**
+   * hours
+   */
+  hours_short: () => LocalizedString;
+  /**
+   * Custom
+   */
+  custom_duration: () => LocalizedString;
+  /**
+   * Duration in minutes (15–240)
+   */
+  duration_minutes: () => LocalizedString;
+  /**
+   * Max participants
+   */
+  max_participants: () => LocalizedString;
+  /**
+   * Description (optional)
+   */
+  description_optional: () => LocalizedString;
+  /**
+   * Copy the invitation link after creating the room.
+   */
+  room_link_after_creation: () => LocalizedString;
+  /**
+   * Use the same link again. Anyone with it can open the channel, even when you are offline.
+   */
+  permanent_channel_description: () => LocalizedString;
+  /**
+   * Anyone with the channel link can join.
+   */
+  link_access: () => LocalizedString;
+  /**
+   * Saved channels
+   */
+  saved_channels: () => LocalizedString;
+  /**
+   * Your channels will appear here.
+   */
+  no_saved_channels: () => LocalizedString;
+  /**
+   * Paste a room or channel link to join.
+   */
+  join_existing_description: () => LocalizedString;
+  /**
+   * Room or channel link
+   */
+  room_or_channel_link: () => LocalizedString;
   /**
    * Website
    */
