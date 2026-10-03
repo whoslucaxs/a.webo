@@ -144,6 +144,7 @@ type KiwiApi = {
     cameraDeviceId: string
     microphoneDeviceId: string
     iceServers: IceServer[]
+    roomServerUrl?: string
     bonjourEnabled?: boolean
     bonjourServerUrl?: string
     emergencyHotkey?: EmergencyHotkey
@@ -161,6 +162,7 @@ type KiwiApi = {
     cameraDeviceId: string
     microphoneDeviceId: string
     iceServers: IceServer[]
+    roomServerUrl?: string
     bonjourEnabled?: boolean
     bonjourServerUrl?: string
     emergencyHotkey?: EmergencyHotkey

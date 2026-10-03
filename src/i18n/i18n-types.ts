@@ -54,7 +54,7 @@ type RootTranslation = {
 	 */
 	connection_established: string
 	/**
-	 * C​o​p​y​ ​m​y​ ​c​o​n​n​e​c​t​i​o​n​ ​s​t​r​i​n​g
+	 * C​o​p​y​ ​r​o​o​m​ ​l​i​n​k
 	 */
 	copy_my_connection_string: string
 	/**
@@ -74,9 +74,17 @@ type RootTranslation = {
 	 */
 	host_a_session: string
 	/**
-	 * H​o​s​t​ ​c​o​n​n​e​c​t​i​o​n​ ​s​t​r​i​n​g
+	 * R​o​o​m​ ​l​i​n​k
 	 */
 	host_connection_string: string
+	/**
+	 * R​o​o​m​ ​s​e​r​v​e​r​ ​(​H​T​T​P​S​)
+	 */
+	room_server_url: string
+	/**
+	 * W​a​i​t​i​n​g​ ​f​o​r​ ​t​h​e​ ​h​o​s​t​ ​t​o​ ​c​o​n​n​e​c​t​…
+	 */
+	waiting_for_host: string
 	/**
 	 * H​o​s​t​i​n​g​ ​a​ ​s​e​s​s​i​o​n
 	 */
@@ -820,7 +828,7 @@ export type TranslationFunctions = {
 	 */
 	connection_established: () => LocalizedString
 	/**
-	 * Copy my connection string
+	 * Copy room link
 	 */
 	copy_my_connection_string: () => LocalizedString
 	/**
@@ -840,9 +848,17 @@ export type TranslationFunctions = {
 	 */
 	host_a_session: () => LocalizedString
 	/**
-	 * Host connection string
+	 * Room link
 	 */
 	host_connection_string: () => LocalizedString
+	/**
+	 * Room server (HTTPS)
+	 */
+	room_server_url: () => LocalizedString
+	/**
+	 * Waiting for the host to connect…
+	 */
+	waiting_for_host: () => LocalizedString
 	/**
 	 * Hosting a session
 	 */

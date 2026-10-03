@@ -110,6 +110,7 @@ const KiwiApi = {
     cameraDeviceId: string
     microphoneDeviceId: string
     iceServers: IceServer[]
+    roomServerUrl?: string
     bonjourEnabled?: boolean
     bonjourServerUrl?: string
     emergencyHotkey?: {
@@ -135,6 +136,7 @@ const KiwiApi = {
     cameraDeviceId: string
     microphoneDeviceId: string
     iceServers: IceServer[]
+    roomServerUrl?: string
     bonjourEnabled?: boolean
     bonjourServerUrl?: string
     emergencyHotkey?: {

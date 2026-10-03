@@ -15,6 +15,7 @@
   let language = $state('en')
   const languageOptions = ['en', 'de', 'fr', 'pt-br', 'zh']
   let iceServersValue = $state('{ "urls": "stun:stun.l.google.com:19302" }')
+  let roomServerValue = $state('')
   let modalSuccessIsActive = $state(false)
   let modalFailureIsActive = $state(false)
   let isMicrophoneEnabledOnConnect = $state(true)
@@ -75,6 +76,7 @@
         cameraDeviceId,
         microphoneDeviceId,
         iceServers: iceServersValue.split('\n').map((srv) => JSON.parse(srv)),
+        roomServerUrl: roomServerValue.trim(),
         bonjourEnabled,
         bonjourServerUrl,
         emergencyHotkey: Object.assign({}, emergencyHotkey)
@@ -114,6 +116,7 @@
       cameraDeviceId = settings.cameraDeviceId ?? ''
       microphoneDeviceId = settings.microphoneDeviceId ?? ''
       iceServersValue = settings.iceServers.map((srv) => JSON.stringify(srv)).join('\n')
+      roomServerValue = settings.roomServerUrl ?? ''
       bonjourEnabled = settings.bonjourEnabled === true
       bonjourServerUrl = settings.bonjourServerUrl || 'https://bonjour.p2p.kiwi'
       if (settings.emergencyHotkey) emergencyHotkey = settings.emergencyHotkey
@@ -176,6 +179,17 @@
   <h1 class="text-3xl font-bold mb-4">{L.settings()}</h1>
   <h2 class="text-xl font-semibold mb-2">{L.basic()}</h2>
   <form class="flex flex-col gap-4 max-w-xl" onsubmit={onSubmit}>
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{L.room_server_url()}</legend>
+      <input
+        bind:value={roomServerValue}
+        class="input w-full"
+        id="room_server"
+        placeholder="https://signal.example.com"
+        type="url"
+      />
+    </fieldset>
+
     <fieldset class="fieldset">
       <legend class="fieldset-legend">{L.username()}</legend>
       <label class="input w-full {isUsernameValid ? 'input-success' : 'input-error'}">

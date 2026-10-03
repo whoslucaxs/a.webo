@@ -4,126 +4,111 @@
   import { appState } from './appState.svelte'
   import { toast } from './toastState.svelte'
   import { debugLog } from './debugLog.svelte'
-  import {
-    mayBeConnectionString,
-    getDataFromKiwiUrl,
-    ConnectionType,
-  } from './Utils'
+  import { getDataFromKiwiUrl } from './Utils'
+  import { stripInviteFragment } from './crypto/invite'
   import { sessionRoom as room } from './session/sessionStore.svelte'
-  import { connectThrownText, iceFailureText } from './session/connectionFailureText'
-  import { recoverFailedConnection } from './session/recoverFailedConnection'
+  import { iceFailureText } from './session/connectionFailureText'
+  import {
+    closeRoom,
+    createRoom,
+    finishJoin,
+    hostStatus,
+    makeRoomLink,
+    normalizeRoomServer,
+    roomIceServers,
+    sendOffer,
+  } from './session/roomServer'
 
   let sessionStarted = $state(false)
-  let connectionStringIsValid = $state<boolean | null>(null)
-  let connectToUserName = $state('')
   let startingSession = $state(false)
-  let username = $state('')
-  let copiedConnectionString: string | null = null
-  let copyInFlight = false
+  let roomLink = $state('')
+  let username = ''
+  let server = ''
+  let roomId = ''
+  let hostKey = ''
+  let pollTimer: ReturnType<typeof setInterval> | null = null
+  let polling = false
+  const pending = new Map<string, { id: string; offer: string }>()
 
-  $effect(() => {
-    const value = appState.hostUrl
-    void (async (): Promise<void> => {
-      if (value === '' || room.isLive) {
-        if (!room.isLive) connectionStringIsValid = null
-        return
-      }
-      const valid = mayBeConnectionString(ConnectionType.PARTICIPANT, value)
-      connectionStringIsValid = valid
-      if (valid) {
-        const kiwiData = await getDataFromKiwiUrl(value)
-        connectToUserName = kiwiData.data.username
-      }
-    })()
+  onMount(async () => {
+    username = (await window.KiwiApi.getSettings()).username
   })
 
   $effect(() => {
     if (appState.sessionSource !== 'host') return
-    switch (room.connectionState) {
-      case 'connected':
-        toast.show('success', L.connection_established())
-        break
-      case 'failed':
-        debugLog.error('host', 'connectionState failed')
-        toast.show('error', iceFailureText(room.connectionFailure))
-        recoverFailedConnection()
-        break
-      case 'closed':
-        if (!room.sessionEndedReason) toast.show('info', L.connection_closed())
-        break
-      default:
-        break
-    }
+    if (room.connectionState === 'connected') toast.show('success', L.connection_established())
+    if (room.connectionState === 'failed') toast.show('error', iceFailureText(room.connectionFailure))
   })
 
-  const onConnectClick = async (): Promise<void> => {
+  const poll = async (): Promise<void> => {
+    if (polling || !sessionStarted) return
+    polling = true
     try {
-      const data = await getDataFromKiwiUrl(appState.hostUrl)
-      await room.Connect(data.rtcSessionDescription, { invite: data.invite })
-      appState.hostUrl = ''
-    } catch (error) {
-      console.error(error)
-      debugLog.error('host', 'Connect participant string failed', error)
-      toast.show('error', connectThrownText(error))
-    }
-  }
-
-  const onCopyClick = async (): Promise<void> => {
-    if (copiedConnectionString) {
-      void navigator.clipboard.writeText(copiedConnectionString)
-      return
-    }
-    if (copyInFlight) return
-    copyInFlight = true
-    try {
-      const offer = await room.CreateHostUrl({
-        username
-      })
-      if (!offer) {
-        toast.show('error', L.room_is_full())
-      } else {
-        copiedConnectionString = offer
-        void navigator.clipboard.writeText(offer)
+      const { joins } = await hostStatus(server, roomId, hostKey)
+      for (const join of joins) {
+        if (join.status === 'waiting' && !pending.has(join.joinId)) {
+          const offer = await room.CreateHostUrl({ username })
+          const pendingId = room.pendingInviteId
+          if (!offer || !pendingId) continue
+          pending.set(join.joinId, { id: pendingId, offer: stripInviteFragment(offer) })
+        }
+        if (join.status === 'waiting' && pending.has(join.joinId))
+          await sendOffer(server, roomId, hostKey, join.joinId, pending.get(join.joinId)!.offer)
+        if (join.status === 'answered' && join.answer && pending.has(join.joinId)) {
+          const answer = await getDataFromKiwiUrl(join.answer)
+          await room.Connect(answer.rtcSessionDescription, { pendingId: pending.get(join.joinId)!.id })
+          await finishJoin(server, roomId, hostKey, join.joinId)
+          pending.delete(join.joinId)
+        }
       }
     } catch (error) {
-      console.error(error)
-      debugLog.error('host', 'Copy host string failed', error)
-      toast.show('error', L.connection_failed())
+      debugLog.error('room-server', 'host signaling failed', error)
     } finally {
-      copyInFlight = false
+      polling = false
     }
   }
-
-  onMount(async () => {
-    const settings = await window.KiwiApi.getSettings()
-    username = settings.username
-  })
 
   const onStartSessionButtonClick = async (): Promise<void> => {
     if (startingSession) return
     startingSession = true
     try {
-      const setupResult = await room.Setup()
-      if (setupResult === 'cancelled') return
-      if (setupResult !== 'ok') {
-        toast.show('error', L.screen_share_failed())
+      const settings = await window.KiwiApi.getSettings()
+      server = normalizeRoomServer(settings.roomServerUrl ?? '')
+      const created = await createRoom(server)
+      roomId = created.roomId
+      hostKey = created.hostKey
+      const iceServers = await roomIceServers(server, roomId)
+      const setup = await room.Setup(null, { iceServers })
+      if (setup !== 'ok') {
+        await closeRoom(server, roomId, hostKey)
+        if (setup === 'failed') toast.show('error', L.screen_share_failed())
         return
       }
+      roomLink = makeRoomLink(server, roomId, room.roomInviteFragment)
       sessionStarted = true
       appState.navigationEnabled = false
       appState.isHosting = true
       appState.isCoordinator = true
       appState.beginSession('host', reset)
+      pollTimer = setInterval(() => void poll(), 1000)
+      void poll()
+    } catch (error) {
+      debugLog.error('room-server', 'could not create room', error)
+      toast.show('error', error instanceof Error ? error.message : L.connection_failed())
+      if (roomId && hostKey) void closeRoom(server, roomId, hostKey)
     } finally {
       startingSession = false
     }
   }
 
   const reset = (): void => {
-    appState.hostUrl = ''
-    connectionStringIsValid = null
-    copiedConnectionString = null
-    copyInFlight = false
+    if (pollTimer) clearInterval(pollTimer)
+    pollTimer = null
+    if (roomId && hostKey) void closeRoom(server, roomId, hostKey).catch(() => undefined)
+    roomId = ''
+    hostKey = ''
+    roomLink = ''
+    pending.clear()
     sessionStarted = false
     appState.navigationEnabled = true
     appState.isHosting = false
@@ -135,94 +120,22 @@
     await room.Disconnect()
     reset()
   }
-
-  const connectionInputClass = $derived(
-    connectionStringIsValid === null
-      ? ''
-      : connectionStringIsValid
-        ? 'input-success'
-        : 'input-error'
-  )
-  const connectButtonClass = $derived(
-    connectionStringIsValid === null
-      ? 'btn-primary'
-      : connectionStringIsValid
-        ? 'btn-success'
-        : 'btn-error'
-  )
 </script>
 
 <div class="container mx-auto p-5">
-  <h1 class="text-3xl font-bold mb-4">
-    {!room.isLive ? L.host_a_session() : L.hosting_a_session()}
-  </h1>
-
-  {#if sessionStarted && !room.isLive && !room.sessionEndedReason}
-    <div class="flex flex-wrap gap-2 mb-4">
-      <button class="btn btn-primary" disabled>
-        <span class="icon">
-          <i class="fas fa-play"></i>
-        </span>
-        <span>{L.session_started()}</span>
-      </button>
-      <button class="btn btn-error" onclick={onDisconnectClick}>
-        <span class="icon">
-          <i class="fas fa-unlink"></i>
-        </span>
-        <span>{L.cancel()}</span>
-      </button>
-      <button class="btn btn-primary" onclick={onCopyClick}>
-        <span class="icon">
-          <i class="fas fa-copy"></i>
-        </span>
-        <span>{L.copy_my_connection_string()}</span>
-      </button>
-    </div>
-    <div class="join w-full">
-      <label class="input join-item flex-1 {connectionInputClass}">
-        <i class="fas fa-user"></i>
-        <input
-          bind:value={appState.hostUrl}
-          placeholder={L.participant_connection_string()}
-          type="text"
-        />
-        <i
-          class="fas {connectionStringIsValid === null
-            ? 'fa-question'
-            : connectionStringIsValid
-              ? 'fa-check'
-              : 'fa-times'}"
-        ></i>
-      </label>
-      <button
-        class="btn join-item {connectButtonClass}"
-        onclick={onConnectClick}
-        disabled={!connectionStringIsValid}
-      >
-        <span class="icon">
-          <i class="fas fa-link"></i>
-        </span>
-        <span>{L.connect()} {connectionStringIsValid ? connectToUserName : ''}</span>
-      </button>
-    </div>
-  {/if}
-
+  <h1 class="text-3xl font-bold mb-4">{!room.isLive ? L.host_a_session() : L.hosting_a_session()}</h1>
   {#if !sessionStarted}
+    <button class="btn btn-primary" disabled={startingSession} onclick={onStartSessionButtonClick}>
+      {#if startingSession}<span class="loading loading-spinner"></span>{/if}
+      {L.start_a_new_session()}
+    </button>
+  {:else if !room.sessionEndedReason}
     <div class="flex flex-wrap gap-2 mb-4">
-      <button
-        class="btn btn-primary {startingSession ? 'pointer-events-none' : ''}"
-        disabled={startingSession}
-        onclick={onStartSessionButtonClick}
-      >
-        {#if startingSession}
-          <span class="loading loading-spinner"></span>
-        {:else}
-          <span class="icon">
-            <i class="fas fa-play"></i>
-          </span>
-        {/if}
-        <span>{L.start_a_new_session()}</span>
+      <button class="btn btn-primary" onclick={() => void navigator.clipboard.writeText(roomLink)}>
+        <i class="fas fa-copy"></i> {L.copy_my_connection_string()}
       </button>
+      <button class="btn btn-error" onclick={onDisconnectClick}>{L.cancel()}</button>
     </div>
+    <p class="break-all">{roomLink}</p>
   {/if}
 </div>

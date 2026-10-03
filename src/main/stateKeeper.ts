@@ -22,6 +22,7 @@ export type SettingsData = {
   cameraDeviceId: string
   microphoneDeviceId: string
   iceServers: IceServer[]
+  roomServerUrl: string
   bonjourEnabled: boolean
   bonjourServerUrl: string
   emergencyHotkey: EmergencyHotkey
@@ -61,6 +62,7 @@ export const defaultSettings: SettingsData = {
       urls: 'stun:stun.l.google.com:19302',
     },
   ],
+  roomServerUrl: 'https://signal.nyxlink.online',
   bonjourEnabled: false,
   bonjourServerUrl: 'https://bonjour.p2p.kiwi',
   emergencyHotkey: DEFAULT_EMERGENCY_HOTKEY,

@@ -13,6 +13,7 @@
   import { appState } from './appState.svelte'
   import { debugLog } from './debugLog.svelte'
   import { getDataFromKiwiUrl } from './Utils'
+  import { parseRoomLink } from './session/roomServer'
   import { sessionRoom as room } from './session/sessionStore.svelte'
   import { L } from './translations'
   import { onMount } from 'svelte'
@@ -47,6 +48,11 @@
   window.onmessage = async (evt: MessageEvent): Promise<void> => {
     const { data } = evt
     if (data.type !== 'openKiwiURL') return
+    if (parseRoomLink(data.url)) {
+      appState.activeView = 'join'
+      appState.participantUrl = data.url
+      return
+    }
     const urlData = await getDataFromKiwiUrl(data.url)
     switch (urlData.type) {
       case 'host':

@@ -96,7 +96,7 @@ import { RoomCrypto, type DeviceIdentity, type VerificationInfo } from '../crypt
 import { MediaE2EE } from '../crypto/mediaE2ee'
 import { supportsEncodedTransform } from '../crypto/sframe'
 import { defaultCryptoCapabilities, fromBase64Url, toBase64Url } from '../crypto/constants'
-import { deriveJoinAuthenticator, randomInviteCrypto, type InviteCrypto } from '../crypto/invite'
+import { deriveJoinAuthenticator, encodeInviteFragment, randomInviteCrypto, type InviteCrypto } from '../crypto/invite'
 import {
   bodyToFrame,
   chunkMlsFrame,
@@ -198,6 +198,7 @@ export class Room {
   private mediaE2ee: MediaE2EE | null = null
   private identity: DeviceIdentity | null = null
   private invite: InviteCrypto | null = null
+  private roomIceServers: RTCIceServer[] | null = null
   private joinAuth = ''
   private seenFingerprints = new Map<string, string>()
   private pendingKeyPackages = new Map<string, Uint8Array>()
@@ -278,6 +279,14 @@ export class Room {
 
   get remotePeerCount(): number {
     return this.establishedRemoteIds().length
+  }
+
+  get roomInviteFragment(): string {
+    return this.invite ? encodeInviteFragment(this.invite) : ''
+  }
+
+  get pendingInviteId(): string | null {
+    return this.lastCopiedPendingId
   }
 
   setRemoteVideo(video: HTMLVideoElement | null): void {
@@ -572,7 +581,7 @@ export class Room {
 
   async Setup(
     v: HTMLVideoElement | null = null,
-    opts?: { captureDisplay?: boolean },
+    opts?: { captureDisplay?: boolean; iceServers?: RTCIceServer[] },
   ): Promise<'ok' | 'cancelled' | 'failed'> {
     debugLog.info('room', 'Setup start', {
       hasVideoEl: Boolean(v),
@@ -581,6 +590,7 @@ export class Room {
     })
     this.bindCallIpc()
     await this.teardown(true)
+    this.roomIceServers = opts?.iceServers ?? null
     this.userSettings = await window.KiwiApi.getSettings()
     this.username = this.userSettings.username
     this.foregroundColor = this.userSettings.foregroundColor
@@ -955,7 +965,7 @@ export class Room {
 
   async Connect(
     c: RTCSessionDescriptionOptions,
-    opts?: { invite?: InviteCrypto | null },
+    opts?: { invite?: InviteCrypto | null; pendingId?: string },
   ): Promise<void> {
     debugLog.info('room', 'Connect start', summarizeSdp(c))
     try {
@@ -1004,7 +1014,9 @@ export class Room {
         return
       }
       const answer: RTCSessionDescriptionInit = { type: 'answer', sdp: c.sdp }
-      const pending = this.findPendingForAnswer(answer)
+      const pending = opts?.pendingId
+        ? this.links.get(opts.pendingId) ?? null
+        : this.findPendingForAnswer(answer)
       if (!pending) {
         debugLog.error('room', 'Connect: no pending invite matches answer', {
           answer: summarizeSdp(answer),
@@ -1512,6 +1524,7 @@ export class Room {
     const rtcConfig = await getRTCPeerConnectionConfig({
       encodedInsertableStreams: this.e2eeFailClosed() && supportsEncodedTransform(),
     })
+    if (this.roomIceServers) rtcConfig.iceServers = this.roomIceServers
     const keepRoutableIpv6 = await this.routableIpv6()
     const link = new PeerLink({
       rtcConfig,
@@ -3280,6 +3293,7 @@ export class Room {
     this.e2eeRequired = false
     this.verification = null
     this.invite = null
+    this.roomIceServers = null
     this.joinAuth = ''
     this.bonjourCallId = null
     this.bonjourCallIds.clear()
