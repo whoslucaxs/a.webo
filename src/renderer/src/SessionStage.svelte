@@ -450,6 +450,20 @@
 
   </aside>
   <main class="call-stage">
+{#if appState.sessionSource === 'host' && !room.isLive && appState.roomLink}
+  <div class="room-invite">
+    <div>
+      <strong>{L.session_started()}</strong>
+      <p>{L.copy_my_connection_string()}</p>
+    </div>
+    <div class="room-invite-actions">
+      <input class="input" value={appState.roomLink} aria-label={L.host_connection_string()} readonly />
+      <button class="btn btn-primary" onclick={onCopyInvite}>
+        <i class="fa-solid fa-copy"></i> {L.copy_my_connection_string()}
+      </button>
+    </div>
+  </div>
+{/if}
 <div class="screen-grid">
 <div class={showVideo ? 'relative' : 'hidden'}>
   <fieldset class="fieldset px-0">
@@ -625,6 +639,21 @@
     flex-direction: column;
     justify-content: center;
   }
+  .room-invite {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 42rem;
+    width: 100%;
+    margin: 0 auto 1.25rem;
+    padding: 1rem;
+    border: 1px solid #5865f2;
+    border-radius: 1rem;
+    background: #2b2d31;
+  }
+  .room-invite p { color: #b5bac1; font-size: 0.8rem; }
+  .room-invite-actions { display: flex; gap: 0.5rem; min-width: 0; }
+  .room-invite-actions input { flex: 1; min-width: 0; }
   .call-controls {
     order: 3;
     display: flex;
@@ -755,5 +784,6 @@
     .call-content { grid-template-columns: 1fr; }
     .call-sidebar { border-right: 0; border-bottom: 1px solid #222327; }
     .call-controls { gap: 0.5rem; }
+    .room-invite-actions { flex-direction: column; }
   }
 </style>

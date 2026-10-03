@@ -19,7 +19,7 @@
   let screenPicker: ScreenPicker | undefined = $state()
   let closedDrawerForCall = false
 
-  const presenting = $derived(Boolean(room.isLive || room.sessionEndedReason))
+  const presenting = $derived(Boolean(appState.sessionSource === 'host' || room.isLive || room.sessionEndedReason))
   const showInvite = $derived(room.isCoordinator)
 
   $effect(() => {
