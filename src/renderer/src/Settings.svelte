@@ -144,9 +144,9 @@
                 {username.trim().charAt(0).toUpperCase() || '?'}
               </span>
             {/if}
-            <label class="btn btn-sm" for="profile-photo-input">{L.choose_photo()}</label>
+            <label class="btn btn-sm settings-photo-button" for="profile-photo-input">{L.choose_photo()}</label>
             <input id="profile-photo-input" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onchange={chooseAvatar} />
-            {#if avatar}<button class="btn btn-ghost btn-sm" type="button" onclick={() => avatar = ''}>{L.remove_photo()}</button>{/if}
+            {#if avatar}<button class="btn btn-ghost btn-sm settings-remove-photo" type="button" onclick={() => avatar = ''}>{L.remove_photo()}</button>{/if}
           </div>
         </div>
         <div class="color-fields">
@@ -189,7 +189,7 @@
           </select>
         </label>
         <label class="settings-toggle">
-          <input class="toggle toggle-primary" type="checkbox" bind:checked={microphoneOnConnect} />
+          <input class="settings-switch" type="checkbox" bind:checked={microphoneOnConnect} />
           <span>{L.is_microphone_active_on_connect()}</span>
         </label>
       </section>
@@ -205,18 +205,18 @@
       <section id="advanced" class="settings-card">
         <h2>{L.advanced()}</h2>
         <label class="settings-toggle">
-          <input class="toggle toggle-primary" type="checkbox" bind:checked={debugLogsEnabled} />
+          <input class="settings-switch" type="checkbox" bind:checked={debugLogsEnabled} />
           <span>{L.debug_logs()}</span>
         </label>
         {#if isLinux}
           <label class="settings-toggle">
-            <input class="toggle toggle-primary" type="checkbox" bind:checked={hardwareVideoAcceleration} />
+            <input class="settings-switch" type="checkbox" bind:checked={hardwareVideoAcceleration} />
             <span>{L.hardware_video_acceleration()}</span>
           </label>
         {/if}
       </section>
 
-      <button class="btn btn-primary settings-save" type="submit" disabled={!usernameValid || !savedSettings || saving}>
+      <button class="btn settings-save" type="submit" disabled={!usernameValid || !savedSettings || saving}>
         {#if saving}<span class="loading loading-spinner loading-sm"></span>{/if}
         {L.save()}
       </button>
@@ -225,26 +225,41 @@
 </div>
 
 <style>
-  .settings-page { min-height: calc(100vh - 4rem); background: #232428; color: #f2f3f5; }
-  .settings-shell { max-width: 72rem; margin: 0 auto; padding: 2rem; display: grid; grid-template-columns: 12rem minmax(0, 1fr); gap: 2rem; }
-  .settings-menu { position: sticky; top: 1.5rem; align-self: start; display: flex; flex-direction: column; gap: 0.25rem; }
-  .settings-menu h1 { font-size: 1.5rem; font-weight: 750; margin-bottom: 1rem; }
-  .settings-menu a { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem; border-radius: 0.6rem; color: #b5bac1; font-size: 0.85rem; }
-  .settings-menu a:hover { background: #35373c; color: #fff; }
+  .settings-page { min-height: calc(100vh - 4.9rem); background: radial-gradient(circle at 65% 50%, #16262d, #0c171f 66%); color: #f4f7fa; }
+  :global(dialog) .settings-page { min-height: 0; }
+  .settings-shell { max-width: 80rem; margin: 0 auto; padding: 1.75rem 1.1rem; display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.15rem; }
+  .settings-menu { position: sticky; top: 1rem; align-self: start; display: flex; flex-direction: column; gap: 0.3rem; padding: 1.3rem; border: 1px solid #2d404c; border-radius: 1.25rem; background: linear-gradient(135deg, #1a2934, #14212b); }
+  .settings-menu h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 0.8rem; }
+  .settings-menu a { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem; border: 1px solid transparent; border-radius: 0.75rem; color: #b7c1ce; font-size: 0.85rem; }
+  .settings-menu a:hover, .settings-menu a:focus-visible { border-color: #425563; background: #24333e; color: #f4f7fa; }
+  .settings-menu a i { color: #06c7b2; }
   .settings-content { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
-  .settings-card { display: flex; flex-direction: column; gap: 1.1rem; padding: 1.5rem; border: 1px solid #41434a; border-radius: 1rem; background: #2b2d31; scroll-margin-top: 1rem; }
-  .settings-card h2 { font-size: 1.1rem; font-weight: 700; }
-  .settings-field { display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.85rem; }
-  .settings-field small { color: #b5bac1; font-size: 0.75rem; }
-  .settings-toggle { display: flex; align-items: center; gap: 0.8rem; font-size: 0.85rem; }
-  .color-fields { display: flex; gap: 1.5rem; }
-  .color-fields input { width: 3.5rem; height: 2.5rem; border: 0; padding: 0; background: transparent; cursor: pointer; }
+  .settings-card { display: flex; flex-direction: column; gap: 1.15rem; padding: clamp(1.25rem, 2vw, 1.9rem); border: 1px solid #2d404c; border-radius: 1.25rem; background: linear-gradient(155deg, #15232d, #101d26); box-shadow: 0 14px 35px #0003; scroll-margin-top: 1rem; }
+  .settings-card h2 { padding-bottom: 0.75rem; border-bottom: 1px solid #30434e; font-size: 1.2rem; font-weight: 800; }
+  .settings-field { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.87rem; font-weight: 600; }
+  .settings-field :global(.input), .settings-field :global(.select) { height: 3.1rem; border: 1px solid #425563; border-radius: 0.8rem; background: #15232d; color: #f4f7fa; font-weight: 400; }
+  .settings-field :global(.input:focus), .settings-field :global(.select:focus) { outline: 2px solid #06c7b2; outline-offset: 1px; }
+  .settings-field small { color: #aab7c4; font-size: 0.75rem; font-weight: 400; }
+  .settings-toggle { display: flex; align-items: center; gap: 0.8rem; font-size: 0.85rem; cursor: pointer; }
+  .settings-switch { appearance: none; position: relative; width: 2.8rem; height: 1.5rem; flex: none; border: 1px solid #425563; border-radius: 999px; background: #202f3a; cursor: pointer; transition: background 0.15s; }
+  .settings-switch::before { content: ''; position: absolute; top: 0.2rem; left: 0.2rem; width: 1rem; height: 1rem; border-radius: 50%; background: #b7c1ce; transition: transform 0.15s; }
+  .settings-switch:checked { border-color: #00c7b4; background: #009d91; }
+  .settings-switch:checked::before { transform: translateX(1.25rem); background: white; }
+  .settings-switch:focus-visible { outline: 2px solid #06c7b2; outline-offset: 2px; }
+  .color-fields { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  .color-fields input { width: 3.5rem; height: 2.5rem; border: 1px solid #425563; border-radius: 0.5rem; padding: 0.15rem; background: #202f3a; cursor: pointer; }
   .avatar-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
-  .avatar-preview { width: 3.5rem; height: 3.5rem; flex: none; border-radius: 50%; object-fit: cover; }
+  .avatar-preview { width: 3.5rem; height: 3.5rem; flex: none; border: 2px solid #2e5260; border-radius: 50%; object-fit: cover; }
   .avatar-initial { display: grid; place-items: center; font-size: 1.25rem; font-weight: 700; }
-  .settings-save { align-self: flex-end; min-width: 8rem; }
+  .settings-photo-button { border: 1px solid #425563; border-radius: 0.7rem; background: #24333e; color: #f4f7fa; }
+  .settings-photo-button:hover { border-color: #00c7b4; background: #2a3a45; }
+  .settings-remove-photo { color: #b7c1ce; }
+  .settings-remove-photo:hover { color: #f4f7fa; background: #24333e; }
+  .settings-save { align-self: flex-end; min-width: 9rem; min-height: 3.2rem; border: 0; border-radius: 0.8rem; background: linear-gradient(125deg, #0cc9b7, #009d91); color: white; font-weight: 700; }
+  .settings-save:hover { filter: brightness(1.12); }
+  .settings-save:disabled { opacity: 0.5; cursor: default; filter: none; }
   @media (max-width: 700px) {
-    .settings-shell { grid-template-columns: 1fr; padding: 1rem; gap: 1rem; }
+    .settings-shell { grid-template-columns: 1fr; padding: 0.8rem; gap: 0.8rem; }
     .settings-menu { position: static; }
     .settings-menu a { display: none; }
   }
