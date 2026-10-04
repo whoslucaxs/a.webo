@@ -22,6 +22,9 @@ export const redactText = (value: string): string => {
 
 export const redactUnknown = (detail: unknown): unknown => {
   if (typeof detail === 'string') return redactText(detail)
+  if (detail instanceof Error) {
+    return redactText(`${detail.name}: ${detail.message}${detail.stack ? `\n${detail.stack}` : ''}`)
+  }
   if (!detail || typeof detail !== 'object') return detail
   try {
     return JSON.parse(redactText(JSON.stringify(detail)))

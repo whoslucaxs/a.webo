@@ -68,6 +68,7 @@ import {
   shouldPrepareJoinerCrypto,
 } from './e2eePolicy'
 import { debugLog, summarizePc, summarizeSdp } from '../debugLog.svelte'
+import { toast } from '../toastState.svelte'
 import { RoomCrypto, type DeviceIdentity, type VerificationInfo } from '../crypto/roomCrypto'
 import { MediaE2EE } from '../crypto/mediaE2ee'
 import { supportsEncodedTransform } from '../crypto/sframe'
@@ -1003,6 +1004,10 @@ export class Room {
 
   private async loadDeviceIdentity(): Promise<void> {
     const raw = await window.KiwiApi.getDeviceIdentity()
+    if (raw.recovered) {
+      debugLog.warn('room', 'stored device identity was unreadable; a new one was created')
+      toast.show('info', 'Device identity reset: the saved key could not be decrypted.', 8000)
+    }
     this.identity = {
       publicKey: fromBase64Url(
         raw.publicKey.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, ''),

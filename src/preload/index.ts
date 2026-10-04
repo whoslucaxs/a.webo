@@ -142,6 +142,7 @@ const KiwiApi = {
     publicKey: string
     fingerprint: string
     privateKey: string
+    recovered?: boolean
   }> => {
     return await ipcRenderer.invoke('getDeviceIdentity')
   },

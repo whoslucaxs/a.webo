@@ -78,7 +78,7 @@ type KiwiApi = {
   }>;
   getAppVersion: () => Promise<string>;
   hasRoutableIpv6: () => Promise<boolean>;
-  getDeviceIdentity: () => Promise<{ publicKey: string; fingerprint: string; privateKey: string }>;
+  getDeviceIdentity: () => Promise<{ publicKey: string; fingerprint: string; privateKey: string; recovered?: boolean }>;
   onSelectScreenShareSource: (
     handler: (sources: ScreenShareSource[]) => Promise<string | null>,
   ) => void;

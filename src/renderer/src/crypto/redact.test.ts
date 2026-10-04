@@ -24,4 +24,10 @@ describe('log redaction', () => {
     expect(redacted.mediaKey).toBe('<redacted>')
     expect(redacted.ok).toBe(true)
   })
+
+  it('keeps error messages and redacts secrets', () => {
+    const detail = redactUnknown(new Error('Failed to open webo://channel/test#room.secret')) as string
+    expect(detail).toContain('Error: Failed to open webo://channel/test#<redacted>')
+    expect(detail).not.toContain('room.secret')
+  })
 })

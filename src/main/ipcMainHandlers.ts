@@ -38,6 +38,7 @@ export const ipcMainHandlersInit = (): void => {
       publicKey: Buffer.from(identity.publicKey).toString('base64'),
       privateKey: Buffer.from(identity.privateKey).toString('base64'),
       fingerprint: identity.fingerprint,
+      recovered: identity.recovered,
     }
   })
 
