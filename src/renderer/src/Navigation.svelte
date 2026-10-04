@@ -5,7 +5,7 @@
 
 <header class="app-topbar" data-theme="business">
   <button class="app-brand" disabled={!appState.navigationEnabled} onclick={() => appState.activeView = 'home'}>
-    <strong>p2p.<span>kiwi</span></strong>
+    <strong><span>a.</span>webo</strong>
   </button>
   <div class="app-topbar-actions">
     {#if appState.debugLogsEnabled}

@@ -14,12 +14,12 @@ describe('appState', () => {
     appState.activeView = 'settings'
     appState.isHosting = true
     appState.navigationEnabled = false
-    appState.hostUrl = 'kiwi://host?username=Kiwi&token=abc'
+    appState.hostUrl = 'webo://host?username=Kiwi&token=abc'
 
     expect(appState.activeView).toBe('settings')
     expect(appState.isHosting).toBe(true)
     expect(appState.navigationEnabled).toBe(false)
-    expect(appState.hostUrl).toContain('kiwi://')
+    expect(appState.hostUrl).toContain('webo://')
 
     appState.activeView = 'home'
     appState.isHosting = false

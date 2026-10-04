@@ -48,7 +48,7 @@ const en = {
   settings: 'Settings',
   shoulders_of_giants: 'Shoulders of giants',
   shoulders_of_giants_description:
-    'p2p.kiwi Screen Sharing is built on top of the following open-source projects (in no particular order)',
+    'a.webo Screen Sharing is built on top of the following open-source projects (in no particular order)',
   start_a_new_session: 'Start a new session',
   streaming_your_display: 'Streaming your display',
   terms_of_service: 'Terms of service',
@@ -171,7 +171,7 @@ const en = {
   bonjour_sign_in: 'Sign in',
   bonjour_sign_out: 'Sign out',
   bonjour_sign_in_description:
-    'Bonjour is optional. Sign in with SSO on your configured server to add contacts and place calls without exchanging kiwi:// links.',
+    'Bonjour is optional. Sign in with SSO on your configured server to add contacts and place calls without exchanging webo:// links.',
   bonjour_choose_username: 'Choose a unique username so others can add you.',
   bonjour_accept_requests: 'Accept contact requests (time-limited)',
   bonjour_accept_call_joins: 'Allow contacts to ask to join while I am in a call',

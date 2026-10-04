@@ -1,6 +1,6 @@
 ---
 appId: kiwi.p2p.desktop
-productName: p2p.kiwi
+productName: a.webo
 directories:
   buildResources: build
 files:
@@ -17,13 +17,13 @@ win:
   target:
     - nsis
     - portable
-  executableName: p2p-kiwi
+  executableName: a-webo
   icon: build/icon.ico
 portable:
-  artifactName: p2p-kiwi-portable_${arch}.${ext}
+  artifactName: a-webo-portable_${arch}.${ext}
 nsis:
   include: build/installer.nsh
-  artifactName: p2p-kiwi-setup_${arch}.${ext}
+  artifactName: a-webo-setup_${arch}.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -47,7 +47,7 @@ mac:
       arch:
         - universal
 dmg:
-  artifactName: p2p-kiwi_${arch}.${ext}
+  artifactName: a-webo_${arch}.${ext}
   icon: build/icon.icns
 linux:
   target:
@@ -55,22 +55,19 @@ linux:
     - snap
     - flatpak
     - deb
-  maintainer: p2p.kiwi
+  maintainer: whoslucaxs
   category: Utility
   icon: build/
 protocols:
-  name: p2p.kiwi
+  name: a.webo
   schemes:
-    - kiwi
+    - webo
 appImage:
-  artifactName: p2p-kiwi_${arch}.${ext}
+  artifactName: a-webo_${arch}.${ext}
 snap:
-  artifactName: p2p-kiwi_${arch}.${ext}
+  artifactName: a-webo_${arch}.${ext}
 flatpak:
-  artifactName: p2p-kiwi_${arch}.${ext}
+  artifactName: a-webo_${arch}.${ext}
 deb:
-  artifactName: p2p-kiwi_${arch}.${ext}
+  artifactName: a-webo_${arch}.${ext}
 npmRebuild: false
-publish:
-  provider: generic
-  url: https://p2p.kiwi/auto-updates/

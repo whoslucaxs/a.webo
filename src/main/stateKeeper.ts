@@ -45,9 +45,9 @@ type WindowStateKeeper = WindowState & {
 }
 
 export const defaultSettings: SettingsData = {
-  username: 'Kiwi',
+  username: 'Guest',
   foregroundColor: '#ffffff',
-  backgroundColor: '#0099ff',
+  backgroundColor: '#05ad98',
   avatar: '',
   language: 'en',
   isMicrophoneEnabledOnConnect: true,
@@ -64,7 +64,7 @@ export const defaultSettings: SettingsData = {
   ],
   roomServerUrl: 'https://signal.nyxlink.online',
   bonjourEnabled: false,
-  bonjourServerUrl: 'https://bonjour.p2p.kiwi',
+  bonjourServerUrl: '',
 }
 
 export const settingsKeeper = async (): Promise<Settings> => {

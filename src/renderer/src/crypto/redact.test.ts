@@ -4,7 +4,7 @@ import { redactText, redactUnknown } from './redact'
 describe('log redaction', () => {
   it('redacts URL fragments and secret fields', () => {
     const text = redactText(
-      'invite kiwi://h/n/abc#room.supersecret token={"bootstrapSecret":"aaa","plaintext":"hi","sframeKey":"k"}',
+      'invite webo://h/n/abc#room.supersecret token={"bootstrapSecret":"aaa","plaintext":"hi","sframeKey":"k"}',
     )
     expect(text).toContain('#<redacted>')
     expect(text).not.toContain('supersecret')

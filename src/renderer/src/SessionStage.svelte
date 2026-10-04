@@ -256,7 +256,7 @@
 
 <div class="call-shell" data-theme="business">
 <header class="call-header">
-  <div class="call-brand"><span>p2p.</span><span>kiwi</span></div>
+  <div class="call-brand"><span>a.</span><span>webo</span></div>
   {#if (appState.sessionSource === 'host' || appState.sessionSource === 'join') && appState.sessionExpiresAt}
     <div class="call-timer" role="timer" aria-live="off" title={L.expires_after_duration()}>
       <i class="fa-regular fa-clock"></i><span>{L.temporary_chat()}</span><strong>{remainingTime}</strong>
@@ -590,11 +590,12 @@
     border-bottom: 1px solid #293a46;
   }
   .call-brand {
+    color: #fff;
     font-size: 1.65rem;
     font-weight: 800;
     letter-spacing: -0.05em;
   }
-  .call-brand span:last-child { color: #06c7b2; }
+  .call-brand span:first-child { color: #05ad98; }
   .call-timer { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.75rem; border: 1px solid #425563; border-radius: 0.7rem; background: #202f3a; color: #b7c1ce; font-size: 0.8rem; white-space: nowrap; }
   .call-timer strong { color: #f4f7fa; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
   .call-timer i { color: #06c7b2; }

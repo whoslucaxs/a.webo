@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow } from 'electron'
+import { mkdirSync } from 'node:fs'
 import path from 'path'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -12,10 +13,12 @@ import { bonjourClient } from './bonjour/client'
 import { isBonjourAuthUrl } from './bonjour/urls'
 import { kiwiUrlFromArgv } from './kiwiUrl'
 
+const userDataPath = join(app.getPath('appData'), 'p2p.kiwi')
+mkdirSync(userDataPath, { recursive: true })
+app.setPath('userData', userDataPath)
 applyChromiumFlags()
 
-const CUSTOM_PROTOCOL = 'kiwi'
-const LEGACY_PROTOCOL = 'bananas'
+const CUSTOM_PROTOCOL = 'webo'
 
 const hasSingleInstanceLock = !isInProductionMode() || app.requestSingleInstanceLock()
 
@@ -26,18 +29,16 @@ if (!hasSingleInstanceLock) {
   let rendererReady = false
   let pendingKiwiUrl: string | null = null
 
-  if (process.defaultApp) {
+  if (process.env.PORTABLE_EXECUTABLE_FILE) {
+    app.setAsDefaultProtocolClient(CUSTOM_PROTOCOL, process.env.PORTABLE_EXECUTABLE_FILE)
+  } else if (process.defaultApp) {
     if (process.argv.length >= 2) {
       app.setAsDefaultProtocolClient(CUSTOM_PROTOCOL, process.execPath, [
-        path.resolve(process.argv[1]),
-      ])
-      app.setAsDefaultProtocolClient(LEGACY_PROTOCOL, process.execPath, [
         path.resolve(process.argv[1]),
       ])
     }
   } else {
     app.setAsDefaultProtocolClient(CUSTOM_PROTOCOL)
-    app.setAsDefaultProtocolClient(LEGACY_PROTOCOL)
   }
 
   const deliverKiwiUrl = (url: string): void => {

@@ -46,7 +46,7 @@ const zh = {
   settings: '设置',
   shoulders_of_giants: '巨人的肩膀',
   shoulders_of_giants_description:
-    'p2p.kiwi Screen Sharing是建立在以下开源项目之上的（没有特定顺序）',
+    'a.webo Screen Sharing是建立在以下开源项目之上的（没有特定顺序）',
   start_a_new_session: '开始一个新共享',
   streaming_your_display: '流式传输您的显示器',
   terms_of_service: '服务条款',
@@ -166,7 +166,7 @@ const zh = {
   bonjour_sign_in: '登录',
   bonjour_sign_out: '退出',
   bonjour_sign_in_description:
-    'Bonjour 为可选项。通过 SSO 登录配置的服务器后，即可添加联系人并通话，无需交换 kiwi:// 链接。',
+    'Bonjour 为可选项。通过 SSO 登录配置的服务器后，即可添加联系人并通话，无需交换 webo:// 链接。',
   bonjour_choose_username: '请选择唯一用户名，以便他人添加你。',
   bonjour_accept_requests: '接受联系人请求（限时）',
   bonjour_accept_call_joins: '通话中允许联系人请求加入',

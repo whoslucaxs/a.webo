@@ -1,57 +1,20 @@
 <div align="center">
 
-![p2p.kiwi logo](logo.png)
+![a.webo icon](logo.png)
 
-# `p2p.kiwi` - P2P Conferencing and Screen Sharing
+# a.webo
 
-[![Downloads](https://img.shields.io/github/downloads/dont-be-evil-company/p2p.kiwi/total.svg?style=for-the-badge)](https://p2p.kiwi/)
-[![Discord](https://the-dont-be-evil-company.com/assets/badges/discord.svg)](https://the-dont-be-evil-company.com/discord)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/dont-be-evil-company/p2p.kiwi?style=for-the-badge)](https://github.com/dont-be-evil-company/p2p.kiwi/releases/latest)
-
-[Install](#install) •
-[Website](https://p2p.kiwi/) •
-[Privacy Policy](./PRIVACY.md) •
-[Terms of Service](./TOS.md) •
-[Code of Conduct](./CODE_OF_CONDUCT.md)
-
-<p></p>
-
-`p2p.kiwi` P2P Conferencing and Screen Sharing is a simple and
-easy-to-use screen sharing tool for Mac, Windows, and Linux.
-
-It utilizes a peer-to-peer connection to share your screen with others,
-without the need for an account. STUN and optional TURN servers are still
-used to exchange ICE connectivity information.
-
-That is not a signaling server for chat or media keys.
-
-![p2p.kiwi open-graph image](open-graph.png)
+Audio channels, video calls, and screen sharing for Windows, macOS, and Linux.
 
 </div>
 
-## Install
+Create temporary rooms or permanent channels and invite people with a `webo://` link. The room server at `https://signal.nyxlink.online` handles signaling; media uses WebRTC.
 
-## Install Manually
+## Windows builds
 
-Grab the latest release from the [GitHub releases page](https://github.com/dont-be-evil-company/p2p.kiwi/releases/latest).
+Run `pnpm build:windows` to create the installer and portable executable in `dist/`.
 
-## Install via Arch Linux `AUR`
-
-```sh
-paru -S p2p-kiwi-bin`
-```
-
-or
-
-```sh
-yay -S p2p-kiwi-bin`
-```
-
-## Install via Homebrew
-
-```sh
-brew install --cask p2p-kiwi
-```
+Based on the MIT-licensed p2p.kiwi project. See [LICENSE](LICENSE) for the original license.
 
 ## `E2EE` (End-to-End Encryption)
 

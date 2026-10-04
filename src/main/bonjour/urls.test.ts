@@ -3,11 +3,11 @@ import { isBonjourAuthUrl, isKiwiSdpUrl, tokenFromBonjourAuthUrl, eventsWsUrl } 
 
 describe('bonjour urls', () => {
   it('splits auth callbacks from sdp invites', () => {
-    expect(isBonjourAuthUrl('kiwi://bonjour-auth?token=abc')).toBe(true)
-    expect(isKiwiSdpUrl('kiwi://bonjour-auth?token=abc')).toBe(false)
-    expect(isKiwiSdpUrl('kiwi://h/Kiwi/payload')).toBe(true)
-    expect(isBonjourAuthUrl('kiwi://h/Kiwi/payload')).toBe(false)
-    expect(tokenFromBonjourAuthUrl('kiwi://bonjour-auth?token=secret')).toBe('secret')
+    expect(isBonjourAuthUrl('webo://bonjour-auth?token=abc')).toBe(true)
+    expect(isKiwiSdpUrl('webo://bonjour-auth?token=abc')).toBe(false)
+    expect(isKiwiSdpUrl('webo://h/Kiwi/payload')).toBe(true)
+    expect(isBonjourAuthUrl('webo://h/Kiwi/payload')).toBe(false)
+    expect(tokenFromBonjourAuthUrl('webo://bonjour-auth?token=secret')).toBe('secret')
   })
 
   it('builds the live events websocket URL', () => {

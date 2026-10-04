@@ -92,6 +92,7 @@ beforeEach(() => {
   vi.stubGlobal('window', {
     KiwiApi: {
       getSettings,
+      hasRoutableIpv6: vi.fn(async () => false),
       getDeviceIdentity: vi.fn(async () => ({
         publicKey: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
         privateKey: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
@@ -147,16 +148,16 @@ beforeEach(() => {
 })
 
 describe('WebRTCSession', () => {
-  it('CreateHostUrl produces a valid kiwi host URL after Setup', async () => {
+  it('CreateHostUrl produces a valid webo host URL after Setup', async () => {
     const { WebRTCSession } = await import('./webrtc.svelte')
     const { mayBeConnectionString, ConnectionType } = await import('./Utils')
     const session = new WebRTCSession()
-    const result = await session.Setup()
+    const result = await session.Setup(null, { captureDisplay: false })
     expect(result).toBe('ok')
     const url = await session.CreateHostUrl({ username: 'Kiwi' })
     expect(url).toBeTruthy()
     expect(mayBeConnectionString(ConnectionType.HOST, url ?? '')).toBe(true)
-    expect(url?.startsWith('kiwi://h/')).toBe(true)
+    expect(url?.startsWith('webo://h/')).toBe(true)
   })
 
   it('Disconnect resets the peer connection', async () => {
@@ -324,7 +325,7 @@ describe('WebRTCSession', () => {
     expect(peerConnections[1].remoteDescription?.type).toBe('answer')
   })
 
-  it('keeps Bonjour signaling when copying a kiwi invite', async () => {
+  it('keeps Bonjour signaling when copying a webo invite', async () => {
     const { WebRTCSession } = await import('./webrtc.svelte')
     const session = new WebRTCSession()
     await session.Setup(null, { captureDisplay: false })
@@ -333,7 +334,7 @@ describe('WebRTCSession', () => {
     await session.startBonjourCall({ callId: 'call-1', peerId: 'peer-1' })
     sent.length = 0
     const url = await session.CreateHostUrl({ username: 'Kiwi' })
-    expect(url?.startsWith('kiwi://h/')).toBe(true)
+    expect(url?.startsWith('webo://h/')).toBe(true)
     expect(session.signalingKind).toBe('bonjour')
     emitIce(peerConnections[0], 'still-1')
     expect(sent).toEqual([{ callId: 'call-1', type: 'ice' }])

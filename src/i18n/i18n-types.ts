@@ -985,7 +985,7 @@ export type TranslationFunctions = {
    */
   shoulders_of_giants: () => LocalizedString;
   /**
-   * p2p.kiwi Screen Sharing is built on top of the following open-source projects (in no particular order)
+   * a.webo Screen Sharing is built on top of the following open-source projects (in no particular order)
    */
   shoulders_of_giants_description: () => LocalizedString;
   /**
@@ -1418,7 +1418,7 @@ export type TranslationFunctions = {
    */
   bonjour_sign_out: () => LocalizedString;
   /**
-   * Bonjour is optional. Sign in with SSO on your configured server to add contacts and place calls without exchanging kiwi:// links.
+   * Bonjour is optional. Sign in with SSO on your configured server to add contacts and place calls without exchanging webo:// links.
    */
   bonjour_sign_in_description: () => LocalizedString;
   /**

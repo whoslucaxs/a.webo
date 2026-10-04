@@ -7,11 +7,9 @@
 !macroend
 
 !macro customInstall
-  !insertmacro registerUrlProtocol "kiwi"
-  !insertmacro registerUrlProtocol "bananas"
+  !insertmacro registerUrlProtocol "webo"
 !macroend
 
 !macro customUnInstall
-  DeleteRegKey SHELL_CONTEXT "Software\Classes\kiwi"
-  DeleteRegKey SHELL_CONTEXT "Software\Classes\bananas"
+  DeleteRegKey SHELL_CONTEXT "Software\Classes\webo"
 !macroend

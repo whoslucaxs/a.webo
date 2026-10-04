@@ -8,7 +8,7 @@ export const enum ConnectionType {
 
 export type RTCSessionDescriptionOptions = RTCSessionDescriptionInit
 
-const CONNECTION_PROTOCOLS = new Set(['kiwi:', 'bananas:'])
+const CONNECTION_PROTOCOLS = new Set(['webo:'])
 const COMPACT_OPTIONS = { compress: 'base64' as const }
 const PAYLOAD_VERSION = '2'
 
@@ -304,7 +304,7 @@ export const getConnectionString = async (
 ): Promise<string> => {
   const { username } = data
   const payload = encodeCompactPayload(offer, sdpTypeForConnection(ct))
-  const url = `kiwi://${SHORT_TYPE[ct]}/${encodeURIComponent(username)}/${payload}`
+  const url = `webo://${SHORT_TYPE[ct]}/${encodeURIComponent(username)}/${payload}`
   return data.invite ? appendInviteFragment(url, data.invite) : url
 }
 

@@ -7,11 +7,13 @@ describe('room link', () => {
   it('keeps the encryption invite in the link fragment', () => {
     const fragment = 'YWJj.ZGZmZ2hpamtsbW5vcHFyc3R1dnd4eXo'
     const link = makeRoomLink('https://signal.nyxlink.online', roomId, fragment)
+    expect(link.startsWith('webo://room/')).toBe(true)
     expect(parseRoomLink(link)).toEqual({
       server: 'https://signal.nyxlink.online',
       roomId,
       invite: { roomId: 'YWJj', bootstrapSecret: 'ZGZmZ2hpamtsbW5vcHFyc3R1dnd4eXo' },
     })
+    expect(parseRoomLink(link.replace('webo://', 'kiwi://'))).toBeNull()
   })
 
   it('rejects insecure server URLs', () => {
@@ -21,12 +23,14 @@ describe('room link', () => {
   it('keeps a permanent channel link reusable and requires its secret', () => {
     const fragment = 'YWJj.ZGZmZ2hpamtsbW5vcHFyc3R1dnd4eXo'
     const link = makeChannelLink('https://signal.nyxlink.online', roomId, fragment)
+    expect(link.startsWith('webo://channel/')).toBe(true)
     expect(parseChannelLink(link)).toEqual({
       server: 'https://signal.nyxlink.online',
       roomId,
       invite: { roomId: 'YWJj', bootstrapSecret: 'ZGZmZ2hpamtsbW5vcHFyc3R1dnd4eXo' },
     })
     expect(parseChannelLink(link.split('#')[0])).toBeNull()
+    expect(parseChannelLink(link.replace('webo://', 'kiwi://'))).toBeNull()
   })
 
   it('carries display names in invitation links', () => {

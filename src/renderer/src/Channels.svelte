@@ -52,8 +52,12 @@
     try {
       const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as SavedChannel[]
       channels = Array.isArray(stored)
-        ? stored.filter((entry) => typeof entry?.name === 'string' && parseChannelLink(entry.link))
+        ? stored
+            .filter((entry) => typeof entry?.name === 'string' && typeof entry.link === 'string')
+            .map((entry) => ({ ...entry, link: entry.link.replace(/^kiwi:\/\//, 'webo://') }))
+            .filter((entry) => parseChannelLink(entry.link))
         : []
+      localStorage.setItem(storageKey, JSON.stringify(channels))
     } catch {
       channels = []
     }

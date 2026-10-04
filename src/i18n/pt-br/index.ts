@@ -47,7 +47,7 @@ const pt_br = {
   settings: 'Configurações',
   shoulders_of_giants: 'Nossos Ombros de Gigantes',
   shoulders_of_giants_description:
-    'p2p.kiwi Screen Sharing foi construído e desenvolvido em cima desses projetos open-source a seguir (sem ordem específica)',
+    'a.webo Screen Sharing foi construído e desenvolvido em cima desses projetos open-source a seguir (sem ordem específica)',
   start_a_new_session: 'Iniciar uma sessão',
   streaming_your_display: 'Transmitindo sua tela',
   terms_of_service: 'Termos de Uso e Serviço',
@@ -172,7 +172,7 @@ const pt_br = {
   bonjour_sign_in: 'Entrar',
   bonjour_sign_out: 'Sair',
   bonjour_sign_in_description:
-    'Bonjour é opcional. Entre com SSO no servidor configurado para adicionar contatos e ligar sem links kiwi://.',
+    'Bonjour é opcional. Entre com SSO no servidor configurado para adicionar contatos e ligar sem links webo://.',
   bonjour_choose_username:
     'Escolha um nome de usuário único para que outras pessoas possam adicionar você.',
   bonjour_accept_requests: 'Aceitar pedidos de contato (por tempo limitado)',

@@ -14,7 +14,7 @@ export const startAuthLoopback = (
       const token = url.searchParams.get('token')
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       res.end(
-        '<!doctype html><p>Signed in to Bonjour. You can close this tab and return to p2p.kiwi.</p>',
+        '<!doctype html><p>Signed in to Bonjour. You can close this tab and return to a.webo.</p>',
       )
       if (token) onToken(token)
       server.close()

@@ -36,7 +36,7 @@ export const normalizeRoomServer = (value: string): string => {
 export const parseRoomLink = (text: string): RoomLink | null => {
   try {
     const url = new URL(text.trim())
-    if (url.protocol !== 'kiwi:' || url.hostname !== 'room') return null
+    if (url.protocol !== 'webo:' || url.hostname !== 'room') return null
     const roomId = url.pathname.slice(1)
     if (!/^[a-f0-9-]{36}$/.test(roomId)) return null
     const server = normalizeRoomServer(url.searchParams.get('server') ?? '')
@@ -48,12 +48,12 @@ export const parseRoomLink = (text: string): RoomLink | null => {
 }
 
 export const makeRoomLink = (server: string, roomId: string, fragment: string, name = ''): string =>
-  `kiwi://room/${roomId}?server=${encodeURIComponent(server)}${name ? `&name=${encodeURIComponent(name)}` : ''}${fragment ? `#${fragment}` : ''}`
+  `webo://room/${roomId}?server=${encodeURIComponent(server)}${name ? `&name=${encodeURIComponent(name)}` : ''}${fragment ? `#${fragment}` : ''}`
 
 export const parseChannelLink = (text: string): ChannelLink | null => {
   try {
     const url = new URL(text.trim())
-    if (url.protocol !== 'kiwi:' || url.hostname !== 'channel') return null
+    if (url.protocol !== 'webo:' || url.hostname !== 'channel') return null
     const roomId = url.pathname.slice(1)
     if (!/^[a-f0-9-]{36}$/.test(roomId)) return null
     const server = normalizeRoomServer(url.searchParams.get('server') ?? '')
@@ -67,7 +67,7 @@ export const parseChannelLink = (text: string): ChannelLink | null => {
 }
 
 export const makeChannelLink = (server: string, roomId: string, fragment: string, name = '', description = ''): string =>
-  `kiwi://channel/${roomId}?server=${encodeURIComponent(server)}${name ? `&name=${encodeURIComponent(name)}` : ''}${description ? `&description=${encodeURIComponent(description)}` : ''}#${fragment}`
+  `webo://channel/${roomId}?server=${encodeURIComponent(server)}${name ? `&name=${encodeURIComponent(name)}` : ''}${description ? `&description=${encodeURIComponent(description)}` : ''}#${fragment}`
 
 export const createChannel = (server: string, joinAuth: string): Promise<{ roomId: string; hostKey: string }> =>
   request(`${server}/channels`, 'POST', { joinAuth })

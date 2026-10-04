@@ -1,13 +1,10 @@
 {
-  "name": "p2p.kiwi",
+  "name": "a.webo",
   "version": "3.7.0",
-  "description": "p2p.kiwi is a simple and easy-to-use screen sharing tool for Mac, Windows, and Linux.",
-  "homepage": "https://p2p.kiwi",
+  "description": "a.webo is a desktop app for audio channels, video calls, and screen sharing.",
+  "homepage": "https://github.com/whoslucaxs/JanjaShare",
   "license": "MIT",
-  "author": {
-    "name": "Marco Kellershoff",
-    "email": "marco@kellershoff.net"
-  },
+  "author": "whoslucaxs",
   "main": "./out/main/index.js",
   "scripts": {
     "install:electron": "tsx ./node_modules/electron/install.js",
@@ -71,5 +68,5 @@
   "overrides": {
     "vitest": "4.1.11"
   },
-  "desktopName": "p2p.kiwi"
+  "desktopName": "a.webo"
 }

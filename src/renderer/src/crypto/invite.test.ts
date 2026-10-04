@@ -24,9 +24,9 @@ describe('invite fragments', () => {
 
   it('never treats the fragment as a path and can strip it for logs', () => {
     const invite = randomInviteCrypto()
-    const url = appendInviteFragment('kiwi://h/Kiwi/payload', invite)
+    const url = appendInviteFragment('webo://h/Kiwi/payload', invite)
     expect(url).toContain('#')
-    expect(stripInviteFragment(url)).toBe('kiwi://h/Kiwi/payload')
+    expect(stripInviteFragment(url)).toBe('webo://h/Kiwi/payload')
     expect(stripInviteFragment(url)).not.toContain(invite.bootstrapSecret)
   })
 

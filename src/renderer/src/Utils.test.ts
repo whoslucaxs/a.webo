@@ -263,9 +263,9 @@ describe('dropUnusableIpv6IceCandidates', () => {
 })
 
 describe('connection strings', () => {
-  it('builds a compact kiwi:// host URL and parses it back', async () => {
+  it('builds a compact webo:// host URL and parses it back', async () => {
     const url = await getConnectionString(ConnectionType.HOST, MINIMAL_OFFER, { username: 'Kiwi' })
-    expect(url.startsWith('kiwi://h/Kiwi/2')).toBe(true)
+    expect(url.startsWith('webo://h/Kiwi/2')).toBe(true)
     expect(mayBeConnectionString(ConnectionType.HOST, url)).toBe(true)
     expect(mayBeConnectionString(ConnectionType.PARTICIPANT, url)).toBe(false)
 
@@ -338,11 +338,11 @@ describe('connection strings', () => {
     expect(signaled.sdp).toMatch(/tcp .* typ relay/i)
   })
 
-  it('builds a compact kiwi:// participant URL', async () => {
+  it('builds a compact webo:// participant URL', async () => {
     const url = await getConnectionString(ConnectionType.PARTICIPANT, MINIMAL_OFFER, {
       username: 'Guest',
     })
-    expect(url.startsWith('kiwi://p/Guest/2')).toBe(true)
+    expect(url.startsWith('webo://p/Guest/2')).toBe(true)
     expect(mayBeConnectionString(ConnectionType.PARTICIPANT, url)).toBe(true)
   })
 
@@ -354,12 +354,12 @@ describe('connection strings', () => {
       enumerable: false,
     })
     const url = await getConnectionString(ConnectionType.HOST, nativeLike, { username: 'Kiwi' })
-    expect(url.startsWith('kiwi://h/Kiwi/2O')).toBe(true)
+    expect(url.startsWith('webo://h/Kiwi/2O')).toBe(true)
     const parsed = await getDataFromKiwiUrl(url)
     expect(parsed.rtcSessionDescription.type).toBe('offer')
   })
 
-  it('treats kiwi://h compact payloads as offers even if the type letter is A', async () => {
+  it('treats webo://h compact payloads as offers even if the type letter is A', async () => {
     const url = await getConnectionString(ConnectionType.HOST, MINIMAL_OFFER, { username: 'Kiwi' })
     const broken = url.replace('/2O', '/2A')
     expect(broken.includes('/2A')).toBe(true)
@@ -371,7 +371,7 @@ describe('connection strings', () => {
 
   it('round-trips a realistic offer well under Discord length', async () => {
     const legacyToken = encodeURIComponent(await compressJson(REALISTIC_OFFER))
-    const legacyUrl = `kiwi://host?username=Kiwi&token=${legacyToken}`
+    const legacyUrl = `webo://host?username=Kiwi&token=${legacyToken}`
     const compactUrl = await getConnectionString(ConnectionType.HOST, REALISTIC_OFFER, {
       username: 'Kiwi',
     })
@@ -389,20 +389,11 @@ describe('connection strings', () => {
     expect(parsed.rtcSessionDescription.sdp).not.toMatch(/a=candidate:\S+\s+\d+\s+tcp\s/i)
   })
 
-  it('still accepts legacy kiwi:// gzip JSON URLs', async () => {
+  it('accepts gzip JSON URLs with the new protocol', async () => {
     const token = encodeURIComponent(await compressJson(MINIMAL_OFFER))
-    const legacyUrl = `kiwi://host?username=Kiwi&token=${token}`
+    const legacyUrl = `webo://host?username=Kiwi&token=${token}`
     expect(mayBeConnectionString(ConnectionType.HOST, legacyUrl)).toBe(true)
     const parsed = await getDataFromKiwiUrl(legacyUrl)
-    expect(parsed.data.username).toBe('Kiwi')
-    expect(parsed.rtcSessionDescription).toEqual(MINIMAL_OFFER)
-  })
-
-  it('still accepts legacy bananas:// gzip JSON URLs', async () => {
-    const token = encodeURIComponent(await compressJson(MINIMAL_OFFER))
-    const bananasUrl = `bananas://host?username=Kiwi&token=${token}`
-    expect(mayBeConnectionString(ConnectionType.HOST, bananasUrl)).toBe(true)
-    const parsed = await getDataFromKiwiUrl(bananasUrl)
     expect(parsed.data.username).toBe('Kiwi')
     expect(parsed.rtcSessionDescription).toEqual(MINIMAL_OFFER)
   })
@@ -411,10 +402,12 @@ describe('connection strings', () => {
     expect(
       mayBeConnectionString(ConnectionType.HOST, 'https://example.com/host?username=a&token=b'),
     ).toBe(false)
-    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://host?username=Kiwi')).toBe(false)
-    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://host?token=abc')).toBe(false)
-    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://h/Kiwi/')).toBe(false)
-    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://h/Kiwi/not-valid')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'webo://host?username=Kiwi')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'webo://host?token=abc')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'webo://h/Kiwi/')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'webo://h/Kiwi/not-valid')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'kiwi://h/Kiwi/payload')).toBe(false)
+    expect(mayBeConnectionString(ConnectionType.HOST, 'bananas://h/Kiwi/payload')).toBe(false)
     expect(mayBeConnectionString(ConnectionType.HOST, 'not a url')).toBe(false)
   })
 })

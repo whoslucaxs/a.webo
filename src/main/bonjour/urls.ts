@@ -1,10 +1,10 @@
-export const BONJOUR_AUTH_PREFIX = 'kiwi://bonjour-auth'
+export const BONJOUR_AUTH_PREFIX = 'webo://bonjour-auth'
 
 export const isBonjourAuthUrl = (url: string): boolean =>
-  url.startsWith(BONJOUR_AUTH_PREFIX) || url.startsWith('kiwi://bonjour/callback')
+  url.startsWith(BONJOUR_AUTH_PREFIX) || url.startsWith('webo://bonjour/callback')
 
 export const isKiwiSdpUrl = (url: string): boolean => {
-  if (!url.startsWith('kiwi://') && !url.startsWith('bananas://')) return false
+  if (!url.startsWith('webo://')) return false
   return !isBonjourAuthUrl(url)
 }
 

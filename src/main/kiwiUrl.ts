@@ -1,4 +1,4 @@
-const URL_PREFIXES = ['kiwi://', 'bananas://'] as const
+const URL_PREFIXES = ['webo://'] as const
 
 const unquote = (arg: string): string => {
   const trimmed = arg.trim()
