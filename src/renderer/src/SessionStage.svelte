@@ -10,6 +10,7 @@
     mayBeConnectionString
   } from './Utils'
   import AudioVisualizer from './AudioVisualizer.svelte'
+  import Settings from './Settings.svelte'
   import SessionEndedOverlay from './SessionEndedOverlay.svelte'
   import PresenterVoteModal from './PresenterVoteModal.svelte'
   import type { Room } from './session/room.svelte'
@@ -34,6 +35,9 @@
   let username = $state('')
   let inviteInFlight = false
   let inviteFormIsVisible = $state(false)
+  let participantsOpen = $state(true)
+  let settingsOpen = $state(false)
+  const inviteLink = $derived(appState.roomLink || (appState.sessionSource === 'join' || appState.sessionSource === 'channel' ? appState.participantUrl : ''))
 
   const presenterShare = $derived(room.screenShares.find((share) =>
     share.peerId === room.presenterId && share.peerId !== room.localPeerId,
@@ -147,8 +151,8 @@
 
   const onCopyInvite = async (): Promise<void> => {
     if (inviteInFlight) return
-    if ((appState.sessionSource === 'host' || appState.sessionSource === 'channel') && appState.roomLink) {
-      await navigator.clipboard.writeText(appState.roomLink)
+    if (inviteLink) {
+      await navigator.clipboard.writeText(inviteLink)
       toast.show('success', L.copy_my_connection_string())
       return
     }
@@ -227,133 +231,14 @@
 
 <div class="call-shell" data-theme="business">
 <header class="call-header">
-  <div>
-    <span class="call-kicker">p2p.kiwi</span>
-    <h1>{appState.sessionTitle || (appState.isHosting ? L.hosting_a_session() : L.joined_a_session())}</h1>
-    {#if appState.sessionDescription}<p class="call-description">{appState.sessionDescription}</p>{/if}
-  </div>
-  <span class="call-count" title={L.peer_list()}><i class="fa-solid fa-user-group"></i> {room.peers.length}</span>
+  <div class="call-brand"><span>p2p.</span><span>kiwi</span></div>
+  <button class="header-settings" title={L.settings()} aria-label={L.settings()} onclick={() => settingsOpen = true}>
+    <i class="fa-solid fa-gear"></i>
+  </button>
 </header>
-<div class="call-controls">
-  <div class="flex gap-2 flex-wrap">
-      <button
-        title={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}
-        aria-label={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}
-        class="btn {room.displayStreamActive ? 'btn-success' : 'btn-error'}"
-        onclick={() => room.displayStreamActive ? onDisplayStreamToggle() : onChangeScreen()}
-      >
-        <span class="icon">
-          <i class="fa-solid fa-display"></i>
-        </span>
-      </button>
-      {#if room.displayStreamActive}
-        <button class="btn btn-info" onclick={onChangeScreen}>
-          <span class="icon">
-            <i class="fa-solid fa-display"></i>
-          </span>
-          <span>{L.change_screen()}</span>
-        </button>
-      {/if}
-    {#if room.hasAudioInput}
-      <button
-        aria-label={room.microphoneActive ? L.microphone_active() : L.microphone_inactive()}
-        title={room.microphoneActive ? L.microphone_active() : L.microphone_inactive()}
-        class="btn {room.microphoneActive ? 'btn-success' : 'btn-error'}"
-        onclick={onMicrophoneToggle}
-      >
-        <span class="icon mic-btn-icon">
-          {#if room.microphoneActive}
-            <AudioVisualizer
-              className={visualizerIsActive ? '' : 'hidden'}
-              bind:visualizerIsActive
-              stream={room.GetAudioStream()}
-            />
-            <i class="fas fa-microphone {visualizerIsActive ? 'hidden' : ''}"></i>
-          {:else}
-            <i class="fas fa-microphone-slash"></i>
-          {/if}
-        </span>
-      </button>
-    {/if}
-    <button
-      aria-label={room.cameraActive ? L.camera_on() : L.camera_off()}
-      title={room.cameraActive ? L.camera_on() : L.camera_off()}
-      class="btn {room.cameraActive ? 'btn-success' : 'btn-error'}"
-      onclick={onCameraToggle}
-    >
-      <span class="icon">
-        <i class="fa-solid {room.cameraActive ? 'fa-video' : 'fa-video-slash'}"></i>
-      </span>
-    </button>
-    <button class="btn btn-info" onclick={onChatClick}>
-      <span class="icon">
-        <i class="fa-solid fa-comment"></i>
-      </span>
-      <span>{L.chat()}</span>
-    </button>
-    {#if showInvite && (room.isCoordinator || appState.sessionSource === 'channel')}
-      <div class="flex flex-wrap gap-2 mb-4">
-        <div class="join w-full mb-4">
-          <span class="tooltip tooltip-top {inviteFormIsVisible ? 'hidden' : ''}" data-tip={inviteAnotherTextLoading === '' ? L.invite_another() : inviteAnotherTextLoading}>
-            <button class="btn btn-primary" bind:this={inviteAnotherButton} aria-label={inviteAnotherTextLoading === '' ? L.invite_another() : inviteAnotherTextLoading} onclick={onCopyInvite}>
-              <span class="icon">
-                <i class="fa-solid fa-user-plus"></i>
-              </span>
-              {inviteAnotherTextLoading}
-            </button>
-          </span>
-          <span class="tooltip tooltip-top" data-tip={L.cancel()}>
-            <button
-              class="btn join-item btn-error not-hover:btn-soft {inviteFormIsVisible ? '' : 'hidden'}"
-              aria-label={L.cancel()}
-              onclick={() => {
-                inviteFormIsVisible = false
-              }}
-            >
-              <span class="fa-solid fa-user"></span>
-              <span class="fa-solid fa-ban"></span>
-            </button>
-          </span>
-          <span class="flex-1 {inviteFormIsVisible ? '' : 'hidden'}">
-            <span class="tooltip tooltip-top" data-tip={L.participant_connection_string()}>
-              <input
-                class="input join-item flex-3 max-w-24 {connectionInputClass}"
-                bind:value={appState.hostUrl}
-                type="text"
-              />
-            </span>
-            <span class="tooltip tooltip-top" data-tip={L.connect()}>
-              <button
-                class="btn join-item {connectButtonClass}"
-                aria-label={L.connect()}
-                onclick={onConnectInvite}
-                disabled={!connectionStringIsValid}
-              >
-                <span class="fa-solid fa-plug"></span>
-              </button>
-            </span>
-          </span>
-        </div>
-      </div>
-    {/if}
-  </div>
-  <div class="flex gap-2">
-    <button class="btn btn-error" onclick={onLeaveClick}>
-      <span class="icon">
-        <i class="fas fa-unlink"></i>
-      </span>
-      <span>{L.leave()}</span>
-    </button>
-    {#if room.isCoordinator && appState.sessionSource !== 'channel'}
-      <button class="btn btn-error" onclick={onEndSessionClick}>
-        <span>{L.end_session()}</span>
-      </button>
-    {/if}
-  </div>
-</div>
 
-<div class="call-content">
-<aside class="call-sidebar">
+<div class:sidebar-hidden={!participantsOpen} class="call-content">
+<aside class="call-sidebar" aria-label={L.peer_list()}>
 
 {#if room.presenterGone && !room.isPresenter && !room.sessionEndedReason}
   <div class="alert alert-warning mb-4">{L.presenter_left()}</div>
@@ -363,16 +248,15 @@
   <div class="alert alert-warning mb-4">{L.identity_changed()}</div>
 {/if}
 
-<div class="mb-4">
-  <h2 class="font-semibold mb-2">{L.e2ee_status()}</h2>
+<div class="sidebar-status">
+  <h2>{L.session_started()}</h2>
   {#if room.e2eeActive && room.mediaE2eeActive}
     {#if room.verification}
-      <details class="collapse" name="e2ee-verification">
-        <summary class="badge badge-success cursor-pointer pointer-none">
-          {L.e2ee_on()}
-          <span class="ml-1 text-success-content fa-solid fa-lock"></span>
+      <details class="verification" name="e2ee-verification">
+        <summary class="status-pill secure">
+          <i class="fa-solid fa-lock"></i> {L.e2ee_on()}
         </summary>
-        <div class="collapse-content mt-2 text-sm">
+        <div class="verification-content">
           <p><span class="font-semibold">{L.verification_code()}:</span> {room.verification.securityCode}</p>
           <p class="opacity-70">{L.verification()}</p>
           <div class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100 max-w-fit">
@@ -398,6 +282,8 @@
           </div>
         </div>
       </details>
+    {:else}
+      <span class="status-pill secure"><i class="fa-solid fa-lock"></i> {L.e2ee_on()}</span>
     {/if}
   {:else if room.e2eeActive}
     <p class="badge badge-error">
@@ -421,23 +307,26 @@
   {/if}
 </div>
 
-<div class="mb-4">
-  <h2 class="font-semibold mb-2">{L.peer_list()}</h2>
+<div class="sidebar-members">
+  <h2>{L.peer_list()} <span>{room.peers.length}</span></h2>
   <div class="member-list">
     {#each room.peers as peer (peer.id)}
       <div class="member-row">
-        {#if peer.avatar}
-          <img class="member-avatar" src={peer.avatar} alt="" />
-        {:else}
-          <span class="member-avatar" style:background={peer.backgroundColor} style:color={peer.foregroundColor}>
-            {peer.username.trim().charAt(0).toUpperCase() || '?'}
-          </span>
-        {/if}
+        <span class="member-avatar-wrap">
+          {#if peer.avatar}
+            <img class="member-avatar" src={peer.avatar} alt="" />
+          {:else}
+            <span class="member-avatar" style:background={peer.backgroundColor} style:color={peer.foregroundColor}>
+              {peer.username.trim().charAt(0).toUpperCase() || '?'}
+            </span>
+          {/if}
+          <span class="member-online"></span>
+        </span>
         <span class="member-name" title={peer.username}>
           {peer.username}{peer.id === room.localPeerId ? ` (${L.you()})` : ''}
-          {#if peer.id === room.coordinatorId}<i class="fa-solid fa-crown" title={L.coordinator()}></i>{/if}
-          {#if peer.id === room.presenterId}<i class="fa-solid fa-display" title={L.presenter()}></i>{/if}
         </span>
+        {#if peer.id === room.coordinatorId}<i class="member-role fa-solid fa-crown" title={L.coordinator()}></i>{/if}
+        {#if peer.id === room.presenterId}<i class="member-role fa-solid fa-display" title={L.presenter()}></i>{/if}
         {#if peer.id !== room.localPeerId}
           <button
             type="button"
@@ -455,20 +344,33 @@
 
   </aside>
   <main class="call-stage">
-{#if (appState.sessionSource === 'host' || appState.sessionSource === 'channel') && !room.isLive && appState.roomLink}
+{#if inviteLink}
   <div class="room-invite">
     <div>
       <strong>{L.session_started()}</strong>
       <p>{L.copy_my_connection_string()}</p>
     </div>
     <div class="room-invite-actions">
-      <input class="input" value={appState.roomLink} aria-label={L.host_connection_string()} readonly />
-      <button class="btn btn-primary" onclick={onCopyInvite}>
+      <input class="input" value={inviteLink} aria-label={L.host_connection_string()} readonly />
+      <button class="invite-copy" onclick={onCopyInvite}>
         <i class="fa-solid fa-copy"></i> {L.copy_my_connection_string()}
       </button>
     </div>
   </div>
+{:else if showInvite}
+  <div class="room-invite">
+    <strong>{L.session_started()}</strong>
+    <div class="room-invite-actions">
+      <button class="invite-copy" bind:this={inviteAnotherButton} onclick={onCopyInvite}>{inviteAnotherTextLoading || L.invite_another()}</button>
+      {#if inviteFormIsVisible}
+        <input class="input {connectionInputClass}" bind:value={appState.hostUrl} aria-label={L.participant_connection_string()} />
+        <button class="btn {connectButtonClass}" onclick={onConnectInvite} disabled={!connectionStringIsValid}>{L.connect()}</button>
+        <button class="btn btn-ghost" onclick={() => inviteFormIsVisible = false}>{L.cancel()}</button>
+      {/if}
+    </div>
+  </div>
 {/if}
+<div class="screen-area">
 <div class="screen-grid">
 <div class={showVideo ? 'relative' : 'hidden'}>
   <fieldset class="fieldset px-0">
@@ -542,11 +444,54 @@
   <div class="call-empty">
     <i class="fa-solid fa-display"></i>
     <p>{L.not_streaming_your_display()}</p>
-    <button class="btn btn-primary" onclick={onChangeScreen}>{L.share_your_screen()}</button>
+    <button class="invite-copy" onclick={onChangeScreen}><i class="fa-solid fa-display"></i> {L.share_your_screen()}</button>
   </div>
 {/if}
+</div>
   </main>
 </div>
+
+<nav class="call-controls" aria-label={L.media()}>
+  <button class:control-active={room.displayStreamActive} class="control-button" onclick={() => room.displayStreamActive ? onDisplayStreamToggle() : onChangeScreen()} aria-label={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}>
+    <i class="fa-solid fa-display"></i><span>{L.share_your_screen()}</span>
+  </button>
+  {#if room.displayStreamActive}
+    <button class="control-button compact" onclick={onChangeScreen} title={L.change_screen()} aria-label={L.change_screen()}><i class="fa-solid fa-arrows-rotate"></i></button>
+  {/if}
+  <span class="control-separator"></span>
+  {#if room.hasAudioInput}
+    <button class:control-active={room.microphoneActive} class="control-button" onclick={onMicrophoneToggle} aria-label={room.microphoneActive ? L.microphone_active() : L.microphone_inactive()}>
+      <span class="mic-btn-icon">
+        {#if room.microphoneActive}
+          <AudioVisualizer className={visualizerIsActive ? '' : 'hidden'} bind:visualizerIsActive stream={room.GetAudioStream()} />
+          <i class="fas fa-microphone {visualizerIsActive ? 'hidden' : ''}"></i>
+        {:else}<i class="fas fa-microphone-slash"></i>{/if}
+      </span>
+      <span>{L.microphone_device()}</span>
+    </button>
+  {/if}
+  <button class:control-active={room.cameraActive} class="control-button" onclick={onCameraToggle} aria-label={room.cameraActive ? L.camera_on() : L.camera_off()}>
+    <i class="fa-solid {room.cameraActive ? 'fa-video' : 'fa-video-slash'}"></i><span>{L.camera()}</span>
+  </button>
+  <button class="control-button" onclick={onChatClick}><i class="fa-solid fa-comment"></i><span>{L.chat()}</span></button>
+  <button class:control-selected={participantsOpen} class="control-button" onclick={() => participantsOpen = !participantsOpen} aria-pressed={participantsOpen}>
+    <i class="fa-solid fa-user-group"></i><span>{L.peer_list()}</span>
+  </button>
+  <span class="control-separator"></span>
+  <button class="control-button control-danger" onclick={onLeaveClick}><i class="fa-solid fa-phone-slash"></i><span>{L.leave()}</span></button>
+  {#if room.isCoordinator && appState.sessionSource !== 'channel'}
+    <button class="control-button control-danger end-session" onclick={onEndSessionClick}><i class="fa-solid fa-power-off"></i><span>{L.end_session()}</span></button>
+  {/if}
+</nav>
+
+{#if settingsOpen}
+  <div class="settings-backdrop" role="presentation" onclick={(event) => { if (event.target === event.currentTarget) settingsOpen = false }}>
+    <dialog open class="settings-dialog" aria-label={L.settings()}>
+      <button class="settings-close" aria-label={L.dismiss()} onclick={() => settingsOpen = false}><i class="fa-solid fa-xmark"></i></button>
+      <Settings />
+    </dialog>
+  </div>
+{/if}
 
 <SessionEndedOverlay
   reason={room.sessionEndedReason}
@@ -564,149 +509,215 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: #313338;
-    color: #f2f3f5;
+    background: radial-gradient(ellipse at 65% 12%, #0b3447 0, #071c2b 45%, #061523 100%);
+    color: #f5f8fd;
   }
   .call-header {
-    min-height: 4.5rem;
-    padding: 0.9rem 1.5rem;
+    min-height: 3.8rem;
+    padding: 0.6rem 2.25rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    background: #313338;
-    border-bottom: 1px solid #222327;
+    background: #0a1c2bdb;
+    border-bottom: 1px solid #ffffff16;
   }
-  .call-header h1 {
-    font-size: 1.1rem;
-    font-weight: 700;
+  .call-brand {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
   }
-  .call-description { color: #b5bac1; font-size: 0.76rem; }
-  .call-kicker {
-    color: #b5bac1;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+  .call-brand span:last-child { color: #00d7bb; }
+  .header-settings {
+    border: 0;
+    background: transparent;
+    color: #b5c8de;
+    font-size: 1.55rem;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
   }
-  .call-count {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #b5bac1;
-    font-size: 0.8rem;
-    white-space: nowrap;
-  }
+  .header-settings:hover { color: white; }
   .call-content {
-    order: 2;
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+    grid-template-columns: 17.1rem minmax(0, 1fr);
+    gap: 0.8rem;
+    padding: 1rem 1.1rem 0;
   }
+  .call-content.sidebar-hidden { grid-template-columns: minmax(0, 1fr); }
+  .sidebar-hidden .call-sidebar { display: none; }
   .call-sidebar {
-    padding: 1.25rem 1rem;
-    background: #2b2d31;
-    border-right: 1px solid #222327;
+    min-width: 0;
+    padding: 1.25rem 1.1rem;
+    border: 1px solid #31536a72;
+    border-radius: 1rem;
+    background: linear-gradient(140deg, #102b3c, #09202f 72%);
   }
-  .member-list { display: flex; flex-direction: column; gap: 0.25rem; }
+  .sidebar-status { border-bottom: 1px solid #ffffff24; padding-bottom: 1.15rem; margin-bottom: 1.15rem; }
+  .call-sidebar h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.55rem; }
+  .sidebar-members h2 { display: flex; justify-content: space-between; }
+  .sidebar-members h2 span { font-size: 0.8rem; color: #9cb2cc; }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #067d77;
+    border-radius: 0.75rem;
+    background: #053f3d;
+    color: #d6fff6;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .status-pill i { color: #00e6c0; }
+  .verification-content { margin-top: 0.8rem; font-size: 0.7rem; overflow-wrap: anywhere; }
+  .member-list { display: flex; flex-direction: column; gap: 0.35rem; }
   .member-row {
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.4rem;
-    border-radius: 0.6rem;
+    gap: 0.55rem;
+    padding: 0.45rem;
+    border: 1px solid #45607873;
+    border-radius: 0.75rem;
+    background: #142c3d;
   }
-  .member-row:hover { background: #35373c; }
+  .member-avatar-wrap { position: relative; flex: none; }
   .member-avatar {
-    width: 2rem;
-    height: 2rem;
+    width: 2.45rem;
+    height: 2.45rem;
     flex: none;
     display: grid;
     place-items: center;
     border-radius: 50%;
-    font-size: 0.8rem;
+    font-size: 0.95rem;
     font-weight: 700;
     object-fit: cover;
   }
+  .member-online { position: absolute; right: -0.1rem; bottom: 0; width: 0.65rem; height: 0.65rem; border: 2px solid #142c3d; border-radius: 50%; background: #00d7b1; }
   .member-name {
     min-width: 0;
     flex: 1;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    font-size: 0.8rem;
+    font-size: 0.77rem;
+    font-weight: 600;
   }
-  .member-name i { margin-left: 0.25rem; color: #b5bac1; }
+  .member-role { color: #aac2dd; font-size: 0.8rem; }
   .call-stage {
     min-width: 0;
-    padding: clamp(1rem, 2.5vw, 2rem);
+    padding: 1.1rem;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    gap: 1rem;
+    border: 1px solid #31536a72;
+    border-radius: 1rem;
+    background: linear-gradient(130deg, #0d2738, #091d2d 75%);
   }
   .room-invite {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    max-width: 42rem;
+    gap: 0.65rem;
+    max-width: 55rem;
     width: 100%;
-    margin: 0 auto 1.25rem;
-    padding: 1rem;
-    border: 1px solid #5865f2;
+    margin: 0 auto;
+    padding: 1.15rem 1.35rem;
+    border: 1px solid #0095b0;
     border-radius: 1rem;
-    background: #2b2d31;
+    background: #0e2939ed;
   }
-  .room-invite p { color: #b5bac1; font-size: 0.8rem; }
+  .room-invite strong { font-size: 1.3rem; }
+  .room-invite p { color: #acc1d9; font-size: 0.84rem; }
   .room-invite-actions { display: flex; gap: 0.5rem; min-width: 0; }
-  .room-invite-actions input { flex: 1; min-width: 0; }
+  .room-invite-actions input { flex: 1; min-width: 0; height: 3rem; background: #081826; border-color: #577084; color: #e8f4ff; }
+  .invite-copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    min-height: 3rem;
+    padding: 0.65rem 1.15rem;
+    border: 1px solid #00cdb4;
+    border-radius: 0.65rem;
+    background: linear-gradient(180deg, #04bca5, #009e96);
+    color: white;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .invite-copy:hover { filter: brightness(1.12); }
   .call-controls {
-    order: 3;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 1.25rem;
+    gap: 0.7rem;
     flex-wrap: wrap;
-    padding: 0.85rem 1rem;
-    background: #232428;
-    border-top: 1px solid #17181b;
+    align-self: center;
+    margin: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #31536a72;
+    border-radius: 1.15rem;
+    background: #0d2636ed;
   }
-  .call-controls :global(.btn) {
-    min-height: 2.75rem;
-    border-radius: 0.9rem;
+  .control-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    min-height: 3.15rem;
+    padding: 0.65rem 0.95rem;
+    border: 1px solid #31536a;
+    border-radius: 0.75rem;
+    background: linear-gradient(160deg, #193a4c, #102d3e);
+    color: #edf7ff;
+    font-size: 0.76rem;
+    cursor: pointer;
   }
-  .call-controls :global(.mb-4) {
-    margin-bottom: 0;
+  .control-button i { font-size: 1.1rem; }
+  .control-button:hover { background: #24495b; }
+  .control-button.control-active, .control-button.control-selected { border-color: #00b7ae; background: linear-gradient(180deg, #026d77, #034459); }
+  .control-button.control-danger { border-color: #e43d49; background: #84252e; }
+  .control-button.end-session { background: linear-gradient(160deg, #ee343e, #b62031); }
+  .control-separator { width: 1px; height: 2rem; background: #496374; margin: 0 0.2rem; }
+  .screen-area {
+    flex: 1;
+    min-height: 22rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid #31536a;
+    border-radius: 1.2rem;
+    background: radial-gradient(ellipse at center, #102e42 0, #0b2031 75%);
+    overflow: hidden;
   }
   .call-empty {
-    min-height: min(55vh, 24rem);
+    min-height: 22rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    color: #b5bac1;
+    gap: 1.1rem;
+    color: #aec5e4;
     text-align: center;
-    background: #25262b;
-    border: 1px solid #41434a;
-    border-radius: 1.25rem;
   }
-  .call-empty > i { font-size: 3rem; }
+  .call-empty > i { font-size: 3.5rem; }
+  .call-empty p { font-size: 1rem; }
   .screen-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
     gap: 1rem;
     align-items: start;
+    padding: 1rem;
   }
   .screen-grid fieldset {
     min-width: 0;
     padding: 0.75rem;
-    border: 1px solid #41434a;
+    border: 1px solid #31536a;
     border-radius: 1rem;
-    background: #25262b;
+    background: #0a1b2a;
   }
-  .screen-grid :global(.fieldset-legend) { color: #dbdee1; }
+  .screen-grid :global(.fieldset-legend) { color: #d8e9fa; }
   .video {
     width: 100%;
     height: auto;
@@ -780,17 +791,29 @@
     display: inline-flex;
   }
   .mic-btn-icon {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.1rem;
+    height: 1.1rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
   }
-  @media (max-width: 760px) {
+  .settings-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: #020c14d9; }
+  .settings-dialog { position: relative; width: min(72rem, 100%); max-height: min(90vh, 52rem); overflow: auto; border: 1px solid #31536a; border-radius: 1rem; background: #0a1b2a; }
+  .settings-close { position: sticky; top: 0.75rem; float: right; z-index: 2; margin: 0.75rem; width: 2rem; height: 2rem; border-radius: 0.5rem; background: #213b4d; color: white; cursor: pointer; }
+  @media (max-width: 900px) {
+    .call-content { grid-template-columns: 12rem minmax(0, 1fr); }
+    .control-button { padding: 0.6rem; }
+    .control-button span:not(.mic-btn-icon) { font-size: 0.7rem; }
+  }
+  @media (max-width: 700px) {
+    .call-header { padding: 0.6rem 1rem; }
     .call-content { grid-template-columns: 1fr; }
-    .call-sidebar { border-right: 0; border-bottom: 1px solid #222327; }
-    .call-controls { gap: 0.5rem; }
+    .call-sidebar { max-height: 16rem; overflow: auto; }
+    .call-controls { gap: 0.4rem; margin: 0.6rem; }
+    .control-separator { display: none; }
     .room-invite-actions { flex-direction: column; }
+    .call-stage { padding: 0.7rem; }
+    .room-invite { padding: 0.8rem; }
   }
 </style>
