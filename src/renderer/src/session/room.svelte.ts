@@ -197,6 +197,10 @@ export class Room {
     return this.establishedRemoteIds().length
   }
 
+  get secureConnectionReady(): boolean {
+    return this.e2eeActive && this.mediaE2eeActive && Boolean(this.verification) && this.appCryptoReady()
+  }
+
   get roomInviteFragment(): string {
     return this.invite ? encodeInviteFragment(this.invite) : ''
   }

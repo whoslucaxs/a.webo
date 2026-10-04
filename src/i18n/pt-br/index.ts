@@ -9,6 +9,7 @@ const pt_br = {
   foreground_color: 'Cor do primeiro plano',
   background_color: 'Cor de fundo',
   connect: 'Conectar',
+  connecting_to_session: 'Conectando à sala…',
   connection_established: 'Conexão Estabelecida',
   copy_my_connection_string: 'Copiar link da sala',
   disconnect: 'Desconectar',

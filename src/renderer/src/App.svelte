@@ -23,8 +23,17 @@
   let homeSection = $state('home')
   let closedDrawerForCall = false
 
-  const presenting = $derived(Boolean(appState.sessionSource === 'host' || appState.sessionSource === 'channel' || room.isLive || room.sessionEndedReason))
+  const joining = $derived(appState.sessionSource === 'join' || (appState.sessionSource === 'channel' && !appState.isHosting))
+  const connected = $derived(room.isLive && room.connectionState === 'connected' && room.peers.some((peer) => peer.id !== room.localPeerId) && (!room.e2eeRequired || room.secureConnectionReady))
+  const connecting = $derived(joining && !connected && !room.sessionEndedReason)
+  const presenting = $derived(!connecting && Boolean(appState.sessionSource === 'host' || appState.sessionSource === 'channel' || room.isLive || room.sessionEndedReason))
+  const hideHome = $derived(connecting || presenting)
   const showInvite = $derived(room.isCoordinator || appState.sessionSource === 'channel')
+
+  const cancelJoining = async (): Promise<void> => {
+    await room.Disconnect().catch(() => undefined)
+    appState.resetSession()
+  }
 
   $effect(() => {
     const liveBonjour = appState.sessionSource === 'bonjour' && room.isLive
@@ -78,9 +87,9 @@
     appState.bonjourVisible = (evt.target as HTMLInputElement).checked
     }} class="drawer-toggle" checked={appState.bonjourVisible ? true : false} />
   <div class="drawer-content">
-    {#if !presenting}<Navigation />{/if}
+    {#if !hideHome}<Navigation />{/if}
     <Toast />
-    <div class={presenting ? 'hidden' : ''}>
+    <div class={hideHome ? 'hidden' : ''}>
       {#if appState.activeView === 'home'}
         <main class="home-page" data-theme="business">
           <aside class="home-sidebar" aria-label={L.audio_chats()}>
@@ -109,6 +118,13 @@
         <Debug />
       {/if}
     </div>
+    {#if connecting}
+      <main class="connection-wait" data-theme="business">
+        <span class="loading loading-spinner loading-lg" aria-hidden="true"></span>
+        <h1>{L.connecting_to_session()}</h1>
+        <button class="btn btn-ghost" onclick={cancelJoining}>{L.cancel()}</button>
+      </main>
+    {/if}
     {#if presenting}
       <SessionStage {room} {showInvite} onReset={() => appState.resetSession()} />
     {/if}

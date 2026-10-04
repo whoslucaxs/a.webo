@@ -9,6 +9,7 @@ const en = {
   foreground_color: 'Foreground color',
   background_color: 'Background color',
   connect: 'Connect',
+  connecting_to_session: 'Connecting to the room…',
   connection_established: 'Connection established',
   copy_my_connection_string: 'Copy room link',
   disconnect: 'Disconnect',

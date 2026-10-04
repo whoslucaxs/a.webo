@@ -48,6 +48,8 @@ type RootTranslation = {
    * C​o​n​n​e​c​t
    */
   connect: string;
+  /** Connecting to the room… */
+  connecting_to_session: string;
   /**
    * C​o​n​n​e​c​t​i​o​n​ ​e​s​t​a​b​l​i​s​h​e​d
    */
@@ -827,6 +829,8 @@ export type TranslationFunctions = {
    * Connect
    */
   connect: () => LocalizedString;
+  /** Connecting to the room… */
+  connecting_to_session: () => LocalizedString;
   /**
    * Connection established
    */

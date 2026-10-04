@@ -9,6 +9,7 @@ const fr = {
   foreground_color: 'Couleur de premier plan',
   background_color: "Couleur d'arrière-plan",
   connect: 'Connecter',
+  connecting_to_session: 'Connexion à la salle…',
   connection_established: 'Connexion établie',
   copy_my_connection_string: 'Copier le lien du salon',
   disconnect: 'Déconnecter',

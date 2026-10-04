@@ -9,6 +9,7 @@ const zh = {
   foreground_color: '前景色',
   background_color: '背景色',
   connect: '连接',
+  connecting_to_session: '正在连接房间…',
   connection_established: '连接建立成功',
   copy_my_connection_string: '复制房间链接',
   disconnect: '连接失败',

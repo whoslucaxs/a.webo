@@ -9,6 +9,7 @@ const en = {
   foreground_color: 'Vordergrundfarbe',
   background_color: 'Hintergrundfarbe',
   connect: 'Verbinden',
+  connecting_to_session: 'Verbindung zum Raum wird hergestellt…',
   connection_established: 'Verbindung hergestellt',
   copy_my_connection_string: 'Raumlink kopieren',
   disconnect: 'Trennen',
