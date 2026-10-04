@@ -509,8 +509,8 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: radial-gradient(ellipse at 65% 12%, #0b3447 0, #071c2b 45%, #061523 100%);
-    color: #f5f8fd;
+    background: radial-gradient(circle at 65% 50%, #16262d, #0c171f 66%);
+    color: #f4f7fa;
   }
   .call-header {
     min-height: 3.8rem;
@@ -518,24 +518,24 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #0a1c2bdb;
-    border-bottom: 1px solid #ffffff16;
+    background: #101b24;
+    border-bottom: 1px solid #293a46;
   }
   .call-brand {
     font-size: 1.65rem;
     font-weight: 800;
     letter-spacing: -0.05em;
   }
-  .call-brand span:last-child { color: #00d7bb; }
+  .call-brand span:last-child { color: #06c7b2; }
   .header-settings {
     border: 0;
     background: transparent;
-    color: #b5c8de;
+    color: #b8c3d1;
     font-size: 1.55rem;
     cursor: pointer;
     padding: 0.2rem 0.4rem;
   }
-  .header-settings:hover { color: white; }
+  .header-settings:hover { color: #00c5b3; }
   .call-content {
     flex: 1;
     min-height: 0;
@@ -549,27 +549,27 @@
   .call-sidebar {
     min-width: 0;
     padding: 1.25rem 1.1rem;
-    border: 1px solid #31536a72;
+    border: 1px solid #273945;
     border-radius: 1rem;
-    background: linear-gradient(140deg, #102b3c, #09202f 72%);
+    background: linear-gradient(135deg, #1a2934, #14212b);
   }
-  .sidebar-status { border-bottom: 1px solid #ffffff24; padding-bottom: 1.15rem; margin-bottom: 1.15rem; }
+  .sidebar-status { border-bottom: 1px solid #30434e; padding-bottom: 1.15rem; margin-bottom: 1.15rem; }
   .call-sidebar h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.55rem; }
   .sidebar-members h2 { display: flex; justify-content: space-between; }
-  .sidebar-members h2 span { font-size: 0.8rem; color: #9cb2cc; }
+  .sidebar-members h2 span { font-size: 0.8rem; color: #aab7c4; }
   .status-pill {
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
     padding: 0.6rem 0.75rem;
-    border: 1px solid #067d77;
+    border: 1px solid #087c73;
     border-radius: 0.75rem;
-    background: #053f3d;
+    background: #0d4b49;
     color: #d6fff6;
     font-size: 0.75rem;
     cursor: pointer;
   }
-  .status-pill i { color: #00e6c0; }
+  .status-pill i { color: #00ceba; }
   .verification-content { margin-top: 0.8rem; font-size: 0.7rem; overflow-wrap: anywhere; }
   .member-list { display: flex; flex-direction: column; gap: 0.35rem; }
   .member-row {
@@ -578,9 +578,9 @@
     align-items: center;
     gap: 0.55rem;
     padding: 0.45rem;
-    border: 1px solid #45607873;
+    border: 1px solid #334955;
     border-radius: 0.75rem;
-    background: #142c3d;
+    background: #1b2b35;
   }
   .member-avatar-wrap { position: relative; flex: none; }
   .member-avatar {
@@ -594,7 +594,7 @@
     font-weight: 700;
     object-fit: cover;
   }
-  .member-online { position: absolute; right: -0.1rem; bottom: 0; width: 0.65rem; height: 0.65rem; border: 2px solid #142c3d; border-radius: 50%; background: #00d7b1; }
+  .member-online { position: absolute; right: -0.1rem; bottom: 0; width: 0.65rem; height: 0.65rem; border: 2px solid #1b2b35; border-radius: 50%; background: #06c7b2; }
   .member-name {
     min-width: 0;
     flex: 1;
@@ -604,16 +604,16 @@
     font-size: 0.77rem;
     font-weight: 600;
   }
-  .member-role { color: #aac2dd; font-size: 0.8rem; }
+  .member-role { color: #aab7c4; font-size: 0.8rem; }
   .call-stage {
     min-width: 0;
     padding: 1.1rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    border: 1px solid #31536a72;
+    border: 1px solid #2d404c;
     border-radius: 1rem;
-    background: linear-gradient(130deg, #0d2738, #091d2d 75%);
+    background: linear-gradient(155deg, #15232d, #101d26);
   }
   .room-invite {
     display: flex;
@@ -623,14 +623,14 @@
     width: 100%;
     margin: 0 auto;
     padding: 1.15rem 1.35rem;
-    border: 1px solid #0095b0;
+    border: 1px solid #00c7b4;
     border-radius: 1rem;
-    background: #0e2939ed;
+    background: #172833;
   }
   .room-invite strong { font-size: 1.3rem; }
-  .room-invite p { color: #acc1d9; font-size: 0.84rem; }
+  .room-invite p { color: #b7c1ce; font-size: 0.84rem; }
   .room-invite-actions { display: flex; gap: 0.5rem; min-width: 0; }
-  .room-invite-actions input { flex: 1; min-width: 0; height: 3rem; background: #081826; border-color: #577084; color: #e8f4ff; }
+  .room-invite-actions input { flex: 1; min-width: 0; height: 3rem; background: #15232d; border-color: #425563; color: #f4f7fa; }
   .invite-copy {
     display: inline-flex;
     align-items: center;
@@ -638,9 +638,9 @@
     gap: 0.7rem;
     min-height: 3rem;
     padding: 0.65rem 1.15rem;
-    border: 1px solid #00cdb4;
+    border: 1px solid #00c7b4;
     border-radius: 0.65rem;
-    background: linear-gradient(180deg, #04bca5, #009e96);
+    background: linear-gradient(125deg, #0cc9b7, #009d91);
     color: white;
     font-weight: 700;
     white-space: nowrap;
@@ -656,9 +656,9 @@
     align-self: center;
     margin: 1rem;
     padding: 0.75rem 1rem;
-    border: 1px solid #31536a72;
+    border: 1px solid #2d404c;
     border-radius: 1.15rem;
-    background: #0d2636ed;
+    background: #15232d;
   }
   .control-button {
     display: inline-flex;
@@ -667,28 +667,28 @@
     gap: 0.55rem;
     min-height: 3.15rem;
     padding: 0.65rem 0.95rem;
-    border: 1px solid #31536a;
+    border: 1px solid #425563;
     border-radius: 0.75rem;
-    background: linear-gradient(160deg, #193a4c, #102d3e);
-    color: #edf7ff;
+    background: #202f3a;
+    color: #f0f4f7;
     font-size: 0.76rem;
     cursor: pointer;
   }
   .control-button i { font-size: 1.1rem; }
-  .control-button:hover { background: #24495b; }
-  .control-button.control-active, .control-button.control-selected { border-color: #00b7ae; background: linear-gradient(180deg, #026d77, #034459); }
+  .control-button:hover { background: #2a3a45; }
+  .control-button.control-active, .control-button.control-selected { border-color: #00d7c3; background: linear-gradient(145deg, #08c4b4, #008f89); }
   .control-button.control-danger { border-color: #e43d49; background: #84252e; }
   .control-button.end-session { background: linear-gradient(160deg, #ee343e, #b62031); }
-  .control-separator { width: 1px; height: 2rem; background: #496374; margin: 0 0.2rem; }
+  .control-separator { width: 1px; height: 2rem; background: #425563; margin: 0 0.2rem; }
   .screen-area {
     flex: 1;
     min-height: 22rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    border: 1px solid #31536a;
+    border: 1px solid #344a56;
     border-radius: 1.2rem;
-    background: radial-gradient(ellipse at center, #102e42 0, #0b2031 75%);
+    background: radial-gradient(ellipse at center, #1a2b35 0, #101d26 75%);
     overflow: hidden;
   }
   .call-empty {
@@ -698,7 +698,7 @@
     align-items: center;
     justify-content: center;
     gap: 1.1rem;
-    color: #aec5e4;
+    color: #b7c1ce;
     text-align: center;
   }
   .call-empty > i { font-size: 3.5rem; }
@@ -713,11 +713,11 @@
   .screen-grid fieldset {
     min-width: 0;
     padding: 0.75rem;
-    border: 1px solid #31536a;
+    border: 1px solid #344a56;
     border-radius: 1rem;
-    background: #0a1b2a;
+    background: #15232d;
   }
-  .screen-grid :global(.fieldset-legend) { color: #d8e9fa; }
+  .screen-grid :global(.fieldset-legend) { color: #f4f7fa; }
   .video {
     width: 100%;
     height: auto;
@@ -798,9 +798,9 @@
     justify-content: center;
     overflow: hidden;
   }
-  .settings-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: #020c14d9; }
-  .settings-dialog { position: relative; width: min(72rem, 100%); max-height: min(90vh, 52rem); overflow: auto; border: 1px solid #31536a; border-radius: 1rem; background: #0a1b2a; }
-  .settings-close { position: sticky; top: 0.75rem; float: right; z-index: 2; margin: 0.75rem; width: 2rem; height: 2rem; border-radius: 0.5rem; background: #213b4d; color: white; cursor: pointer; }
+  .settings-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: #0c171fd9; }
+  .settings-dialog { position: relative; width: min(72rem, 100%); max-height: min(90vh, 52rem); overflow: auto; border: 1px solid #2d404c; border-radius: 1rem; background: #15232d; }
+  .settings-close { position: sticky; top: 0.75rem; float: right; z-index: 2; margin: 0.75rem; width: 2rem; height: 2rem; border-radius: 0.5rem; background: #24333e; color: white; cursor: pointer; }
   @media (max-width: 900px) {
     .call-content { grid-template-columns: 12rem minmax(0, 1fr); }
     .control-button { padding: 0.6rem; }
