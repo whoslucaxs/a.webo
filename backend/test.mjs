@@ -40,8 +40,18 @@ assert.equal((await call('/host', 'GET', undefined, key)).status, 404)
 const customKey = 'temporary-host-token-with-enough-characters'
 assert.equal((await call('/create', 'POST', { hostKey: customKey, durationMinutes: 30, maxParticipants: 2 })).status, 201)
 assert.ok(values.get('room').expiresAt - Date.now() <= 30 * 60 * 1000)
-assert.equal((await call('/join', 'POST')).status, 201)
+const occupied = (await call('/join', 'POST')).data.joinId
+assert.equal((await call('/offer', 'POST', { joinId: occupied, offer: 'kiwi://h/test' }, customKey)).status, 200)
+assert.equal((await call('/answer', 'POST', { joinId: occupied, answer: 'kiwi://p/test' })).status, 200)
+assert.equal((await call('/done', 'POST', { joinId: occupied }, customKey)).status, 200)
 assert.equal((await call('/join', 'POST')).status, 409)
+assert.equal((await call(`/join/${occupied}`, 'POST')).status, 200)
+values.get('room').joins[occupied].lastSeenAt = Date.now() - 46 * 1000
+const replacement = (await call('/join', 'POST')).data.joinId
+assert.equal((await call(`/join/${occupied}`)).status, 404)
+assert.equal((await call('/join', 'POST')).status, 409)
+assert.equal((await call(`/join/${replacement}`, 'DELETE')).status, 200)
+assert.equal((await call('/join', 'POST')).status, 201)
 assert.equal((await call('/', 'DELETE', undefined, customKey)).status, 200)
 assert.equal((await call('/create', 'POST', { hostKey: customKey, durationMinutes: 300, maxParticipants: 2 })).status, 400)
 const channelAuth = 'A'.repeat(43)

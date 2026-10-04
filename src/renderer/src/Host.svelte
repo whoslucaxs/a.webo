@@ -50,6 +50,12 @@
     polling = true
     try {
       const { joins } = await hostStatus(server, roomId, hostKey)
+      const activeIds = new Set(joins.map((join) => join.joinId))
+      for (const [joinId, invite] of pending) {
+        if (activeIds.has(joinId)) continue
+        room.dismissPendingInvite(invite.id)
+        pending.delete(joinId)
+      }
       for (const join of joins) {
         if (join.status === 'waiting' && !pending.has(join.joinId)) {
           const offer = await room.CreateHostUrl({ username })

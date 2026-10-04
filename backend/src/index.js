@@ -1,6 +1,6 @@
 const ROOM_LIFETIME_MS = 4 * 60 * 60 * 1000
 const LEADER_LEASE_MS = 20 * 1000
-const JOIN_LIFETIME_MS = 5 * 60 * 1000
+const JOIN_LIFETIME_MS = 45 * 1000
 const MAX_JOINERS = 3
 const MAX_BODY_BYTES = 64 * 1024
 
@@ -17,6 +17,7 @@ const readBody = async (request) => {
   if (raw.length > MAX_BODY_BYTES) throw new Error('request too large')
   return JSON.parse(raw)
 }
+const joinIsActive = (join) => (join.lastSeenAt ?? join.createdAt) + JOIN_LIFETIME_MS >= Date.now()
 
 export default {
   async fetch(request, env) {
@@ -136,20 +137,29 @@ export class Room {
         return json({ iceServers: credentials.iceServers })
       }
       if (action[0] === 'join' && action.length === 1 && request.method === 'POST') {
-        if (room.permanent) room.joins = Object.fromEntries(Object.entries(room.joins).filter(([, join]) => join.createdAt + JOIN_LIFETIME_MS >= Date.now()))
-        const active = Object.values(room.joins).filter(
-          (join) => (room.permanent ? join.createdAt + JOIN_LIFETIME_MS >= Date.now() : join.status === 'done' || join.createdAt + JOIN_LIFETIME_MS >= Date.now()),
-        )
-        if (active.length >= (room.maxJoiners ?? MAX_JOINERS)) return error('room is full', 409)
+        room.joins = Object.fromEntries(Object.entries(room.joins).filter(([, join]) => joinIsActive(join)))
+        if (Object.keys(room.joins).length >= (room.maxJoiners ?? MAX_JOINERS)) return error('room is full', 409)
         const joinId = crypto.randomUUID()
-        room.joins[joinId] = { status: 'waiting', createdAt: Date.now() }
+        room.joins[joinId] = { status: 'waiting', createdAt: Date.now(), lastSeenAt: Date.now() }
         await this.state.storage.put('room', room)
         return json({ joinId }, 201)
       }
       if (action[0] === 'join' && action[1] && request.method === 'GET') {
         const join = room.joins[action[1]]
-        if (!join || join.createdAt + JOIN_LIFETIME_MS < Date.now()) return error('join expired', 404)
+        if (!join || !joinIsActive(join)) return error('join expired', 404)
         return json({ status: join.status, offer: join.offer ?? null })
+      }
+      if (action[0] === 'join' && action[1] && action.length === 2 && request.method === 'POST') {
+        const join = room.joins[action[1]]
+        if (!join || !joinIsActive(join)) return error('join expired', 404)
+        join.lastSeenAt = Date.now()
+        await this.state.storage.put('room', room)
+        return json({ ok: true })
+      }
+      if (action[0] === 'join' && action[1] && action.length === 2 && request.method === 'DELETE') {
+        delete room.joins[action[1]]
+        await this.state.storage.put('room', room)
+        return json({ ok: true })
       }
       if (action[0] === 'host' && request.method === 'GET') {
         if (!authorized) return error('unauthorized', 401)
@@ -159,7 +169,7 @@ export class Room {
         }
         return json({
           joins: Object.entries(room.joins)
-            .filter(([, join]) => join.createdAt + JOIN_LIFETIME_MS >= Date.now())
+            .filter(([, join]) => joinIsActive(join))
             .map(([joinId, join]) => ({ joinId, status: join.status, answer: join.answer ?? null })),
         })
       }
@@ -167,7 +177,7 @@ export class Room {
         if (action[0] !== 'answer' && !authorized) return error('unauthorized', 401)
         const body = await readBody(request)
         const join = room.joins[body.joinId]
-        if (!join || join.createdAt + JOIN_LIFETIME_MS < Date.now()) return error('join expired', 404)
+        if (!join || !joinIsActive(join)) return error('join expired', 404)
         if (action[0] === 'offer') {
           if (join.status !== 'waiting' || typeof body.offer !== 'string' || !body.offer.startsWith('kiwi://h/')) return error('invalid offer')
           join.offer = body.offer

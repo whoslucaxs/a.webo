@@ -100,6 +100,12 @@ export const joinStatus = (
 ): Promise<{ status: HostJoin['status']; offer: string | null }> =>
   request(roomPath(server, roomId, `/join/${joinId}`), 'GET', undefined, token)
 
+export const keepJoinAlive = (server: string, roomId: string, joinId: string, token?: string): Promise<unknown> =>
+  request(roomPath(server, roomId, `/join/${joinId}`), 'POST', undefined, token)
+
+export const leaveJoin = (server: string, roomId: string, joinId: string, token?: string): Promise<unknown> =>
+  request(roomPath(server, roomId, `/join/${joinId}`), 'DELETE', undefined, token)
+
 export const hostStatus = (
   server: string,
   roomId: string,

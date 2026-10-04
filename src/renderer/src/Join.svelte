@@ -7,22 +7,28 @@
   import { encodeInviteFragment, stripInviteFragment } from './crypto/invite'
   import { sessionRoom as room } from './session/sessionStore.svelte'
   import { iceFailureText } from './session/connectionFailureText'
-  import { joinRoom, joinStatus, parseChannelLink, parseRoomLink, roomIceServers, sendAnswer } from './session/roomServer'
+  import { joinRoom, joinStatus, keepJoinAlive, leaveJoin, parseChannelLink, parseRoomLink, roomIceServers, sendAnswer } from './session/roomServer'
 
   let { onChannelJoin }: { onChannelJoin: (url: string) => void } = $props()
 
   let connecting = $state(false)
   let waiting = $state(false)
   let pollTimer: ReturnType<typeof setInterval> | null = null
+  let leaseTimer: ReturnType<typeof setInterval> | null = null
   let polling = false
   let username = ''
   let joinId = ''
+  let joinServer = ''
+  let joinRoomId = ''
   const valid = $derived(parseRoomLink(appState.participantUrl) !== null || parseChannelLink(appState.participantUrl) !== null)
 
   $effect(() => {
     if (appState.sessionSource !== 'join') return
     if (room.connectionState === 'connected') toast.show('success', L.connection_established())
-    if (room.connectionState === 'failed') toast.show('error', iceFailureText(room.connectionFailure))
+    if (joinId && room.connectionState === 'failed' && !room.isLive) {
+      toast.show('error', iceFailureText(room.connectionFailure))
+      void room.Disconnect().catch(() => undefined).finally(reset)
+    }
   })
 
   const poll = async (): Promise<void> => {
@@ -49,6 +55,8 @@
       if (pollTimer) clearInterval(pollTimer)
       pollTimer = null
       waiting = false
+      await room.Disconnect()
+      reset()
     } finally {
       polling = false
     }
@@ -71,6 +79,9 @@
       const setup = await room.Setup(document.createElement('video'), { iceServers })
       if (setup !== 'ok') throw new Error(L.connection_failed())
       joinId = (await joinRoom(link.server, link.roomId)).joinId
+      joinServer = link.server
+      joinRoomId = link.roomId
+      leaseTimer = setInterval(() => void keepJoinAlive(joinServer, joinRoomId, joinId).catch((error) => debugLog.error('room-server', 'join heartbeat failed', error)), 10000)
       waiting = true
       appState.isWatching = true
       appState.navigationEnabled = false
@@ -81,6 +92,10 @@
       debugLog.error('room-server', 'could not join room', error)
       toast.show('error', error instanceof Error ? error.message : L.connection_failed())
       await room.Disconnect()
+      if (joinId) void leaveJoin(joinServer, joinRoomId, joinId).catch(() => undefined)
+      joinId = ''
+      if (leaseTimer) clearInterval(leaseTimer)
+      leaseTimer = null
     } finally {
       connecting = false
     }
@@ -89,8 +104,13 @@
   const reset = (): void => {
     if (pollTimer) clearInterval(pollTimer)
     pollTimer = null
+    if (leaseTimer) clearInterval(leaseTimer)
+    leaseTimer = null
+    if (joinId) void leaveJoin(joinServer, joinRoomId, joinId).catch(() => undefined)
     waiting = false
     joinId = ''
+    joinServer = ''
+    joinRoomId = ''
     appState.participantUrl = ''
     appState.sessionTitle = ''
     appState.sessionDescription = ''

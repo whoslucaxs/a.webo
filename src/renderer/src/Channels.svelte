@@ -15,6 +15,8 @@
     hostStatus,
     joinRoom,
     joinStatus,
+    keepJoinAlive,
+    leaveJoin,
     makeChannelLink,
     normalizeRoomServer,
     parseChannelLink,
@@ -38,8 +40,15 @@
   let waiting = false
   let mode: 'host' | 'guest' | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
+  let leaseTimer: ReturnType<typeof setInterval> | null = null
   let polling = false
   const pending = new Map<string, { id: string; offer: string }>()
+
+  $effect(() => {
+    if (appState.sessionSource !== 'channel' || !joinId || room.isLive || room.connectionState !== 'failed') return
+    toast.show('error', L.connection_failed())
+    void room.Disconnect().catch(() => undefined).finally(reset)
+  })
 
   onMount(() => {
     try {
@@ -50,7 +59,7 @@
     } catch {
       channels = []
     }
-    return () => { if (pollTimer) clearInterval(pollTimer) }
+    return () => { if (pollTimer) clearInterval(pollTimer); if (leaseTimer) clearInterval(leaseTimer) }
   })
 
   const saveChannel = (name: string, link: string): void => {
@@ -67,7 +76,10 @@
   const reset = (): void => {
     if (pollTimer) clearInterval(pollTimer)
     pollTimer = null
+    if (leaseTimer) clearInterval(leaseTimer)
+    leaseTimer = null
     const link = parseChannelLink(activeUrl)
+    if (link && joinId) void leaveJoin(link.server, link.roomId, joinId, auth).catch(() => undefined)
     if (link && hostKey) void releaseChannel(link.server, link.roomId, hostKey).catch(() => undefined)
     activeUrl = ''
     auth = ''
@@ -103,7 +115,10 @@
         persistent: true,
       })
       if (setup !== 'ok') throw new Error(L.connection_failed())
-      if (claim.role === 'guest') joinId = (await joinRoom(link.server, link.roomId, channelAuth)).joinId
+      if (claim.role === 'guest') {
+        joinId = (await joinRoom(link.server, link.roomId, channelAuth)).joinId
+        leaseTimer = setInterval(() => void keepJoinAlive(link.server, link.roomId, joinId, channelAuth).catch((error) => debugLog.error('channel', 'join heartbeat failed', error)), 10000)
+      }
       username = (await window.KiwiApi.getSettings()).username
       activeUrl = url
       auth = channelAuth
@@ -120,6 +135,10 @@
       pollTimer = setInterval(() => void poll(), 1000)
       void poll()
     } catch (error) {
+      if (leaseTimer) clearInterval(leaseTimer)
+      leaseTimer = null
+      if (joinId) void leaveJoin(link.server, link.roomId, joinId, channelAuth).catch(() => undefined)
+      joinId = ''
       if (claim.role === 'host') void releaseChannel(link.server, link.roomId, key).catch(() => undefined)
       await room.Disconnect()
       throw error
@@ -134,6 +153,12 @@
     try {
       if (mode === 'host') {
         const { joins } = await hostStatus(link.server, link.roomId, hostKey)
+        const activeIds = new Set(joins.map((join) => join.joinId))
+        for (const [joinId, invite] of pending) {
+          if (activeIds.has(joinId)) continue
+          room.dismissPendingInvite(invite.id)
+          pending.delete(joinId)
+        }
         for (const join of joins) {
           if (join.status === 'waiting' && !pending.has(join.joinId)) {
             const offer = await room.CreateHostUrl({ username })
@@ -173,6 +198,8 @@
               return
             }
             joinId = ''
+            if (leaseTimer) clearInterval(leaseTimer)
+            leaseTimer = null
             waiting = false
             hostKey = claimed.hostKey
             mode = 'host'
@@ -183,6 +210,10 @@
       } else if (room.isCoordinator) {
         const claimed = await claimChannel(link.server, link.roomId, auth)
         if (claimed.role === 'host' && claimed.hostKey) {
+          if (leaseTimer) clearInterval(leaseTimer)
+          leaseTimer = null
+          if (joinId) void leaveJoin(link.server, link.roomId, joinId, auth).catch(() => undefined)
+          joinId = ''
           hostKey = claimed.hostKey
           mode = 'host'
           appState.isHosting = true

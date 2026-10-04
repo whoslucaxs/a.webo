@@ -205,6 +205,14 @@ export class Room {
     return this.lastCopiedPendingId
   }
 
+  dismissPendingInvite(pendingId: string): void {
+    const link = this.links.get(pendingId)
+    if (!link || link.remotePeerId) return
+    this.stopAdaptive(link)
+    link.close()
+    this.links.delete(pendingId)
+  }
+
   setRemoteVideo(video: HTMLVideoElement | null): void {
     this.remoteVideo = video
     this.attachPresenterVideo()
