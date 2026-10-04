@@ -15,6 +15,7 @@ class AppState {
   roomLink = $state('')
   sessionTitle = $state('')
   sessionDescription = $state('')
+  sessionExpiresAt = $state<number | null>(null)
   participantUrl = $state('')
   sessionSource = $state<SessionSource | null>(null)
   private sessionReset: (() => void) | null = null
@@ -27,6 +28,7 @@ class AppState {
   clearSession(): void {
     this.sessionSource = null
     this.sessionReset = null
+    this.sessionExpiresAt = null
   }
 
   resetSession(): void {

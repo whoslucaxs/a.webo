@@ -98,6 +98,7 @@
       appState.roomLink = makeRoomLink(server, roomId, room.roomInviteFragment, roomName.trim())
       appState.sessionTitle = roomName.trim()
       appState.sessionDescription = ''
+      appState.sessionExpiresAt = created.expiresAt
       sessionStarted = true
       appState.navigationEnabled = false
       appState.isHosting = true

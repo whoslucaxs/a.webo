@@ -83,13 +83,13 @@ export const claimChannel = (
 export const releaseChannel = (server: string, roomId: string, hostKey: string): Promise<unknown> =>
   request(roomPath(server, roomId, '/release'), 'POST', {}, hostKey)
 
-export const createRoom = (server: string, durationMinutes = 240, maxParticipants = 4): Promise<{ roomId: string; hostKey: string }> =>
+export const createRoom = (server: string, durationMinutes = 240, maxParticipants = 4): Promise<{ roomId: string; hostKey: string; expiresAt: number }> =>
   request(`${server}/rooms`, 'POST', { durationMinutes, maxParticipants })
 
 export const roomIceServers = async (server: string, roomId: string, token?: string): Promise<RTCIceServer[]> =>
   (await request<{ iceServers: RTCIceServer[] }>(roomPath(server, roomId, '/ice'), 'GET', undefined, token)).iceServers
 
-export const joinRoom = (server: string, roomId: string, token?: string): Promise<{ joinId: string }> =>
+export const joinRoom = (server: string, roomId: string, token?: string): Promise<{ joinId: string; expiresAt?: number }> =>
   request(roomPath(server, roomId, '/join'), 'POST', undefined, token)
 
 export const joinStatus = (

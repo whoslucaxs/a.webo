@@ -78,7 +78,9 @@
       username = (await window.KiwiApi.getSettings()).username
       const setup = await room.Setup(document.createElement('video'), { iceServers })
       if (setup !== 'ok') throw new Error(L.connection_failed())
-      joinId = (await joinRoom(link.server, link.roomId)).joinId
+      const joined = await joinRoom(link.server, link.roomId)
+      joinId = joined.joinId
+      appState.sessionExpiresAt = joined.expiresAt ?? null
       joinServer = link.server
       joinRoomId = link.roomId
       leaseTimer = setInterval(() => void keepJoinAlive(joinServer, joinRoomId, joinId).catch((error) => debugLog.error('room-server', 'join heartbeat failed', error)), 10000)
@@ -96,6 +98,7 @@
       joinId = ''
       if (leaseTimer) clearInterval(leaseTimer)
       leaseTimer = null
+      appState.sessionExpiresAt = null
     } finally {
       connecting = false
     }

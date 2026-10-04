@@ -39,6 +39,9 @@
   let chatOpen = $state(false)
   let chatDraft = $state('')
   let settingsOpen = $state(false)
+  let now = $state(Date.now())
+  const remainingSeconds = $derived(Math.max(0, Math.ceil(((appState.sessionExpiresAt ?? 0) - now) / 1000)))
+  const remainingTime = $derived(new Date(remainingSeconds * 1000).toISOString().slice(11, 19))
   const inviteLink = $derived(appState.roomLink || (appState.sessionSource === 'join' || appState.sessionSource === 'channel' ? appState.participantUrl : ''))
 
   const presenterShare = $derived(room.screenShares.find((share) =>
@@ -90,9 +93,10 @@
     toast.show('info', kind === 'kick' ? L.vote_remove_rejected() : L.vote_rejected())
   })
 
-  onMount(async () => {
-    const settings = await window.KiwiApi.getSettings()
-    username = settings.username
+  onMount(() => {
+    void window.KiwiApi.getSettings().then((settings) => username = settings.username)
+    const timer = setInterval(() => now = Date.now(), 1000)
+    return () => clearInterval(timer)
   })
 
   const onMicrophoneToggle = (): void => {
@@ -253,6 +257,11 @@
 <div class="call-shell" data-theme="business">
 <header class="call-header">
   <div class="call-brand"><span>p2p.</span><span>kiwi</span></div>
+  {#if (appState.sessionSource === 'host' || appState.sessionSource === 'join') && appState.sessionExpiresAt}
+    <div class="call-timer" role="timer" aria-live="off" title={L.expires_after_duration()}>
+      <i class="fa-regular fa-clock"></i><span>{L.temporary_chat()}</span><strong>{remainingTime}</strong>
+    </div>
+  {/if}
   <button class="header-settings" title={L.settings()} aria-label={L.settings()} onclick={() => settingsOpen = true}>
     <i class="fa-solid fa-gear"></i>
   </button>
@@ -571,6 +580,7 @@
     color: #f4f7fa;
   }
   .call-header {
+    position: relative;
     min-height: 3.8rem;
     padding: 0.6rem 2.25rem;
     display: flex;
@@ -585,6 +595,9 @@
     letter-spacing: -0.05em;
   }
   .call-brand span:last-child { color: #06c7b2; }
+  .call-timer { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.75rem; border: 1px solid #425563; border-radius: 0.7rem; background: #202f3a; color: #b7c1ce; font-size: 0.8rem; white-space: nowrap; }
+  .call-timer strong { color: #f4f7fa; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+  .call-timer i { color: #06c7b2; }
   .header-settings {
     border: 0;
     background: transparent;
@@ -892,6 +905,7 @@
   }
   @media (max-width: 700px) {
     .call-header { padding: 0.6rem 1rem; }
+    .call-timer span { display: none; }
     .call-content { grid-template-columns: 1fr; }
     .call-content.chat-open, .call-content.sidebar-hidden.chat-open { grid-template-columns: 1fr; overflow-y: auto; }
     .call-sidebar { max-height: 16rem; overflow: auto; }

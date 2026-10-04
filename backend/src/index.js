@@ -83,7 +83,7 @@ export class Room {
         room = { hostKey, permanent: Boolean(permanent), joinAuth, leaseUntil: permanent ? Date.now() + LEADER_LEASE_MS : 0, expiresAt: Date.now() + (durationMinutes ?? ROOM_LIFETIME_MS / 60000) * 60000, maxJoiners: permanent ? MAX_JOINERS : (maxParticipants ?? 4) - 1, joins: {}, iceIssues: 0, iceWindowAt: Date.now() }
         await this.state.storage.put('room', room)
         if (!permanent) await this.state.storage.setAlarm(room.expiresAt)
-        return json({ roomId: url.pathname.split('/')[2], hostKey }, 201)
+        return json({ roomId: url.pathname.split('/')[2], hostKey, ...(!room.permanent && { expiresAt: room.expiresAt }) }, 201)
       }
       if (!room || (!room.permanent && room.expiresAt < Date.now())) return error('room expired or missing', 404)
       const authorized = typeof room.hostKey === 'string' && request.headers.get('authorization') === `Bearer ${room.hostKey}`
@@ -142,7 +142,7 @@ export class Room {
         const joinId = crypto.randomUUID()
         room.joins[joinId] = { status: 'waiting', createdAt: Date.now(), lastSeenAt: Date.now() }
         await this.state.storage.put('room', room)
-        return json({ joinId }, 201)
+        return json({ joinId, ...(!room.permanent && { expiresAt: room.expiresAt }) }, 201)
       }
       if (action[0] === 'join' && action[1] && request.method === 'GET') {
         const join = room.joins[action[1]]
