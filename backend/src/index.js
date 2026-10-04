@@ -179,11 +179,11 @@ export class Room {
         const join = room.joins[body.joinId]
         if (!join || !joinIsActive(join)) return error('join expired', 404)
         if (action[0] === 'offer') {
-          if (join.status !== 'waiting' || typeof body.offer !== 'string' || !body.offer.startsWith('kiwi://h/')) return error('invalid offer')
+          if (join.status !== 'waiting' || typeof body.offer !== 'string' || !body.offer.startsWith('webo://h/')) return error('invalid offer')
           join.offer = body.offer
           join.status = 'offered'
         } else if (action[0] === 'answer') {
-          if (join.status !== 'offered' || typeof body.answer !== 'string' || !body.answer.startsWith('kiwi://p/')) return error('invalid answer')
+          if (join.status !== 'offered' || typeof body.answer !== 'string' || !body.answer.startsWith('webo://p/')) return error('invalid answer')
           join.answer = body.answer
           join.status = 'answered'
         } else {
