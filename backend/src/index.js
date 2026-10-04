@@ -43,7 +43,7 @@ export default {
       if (permanent && (typeof body?.joinAuth !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(body.joinAuth))) {
         return error('invalid channel authentication')
       }
-      if (!permanent && body && (!Number.isInteger(body.durationMinutes) || body.durationMinutes < 15 || body.durationMinutes > 240 || !Number.isInteger(body.maxParticipants) || body.maxParticipants < 2 || body.maxParticipants > 4)) {
+      if (!permanent && body && (!Number.isInteger(body.durationMinutes) || body.durationMinutes < 10 || body.durationMinutes > 240 || !Number.isInteger(body.maxParticipants) || body.maxParticipants < 2 || body.maxParticipants > 4)) {
         return error('invalid room options')
       }
       forwarded = new Request(`${url.origin}/rooms/${roomId}/create`, {
@@ -79,7 +79,7 @@ export class Room {
         const { hostKey, permanent, joinAuth, durationMinutes, maxParticipants } = await readBody(request)
         if (typeof hostKey !== 'string' || hostKey.length < 30) return error('invalid host key')
         if (permanent && (typeof joinAuth !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(joinAuth))) return error('invalid channel authentication')
-        if (!permanent && (durationMinutes !== undefined || maxParticipants !== undefined) && (!Number.isInteger(durationMinutes) || durationMinutes < 15 || durationMinutes > 240 || !Number.isInteger(maxParticipants) || maxParticipants < 2 || maxParticipants > 4)) return error('invalid room options')
+        if (!permanent && (durationMinutes !== undefined || maxParticipants !== undefined) && (!Number.isInteger(durationMinutes) || durationMinutes < 10 || durationMinutes > 240 || !Number.isInteger(maxParticipants) || maxParticipants < 2 || maxParticipants > 4)) return error('invalid room options')
         room = { hostKey, permanent: Boolean(permanent), joinAuth, leaseUntil: permanent ? Date.now() + LEADER_LEASE_MS : 0, expiresAt: Date.now() + (durationMinutes ?? ROOM_LIFETIME_MS / 60000) * 60000, maxJoiners: permanent ? MAX_JOINERS : (maxParticipants ?? 4) - 1, joins: {}, iceIssues: 0, iceWindowAt: Date.now() }
         await this.state.storage.put('room', room)
         if (!permanent) await this.state.storage.setAlarm(room.expiresAt)

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { L } from './translations'
   import { appState } from './appState.svelte'
   import { toast } from './toastState.svelte'
@@ -19,14 +18,14 @@
     sendOffer,
   } from './session/roomServer'
 
+  let { onPermanentCreate }: { onPermanentCreate: (name: string) => Promise<void> } = $props()
+
   let sessionStarted = $state(false)
   let startingSession = $state(false)
   let roomName = $state('')
-  let durationChoice = $state<'30' | '60' | '180' | 'custom'>('30')
-  let customMinutes = $state(60)
-  let maxParticipants = $state(4)
-  const durationMinutes = $derived(durationChoice === 'custom' ? Number(customMinutes) : Number(durationChoice))
-  const durationValid = $derived(Number.isInteger(durationMinutes) && durationMinutes >= 15 && durationMinutes <= 240)
+  let durationChoice = $state<'10' | '20' | '30' | '60' | '180' | 'permanent'>('10')
+  const durationMinutes = $derived(Number(durationChoice))
+  const durationValid = $derived(durationChoice === 'permanent' || Number.isInteger(durationMinutes) && durationMinutes >= 10 && durationMinutes <= 240)
   let username = ''
   let server = ''
   let roomId = ''
@@ -34,10 +33,6 @@
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let polling = false
   const pending = new Map<string, { id: string; offer: string }>()
-
-  onMount(async () => {
-    username = (await window.KiwiApi.getSettings()).username
-  })
 
   $effect(() => {
     if (appState.sessionSource !== 'host') return
@@ -80,12 +75,17 @@
   }
 
   const onStartSessionButtonClick = async (): Promise<void> => {
-    if (startingSession || !durationValid) return
+    if (startingSession || !durationValid || durationChoice === 'permanent' && !roomName.trim()) return
     startingSession = true
     try {
+      if (durationChoice === 'permanent') {
+        await onPermanentCreate(roomName.trim())
+        return
+      }
       const settings = await window.KiwiApi.getSettings()
+      username = settings.username
       server = normalizeRoomServer(settings.roomServerUrl ?? '')
-      const created = await createRoom(server, durationMinutes, maxParticipants)
+      const created = await createRoom(server, durationMinutes)
       roomId = created.roomId
       hostKey = created.hostKey
       const iceServers = await roomIceServers(server, roomId)
@@ -133,43 +133,29 @@
 
 </script>
 
-<div class="home-action">
-  <div class="card-heading">
-    <div class="home-action-icon"><i class="fa-solid fa-video"></i></div>
-    <div class="card-heading-copy">
-      <div class="card-title-line"><h2>{L.temporary_chat()}</h2><span class="card-badge card-badge-blue">{L.ephemeral()}</span></div>
-      <p>{L.temporary_chat_description()}</p>
-    </div>
+<div class="create-chat">
+  <div class="create-chat-heading">
+    <div><h1>{L.create_audio_chat()}</h1><p>{L.create_audio_chat_description()}</p></div>
+    <svg class="chat-wave" viewBox="0 0 220 90" fill="none" aria-hidden="true"><path d="M0 49 C26 14 43 85 70 49 S112 -9 142 48 S184 83 220 46" stroke="currentColor" stroke-width="2.5" /></svg>
   </div>
-  <label class="home-field">
-    <span>{L.room_name()}</span>
-    <input class="input w-full" bind:value={roomName} maxlength="48" placeholder={L.room_name()} />
+  <label class="chat-name-field">
+    <span class="chat-name-icon"><i class="fa-solid fa-microphone"></i></span>
+    <span class="chat-name-content"><strong>{L.chat_name()}</strong><input class="input w-full" bind:value={roomName} maxlength="48" placeholder={L.chat_name_placeholder()} /></span>
   </label>
-  <div class="room-options">
-    <div class="home-field">
-      <span>{L.duration()}</span>
-      <div class="duration-options" role="group" aria-label={L.duration()}>
-        <button class:selected={durationChoice === '30'} type="button" onclick={() => durationChoice = '30'}>30 {L.minutes_short()}</button>
-        <button class:selected={durationChoice === '60'} type="button" onclick={() => durationChoice = '60'}>1 {L.hour_short()}</button>
-        <button class:selected={durationChoice === '180'} type="button" onclick={() => durationChoice = '180'}>3 {L.hours_short()}</button>
-        <button class:selected={durationChoice === 'custom'} type="button" onclick={() => durationChoice = 'custom'}>{L.custom_duration()}</button>
-      </div>
-      {#if durationChoice === 'custom'}<input class="input w-full" type="number" min="15" max="240" step="1" bind:value={customMinutes} aria-label={L.duration_minutes()} />{/if}
-    </div>
-    <label class="home-field">
-      <span>{L.max_participants()}</span>
-      <select class="select w-full" bind:value={maxParticipants}>
-        <option value={2}>2</option>
-        <option value={3}>3</option>
-        <option value={4}>4</option>
-      </select>
-    </label>
+  <div class="create-duration-heading"><span><i class="fa-regular fa-clock"></i>{L.duration()}</span><small>{L.duration_hint()}</small></div>
+  <div class="duration-options" role="group" aria-label={L.duration()}>
+    <button class:selected={durationChoice === '10'} type="button" onclick={() => durationChoice = '10'}>10 {L.minutes_short()}</button>
+    <button class:selected={durationChoice === '20'} type="button" onclick={() => durationChoice = '20'}>20 {L.minutes_short()}</button>
+    <button class:selected={durationChoice === '30'} type="button" onclick={() => durationChoice = '30'}>30 {L.minutes_short()}</button>
+    <button class:selected={durationChoice === '60'} type="button" onclick={() => durationChoice = '60'}>1 {L.hour_short()}</button>
+    <button class:selected={durationChoice === '180'} type="button" onclick={() => durationChoice = '180'}>3 {L.hours_short()}</button>
+    <button class:selected={durationChoice === 'permanent'} type="button" onclick={() => durationChoice = 'permanent'}><i class="fa-solid fa-infinity"></i>{L.persistent()}</button>
   </div>
+  <p class="duration-note"><i class="fa-solid fa-circle-info"></i>{durationChoice === 'permanent' ? L.link_access() : L.expires_after_duration()}</p>
   {#if !sessionStarted}
-    <button class="home-primary home-primary-blue" disabled={startingSession || !durationValid} onclick={onStartSessionButtonClick}>
+    <button class="home-primary" disabled={startingSession || !durationValid || durationChoice === 'permanent' && !roomName.trim()} onclick={onStartSessionButtonClick}>
       {#if startingSession}<span class="loading loading-spinner"></span>{/if}
-      <i class="fa-solid fa-play"></i>{L.start_a_new_session()}
+      <i class="fa-solid fa-play"></i>{L.create_chat()}
     </button>
   {/if}
-  <div class="home-info"><i class="fa-solid fa-link"></i><span>{L.room_link_after_creation()}</span></div>
 </div>

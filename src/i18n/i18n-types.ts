@@ -266,6 +266,15 @@ type RootTranslation = {
    * A​u​d​i​o​ ​c​h​a​t​s
    */
   audio_chats: string;
+  create_audio_chat: string;
+  create_audio_chat_description: string;
+  chat_name: string;
+  chat_name_placeholder: string;
+  duration_hint: string;
+  expires_after_duration: string;
+  create_chat: string;
+  save_profile: string;
+  enter_channel: string;
   /**
    * C​r​e​a​t​e​ ​a​ ​t​e​m​p​o​r​a​r​y​ ​r​o​o​m​ ​f​o​r​ ​a​ ​q​u​i​c​k​ ​c​o​n​v​e​r​s​a​t​i​o​n​ ​o​r​ ​a​ ​p​e​r​m​a​n​e​n​t​ ​c​h​a​n​n​e​l​ ​f​o​r​ ​y​o​u​r​ ​g​r​o​u​p​.
    */
@@ -1047,6 +1056,15 @@ export type TranslationFunctions = {
    * Audio chats
    */
   audio_chats: () => LocalizedString;
+  create_audio_chat: () => LocalizedString;
+  create_audio_chat_description: () => LocalizedString;
+  chat_name: () => LocalizedString;
+  chat_name_placeholder: () => LocalizedString;
+  duration_hint: () => LocalizedString;
+  expires_after_duration: () => LocalizedString;
+  create_chat: () => LocalizedString;
+  save_profile: () => LocalizedString;
+  enter_channel: () => LocalizedString;
   /**
    * Create a temporary room for a quick conversation or a permanent channel for your group.
    */

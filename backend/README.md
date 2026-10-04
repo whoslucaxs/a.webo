@@ -1,6 +1,6 @@
 # JanjaShare signaling server
 
-Cloudflare Worker + Durable Object for one-link room setup. The server exchanges WebRTC offers and answers and issues short-lived Cloudflare Realtime TURN credentials. The invite's encryption secret stays in the `kiwi://` URL fragment and is never posted to the server. Media remains WebRTC peer-to-peer when possible and uses TURN when needed. Temporary rooms can last 15–240 minutes and allow 2–4 participants. Permanent channels keep the same link and elect a new signaling host when the previous host leaves; media is live only while participants are connected. Calls accept up to four participants.
+Cloudflare Worker + Durable Object for one-link room setup. The server exchanges WebRTC offers and answers and issues short-lived Cloudflare Realtime TURN credentials. The invite's encryption secret stays in the `kiwi://` URL fragment and is never posted to the server. Media remains WebRTC peer-to-peer when possible and uses TURN when needed. Temporary rooms can last 10–240 minutes and allow 2–4 participants. Permanent channels keep the same link and elect a new signaling host when the previous host leaves; media is live only while participants are connected. Calls accept up to four participants.
 
 ## Deploy
 

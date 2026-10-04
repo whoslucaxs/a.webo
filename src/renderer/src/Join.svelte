@@ -9,7 +9,7 @@
   import { iceFailureText } from './session/connectionFailureText'
   import { joinRoom, joinStatus, keepJoinAlive, leaveJoin, parseChannelLink, parseRoomLink, roomIceServers, sendAnswer } from './session/roomServer'
 
-  let { onChannelJoin }: { onChannelJoin: (url: string) => void } = $props()
+  let { onChannelJoin, compact = false }: { onChannelJoin: (url: string) => void; compact?: boolean } = $props()
 
   let connecting = $state(false)
   let waiting = $state(false)
@@ -126,11 +126,13 @@
   }
 </script>
 
-<div class="home-action home-action-join">
-  <div class="card-heading">
-    <div class="home-action-icon"><i class="fa-solid fa-right-to-bracket"></i></div>
-    <div class="card-heading-copy"><h2>{L.join_a_session()}</h2><p>{L.join_existing_description()}</p></div>
-  </div>
+<div class="home-action home-action-join" class:compact>
+  {#if !compact}
+    <div class="card-heading">
+      <div class="home-action-icon"><i class="fa-solid fa-right-to-bracket"></i></div>
+      <div class="card-heading-copy"><h2>{L.join_a_session()}</h2><p>{L.join_existing_description()}</p></div>
+    </div>
+  {/if}
   {#if !waiting && !appState.isWatching && !room.sessionEndedReason}
     <div class="join w-full">
       <input

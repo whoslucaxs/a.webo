@@ -29,8 +29,6 @@
   type SavedChannel = { name: string; link: string }
   const storageKey = 'p2p.kiwi.channels'
   let channels = $state<SavedChannel[]>([])
-  let channelName = $state('')
-  let channelDescription = $state('')
   let starting = $state(false)
   let activeUrl = ''
   let auth = ''
@@ -227,8 +225,8 @@
     }
   }
 
-  const create = async (): Promise<void> => {
-    if (starting || !channelName.trim()) return
+  export const create = async (name: string): Promise<void> => {
+    if (starting || !name.trim()) return
     starting = true
     try {
       const settings = await window.KiwiApi.getSettings()
@@ -236,10 +234,8 @@
       const invite = randomInviteCrypto()
       const channelAuth = toBase64Url(await deriveJoinAuthenticator(invite))
       const created = await createChannel(server, channelAuth)
-      const link = makeChannelLink(server, created.roomId, encodeInviteFragment(invite), channelName.trim(), channelDescription.trim())
-      saveChannel(channelName.trim(), link)
-      channelName = ''
-      channelDescription = ''
+      const link = makeChannelLink(server, created.roomId, encodeInviteFragment(invite), name.trim())
+      saveChannel(name.trim(), link)
       await enter(link, created.hostKey)
     } catch (error) {
       debugLog.error('channel', 'could not create channel', error)
@@ -266,34 +262,20 @@
   }
 </script>
 
-<div class="home-action">
-  <div class="card-heading">
-    <div class="home-action-icon"><i class="fa-solid fa-hashtag"></i></div>
-    <div class="card-heading-copy">
-      <div class="card-title-line"><h2>{L.permanent_channels()}</h2><span class="card-badge card-badge-purple">{L.persistent()}</span></div>
-      <p>{L.permanent_channel_description()}</p>
-    </div>
+<div class="channel-list">
+  <div class="channel-list-heading">
+    <span class="channel-heading-icon"><i class="fa-solid fa-hashtag"></i></span>
+    <div><h2>{L.permanent_channels()}</h2><p>{L.permanent_channel_description()}</p></div>
   </div>
-  <label class="home-field">
-    <span>{L.channel_name()}</span>
-    <input class="input w-full" bind:value={channelName} maxlength="48" placeholder={L.channel_name()} />
-  </label>
-  <label class="home-field">
-    <span>{L.description_optional()}</span>
-    <input class="input w-full" bind:value={channelDescription} maxlength="160" placeholder={L.description_optional()} />
-  </label>
-  <div class="home-info"><i class="fa-solid fa-link"></i><span>{L.link_access()}</span></div>
-  <button class="home-primary home-primary-purple" disabled={starting || !channelName.trim()} onclick={create}>
-    <i class="fa-solid fa-hashtag"></i>{L.create_channel()}
-  </button>
   <div id="saved-channels" class="saved-channels">
-    <h3>{L.saved_channels()}</h3>
     {#if channels.length}
       {#each channels as channel (channel.link)}
         <div class="saved-channel-row">
-          <button class="saved-channel-open" disabled={starting} onclick={() => void join(channel.link)}><i class="fa-solid fa-hashtag"></i><span><strong>{channel.name}</strong>{#if parseChannelLink(channel.link)?.description}<small>{parseChannelLink(channel.link)?.description}</small>{/if}</span></button>
+          <span class="saved-channel-icon"><i class="fa-solid fa-hashtag"></i></span>
+          <span class="saved-channel-name"><strong>{channel.name}</strong><small>{parseChannelLink(channel.link)?.description || L.link_access()}</small></span>
           <button class="saved-channel-tool" aria-label={L.copy_my_connection_string()} title={L.copy_my_connection_string()} onclick={() => void navigator.clipboard.writeText(channel.link)}><i class="fa-solid fa-link"></i></button>
           <button class="saved-channel-tool" aria-label={L.remove_channel()} title={L.remove_channel()} onclick={() => removeChannel(channel.link)}><i class="fa-solid fa-xmark"></i></button>
+          <button class="saved-channel-enter" disabled={starting} onclick={() => void join(channel.link)}>{L.enter_channel()}</button>
         </div>
       {/each}
     {:else}

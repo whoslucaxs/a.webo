@@ -3,6 +3,7 @@
   import Join from './Join.svelte'
   import Host from './Host.svelte'
   import Channels from './Channels.svelte'
+  import HomeProfile from './HomeProfile.svelte'
   import Settings from './Settings.svelte'
   import Debug from './Debug.svelte'
   import Bonjour from './Bonjour.svelte'
@@ -19,8 +20,7 @@
   import { onMount } from 'svelte'
 
   let screenPicker: ScreenPicker | undefined = $state()
-  let channelsComponent: { join: (url: string) => Promise<void> } | undefined = $state()
-  let homeSection = $state('home')
+  let channelsComponent: { join: (url: string) => Promise<void>; create: (name: string) => Promise<void> } | undefined = $state()
   let closedDrawerForCall = false
 
   const joining = $derived(appState.sessionSource === 'join' || (appState.sessionSource === 'channel' && !appState.isHosting))
@@ -92,24 +92,13 @@
     <div class={hideHome ? 'hidden' : ''}>
       {#if appState.activeView === 'home'}
         <main class="home-page" data-theme="business">
-          <aside class="home-sidebar" aria-label={L.audio_chats()}>
-            <a class="home-sidebar-link" class:selected={homeSection === 'home'} href="#home-top" onclick={() => homeSection = 'home'}><i class="fa-solid fa-house"></i><span>{L.home()}</span></a>
-            <a class="home-sidebar-link" class:selected={homeSection === 'temporary'} href="#temporary-card" onclick={() => homeSection = 'temporary'}><i class="fa-regular fa-clock"></i><span>{L.temporary_chat()}</span></a>
-            <a class="home-sidebar-link" class:selected={homeSection === 'channels'} href="#channel-card" onclick={() => homeSection = 'channels'}><i class="fa-solid fa-hashtag"></i><span>{L.permanent_channels()}</span></a>
-            <a class="home-sidebar-link" class:selected={homeSection === 'saved'} href="#saved-channels" onclick={() => homeSection = 'saved'}><i class="fa-regular fa-bookmark"></i><span>{L.saved_channels()}</span></a>
-            <div class="home-sidebar-divider"></div>
-            <button class="home-sidebar-link" onclick={() => appState.activeView = 'settings'}><i class="fa-solid fa-gear"></i><span>{L.settings()}</span></button>
-          </aside>
-          <div id="home-top" class="home-main">
-            <div class="home-heading">
-              <div><h1>{L.audio_chats()}</h1><p>{L.audio_chats_description()}</p></div>
-              <span class="home-motto"><i class="fa-solid fa-wave-square"></i>{L.talk_share()}</span>
-            </div>
-            <div class="home-options">
-              <section id="temporary-card" class="home-card"><Host /></section>
-              <section id="channel-card" class="home-card home-card-channel"><Channels bind:this={channelsComponent} /></section>
-              <section id="join-card" class="home-card"><Join onChannelJoin={(url) => void channelsComponent?.join(url)} /></section>
-            </div>
+          <HomeProfile />
+          <div class="home-workspace">
+            <section class="create-panel"><Host onPermanentCreate={(name) => channelsComponent!.create(name)} /></section>
+            <section class="channels-panel">
+              <Channels bind:this={channelsComponent} />
+              <div class="join-link-panel"><h3>{L.join_a_session()}</h3><Join compact onChannelJoin={(url) => void channelsComponent?.join(url)} /></div>
+            </section>
           </div>
         </main>
       {:else if appState.activeView === 'settings'}
