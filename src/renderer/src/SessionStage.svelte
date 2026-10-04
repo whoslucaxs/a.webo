@@ -36,6 +36,8 @@
   let inviteInFlight = false
   let inviteFormIsVisible = $state(false)
   let participantsOpen = $state(true)
+  let chatOpen = $state(false)
+  let chatDraft = $state('')
   let settingsOpen = $state(false)
   const inviteLink = $derived(appState.roomLink || (appState.sessionSource === 'join' || appState.sessionSource === 'channel' ? appState.participantUrl : ''))
 
@@ -99,11 +101,30 @@
 
   const onCameraToggle = async (): Promise<void> => {
     await room.ToggleCamera()
-    void window.KiwiApi.toggleCallOverlay(true)
   }
 
   const onChatClick = (): void => {
-    void window.KiwiApi.toggleCallOverlay(true)
+    chatOpen = !chatOpen
+  }
+
+  const onChatSubmit = (event: SubmitEvent): void => {
+    event.preventDefault()
+    if (!chatDraft.trim()) return
+    room.sendChat(chatDraft)
+    chatDraft = ''
+  }
+
+  const chatTime = (at: number): string =>
+    new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+  const autoscrollChat = (node: HTMLDivElement) => {
+    const stop = $effect.root(() => {
+      $effect(() => {
+        void room.chatMessages.length
+        node.scrollTop = node.scrollHeight
+      })
+    })
+    return { destroy: stop }
   }
 
   const onDisplayStreamToggle = (): void => {
@@ -237,7 +258,7 @@
   </button>
 </header>
 
-<div class:sidebar-hidden={!participantsOpen} class="call-content">
+<div class:sidebar-hidden={!participantsOpen} class:chat-open={chatOpen} class="call-content">
 <aside class="call-sidebar" aria-label={L.peer_list()}>
 
 {#if room.presenterGone && !room.isPresenter && !room.sessionEndedReason}
@@ -439,8 +460,22 @@
     ></video>
   </fieldset>
 {/each}
+{#each room.cameraShares as camera (camera.peerId)}
+  <fieldset class="fieldset px-0 min-w-0">
+    <legend class="fieldset-legend"><i class="fa-solid fa-video"></i> {camera.name}{camera.peerId === room.localPeerId ? ` (${L.you()})` : ''}</legend>
+    <video
+      class="video camera-video rounded-lg bg-black"
+      class:local-camera={camera.peerId === room.localPeerId}
+      use:attachScreen={camera.stream}
+      autoplay
+      playsinline
+      muted
+      disablepictureinpicture
+    ></video>
+  </fieldset>
+{/each}
 </div>
-{#if room.screenShares.length === 0}
+{#if room.screenShares.length === 0 && room.cameraShares.length === 0}
   <div class="call-empty">
     <i class="fa-solid fa-display"></i>
     <p>{L.not_streaming_your_display()}</p>
@@ -449,6 +484,28 @@
 {/if}
 </div>
   </main>
+  {#if chatOpen}
+    <aside class="chat-panel" aria-label={L.chat()}>
+      <header class="chat-heading"><h2><i class="fa-regular fa-comment"></i> {L.chat()}</h2><span><i class="fa-solid fa-user-group"></i> {room.peers.length}</span></header>
+      <div use:autoscrollChat class="chat-messages" aria-live="polite">
+        {#each room.chatMessages as message (message.id)}
+          {@const sender = room.peers.find((peer) => peer.id === message.from)}
+          <article class="chat-message">
+            {#if sender?.avatar}
+              <img class="chat-avatar" src={sender.avatar} alt="" />
+            {:else}
+              <span class="chat-avatar chat-initial" style:background={sender?.backgroundColor ?? '#0d4b49'} style:color={sender?.foregroundColor ?? '#f4f7fa'}>{message.name.trim().charAt(0).toUpperCase() || '?'}</span>
+            {/if}
+            <div class="chat-message-body"><div class="chat-message-meta"><strong>{message.name}</strong><time>{chatTime(message.at)}</time></div><p>{message.text}</p></div>
+          </article>
+        {/each}
+      </div>
+      <form class="chat-compose" onsubmit={onChatSubmit}>
+        <input class="input" bind:value={chatDraft} placeholder={L.chat_placeholder()} aria-label={L.chat_placeholder()} maxlength="2000" />
+        <button type="submit" aria-label={L.send()} disabled={!chatDraft.trim()}><i class="fa-solid fa-paper-plane"></i></button>
+      </form>
+    </aside>
+  {/if}
 </div>
 
 <nav class="call-controls" aria-label={L.media()}>
@@ -473,7 +530,7 @@
   <button class:control-active={room.cameraActive} class="control-button" onclick={onCameraToggle} aria-label={room.cameraActive ? L.camera_on() : L.camera_off()}>
     <i class="fa-solid {room.cameraActive ? 'fa-video' : 'fa-video-slash'}"></i><span>{L.camera()}</span>
   </button>
-  <button class="control-button" onclick={onChatClick}><i class="fa-solid fa-comment"></i><span>{L.chat()}</span></button>
+  <button class:control-selected={chatOpen} class="control-button" onclick={onChatClick} aria-pressed={chatOpen}><i class="fa-solid fa-comment"></i><span>{L.chat()}</span></button>
   <button class:control-selected={participantsOpen} class="control-button" onclick={() => participantsOpen = !participantsOpen} aria-pressed={participantsOpen}>
     <i class="fa-solid fa-user-group"></i><span>{L.peer_list()}</span>
   </button>
@@ -507,6 +564,7 @@
 <style>
   .call-shell {
     min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     background: radial-gradient(circle at 65% 50%, #16262d, #0c171f 66%);
@@ -544,7 +602,9 @@
     gap: 0.8rem;
     padding: 1rem 1.1rem 0;
   }
+  .call-content.chat-open { grid-template-columns: 17.1rem minmax(0, 1fr) 22.5rem; }
   .call-content.sidebar-hidden { grid-template-columns: minmax(0, 1fr); }
+  .call-content.sidebar-hidden.chat-open { grid-template-columns: minmax(0, 1fr) 22.5rem; }
   .sidebar-hidden .call-sidebar { display: none; }
   .call-sidebar {
     min-width: 0;
@@ -607,6 +667,7 @@
   .member-role { color: #aab7c4; font-size: 0.8rem; }
   .call-stage {
     min-width: 0;
+    min-height: 0;
     padding: 1.1rem;
     display: flex;
     flex-direction: column;
@@ -614,7 +675,26 @@
     border: 1px solid #2d404c;
     border-radius: 1rem;
     background: linear-gradient(155deg, #15232d, #101d26);
+    overflow: auto;
   }
+  .chat-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid #2d404c; border-radius: 1rem; background: linear-gradient(155deg, #15232d, #101d26); overflow: hidden; }
+  .chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 1rem 1.25rem; border-bottom: 1px solid #30434e; }
+  .chat-heading h2 { display: flex; align-items: center; gap: 0.65rem; font-size: 1.1rem; font-weight: 700; }
+  .chat-heading h2 i { color: #aab7c4; font-size: 1.25rem; }
+  .chat-heading > span { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.5rem; border-radius: 0.5rem; background: #202f3a; color: #b7c1ce; font-size: 0.75rem; }
+  .chat-messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.9rem; padding: 1rem; }
+  .chat-message { display: flex; align-items: flex-start; gap: 0.65rem; }
+  .chat-avatar { flex: none; width: 2.2rem; height: 2.2rem; border-radius: 50%; object-fit: cover; }
+  .chat-initial { display: grid; place-items: center; font-weight: 700; }
+  .chat-message-body { min-width: 0; }
+  .chat-message-meta { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.76rem; }
+  .chat-message-meta strong { font-weight: 700; }
+  .chat-message-meta time { color: #94a4b0; font-size: 0.7rem; }
+  .chat-message-body p { display: inline-block; max-width: 100%; padding: 0.55rem 0.7rem; border-radius: 0.7rem; background: #1b2b35; color: #dbe4eb; font-size: 0.78rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .chat-compose { display: flex; gap: 0.45rem; padding: 0.65rem; border-top: 1px solid #30434e; }
+  .chat-compose input { flex: 1; min-width: 0; height: 2.7rem; border: 1px solid #425563; border-radius: 0.65rem; background: #15232d; color: #f4f7fa; }
+  .chat-compose button { flex: none; width: 2.7rem; border-radius: 0.65rem; background: linear-gradient(125deg, #0cc9b7, #009d91); color: white; cursor: pointer; }
+  .chat-compose button:disabled { opacity: 0.5; cursor: default; }
   .room-invite {
     display: flex;
     flex-direction: column;
@@ -718,6 +798,8 @@
     background: #15232d;
   }
   .screen-grid :global(.fieldset-legend) { color: #f4f7fa; }
+  .camera-video { aspect-ratio: 16 / 9; object-fit: cover; }
+  .camera-video.local-camera { transform: scaleX(-1); }
   .video {
     width: 100%;
     height: auto;
@@ -803,13 +885,17 @@
   .settings-close { position: sticky; top: 0.75rem; float: right; z-index: 2; margin: 0.75rem; width: 2rem; height: 2rem; border-radius: 0.5rem; background: #24333e; color: white; cursor: pointer; }
   @media (max-width: 900px) {
     .call-content { grid-template-columns: 12rem minmax(0, 1fr); }
+    .call-content.chat-open { grid-template-columns: 12rem minmax(0, 1fr) 18rem; }
+    .call-content.sidebar-hidden.chat-open { grid-template-columns: minmax(0, 1fr) 18rem; }
     .control-button { padding: 0.6rem; }
     .control-button span:not(.mic-btn-icon) { font-size: 0.7rem; }
   }
   @media (max-width: 700px) {
     .call-header { padding: 0.6rem 1rem; }
     .call-content { grid-template-columns: 1fr; }
+    .call-content.chat-open, .call-content.sidebar-hidden.chat-open { grid-template-columns: 1fr; overflow-y: auto; }
     .call-sidebar { max-height: 16rem; overflow: auto; }
+    .chat-panel { min-height: 20rem; max-height: 25rem; }
     .call-controls { gap: 0.4rem; margin: 0.6rem; }
     .control-separator { display: none; }
     .room-invite-actions { flex-direction: column; }

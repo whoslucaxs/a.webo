@@ -112,6 +112,7 @@ export class Room {
   peers = $state<RoomPeer[]>([])
   displayStreamActive = $state(false)
   screenShares = $state.raw<ScreenShare[]>([])
+  cameraShares = $state.raw<ScreenShare[]>([])
   remoteScreenActive = $state(false)
   /** Null until the presenter reports it. False means they paused the picture. */
   remoteDisplayActive = $state<boolean | null>(null)
@@ -2668,6 +2669,7 @@ export class Room {
     this.remoteDisplayStates.clear()
     this.remoteDisplayStreamIds.clear()
     this.screenShares = []
+    this.cameraShares = []
     this.remoteVideoByStreamId.clear()
     this.remoteCameraStreams.clear()
     this.remoteCameraState.clear()
@@ -2862,6 +2864,13 @@ export class Room {
   }
 
   private syncCallOverlay(): void {
+    this.cameraShares = this.cameraSources()
+      .filter(({ peerId }) => peerId === this.localPeerId || this.remoteCameraState.get(peerId)?.enabled)
+      .map(({ peerId, stream }) => ({
+        peerId,
+        stream,
+        name: this.peers.find((peer) => peer.id === peerId)?.username ?? (peerId === this.localPeerId ? this.username : peerId),
+      }))
     if (!this.overlayOpen) return
     window.KiwiApi.sendCallPeers?.(cloneForIpc(this.callPeerInfos()))
     window.KiwiApi.sendCallChat?.(cloneForIpc(this.chatMessages))
