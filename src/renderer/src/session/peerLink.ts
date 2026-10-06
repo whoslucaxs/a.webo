@@ -306,6 +306,17 @@ export class PeerLink {
         })
       }
     }
+    if (tracks[1] && this.browserAudioSender) {
+      try {
+        const params = this.browserAudioSender.getParameters()
+        if (params.encodings.length) {
+          params.encodings[0].maxBitrate = 320_000
+          await this.browserAudioSender.setParameters(params)
+        }
+      } catch (error) {
+        console.warn('browser audio setParameters failed', error)
+      }
+    }
   }
 
   getAdaptiveSenders(): {

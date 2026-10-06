@@ -101,6 +101,8 @@ describe('PeerLink video senders', () => {
     expect(link.pc.getSenders()).toHaveLength(1)
     await link.setBrowserStream(stream)
     expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, video, audio])
+    expect(link.pc.getSenders()[2].getParameters().encodings[0].maxBitrate).toBe(320_000)
+    expect(link.pc.getSenders()[0].getParameters().encodings[0].maxBitrate).toBe(0)
     await link.setBrowserStream(null)
     expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, null, null])
   })
