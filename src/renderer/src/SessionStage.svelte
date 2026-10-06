@@ -16,6 +16,7 @@
   import PresenterVoteModal from './PresenterVoteModal.svelte'
   import type { Room } from './session/room.svelte'
   import { connectThrownText } from './session/connectionFailureText'
+  import { memberSoundChanges, playMemberSound } from './session/memberSounds'
   import brokenVideoUrl from '../../assets/broken-video.svg?url'
 
   let {
@@ -47,6 +48,7 @@
   let browserError = $state('')
   let browserWebview: (HTMLElement & { getWebContentsId: () => number }) | null = null
   let now = $state(Date.now())
+  let previousMembers: Set<string> | null = null
   const remainingSeconds = $derived(Math.max(0, Math.ceil(((appState.sessionExpiresAt ?? 0) - now) / 1000)))
   const remainingTime = $derived(new Date(remainingSeconds * 1000).toISOString().slice(11, 19))
   const inviteLink = $derived(appState.roomLink || (appState.sessionSource === 'join' || appState.sessionSource === 'channel' ? appState.participantUrl : ''))
@@ -157,6 +159,17 @@
   })
 
   $effect(() => {
+    const current = new Set(room.peers.map((peer) => peer.id))
+    const localPeerId = room.localPeerId
+    if (!localPeerId || !current.has(localPeerId)) {
+      previousMembers = null
+      return
+    }
+    for (const sound of memberSoundChanges(previousMembers, current, localPeerId)) playMemberSound(sound)
+    previousMembers = current
+  })
+
+  $effect(() => {
     const value = appState.hostUrl
     if (!showInvite || value === '') {
       connectionStringIsValid = null
@@ -227,6 +240,7 @@
 
   const onLeaveClick = async (): Promise<void> => {
     await leaveFullscreen()
+    playMemberSound('exit')
     try {
       await room.leave()
     } catch (error) {
