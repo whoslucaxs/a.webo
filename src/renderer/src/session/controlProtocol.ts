@@ -144,6 +144,23 @@ export type DisplayStateMessage = Envelope & {
   streamId?: string
 }
 
+export type ScreenWatchMessage = Envelope & {
+  t: 'screen-watch'
+  watching: boolean
+}
+
+export type BrowserStateMessage = Envelope & {
+  t: 'browser-state'
+  peerId: string
+  active: boolean
+  streamId: string
+}
+
+export type BrowserWatchMessage = Envelope & {
+  t: 'browser-watch'
+  watching: boolean
+}
+
 export type MlsControlMessage = Envelope & {
   t: 'mls'
   kind: 'key-package' | 'welcome' | 'commit'
@@ -171,6 +188,9 @@ export type ControlMessage =
   | ChatMessage
   | CameraStateMessage
   | DisplayStateMessage
+  | ScreenWatchMessage
+  | BrowserStateMessage
+  | BrowserWatchMessage
   | E2eeMessage
   | MlsControlMessage
 
@@ -283,6 +303,12 @@ export const isControlMessage = (value: unknown): value is ControlMessage => {
         typeof value.active === 'boolean' &&
         (value.streamId === undefined || isString(value.streamId))
       )
+    case 'screen-watch':
+      return typeof value.watching === 'boolean'
+    case 'browser-state':
+      return isString(value.peerId) && typeof value.active === 'boolean' && isString(value.streamId)
+    case 'browser-watch':
+      return typeof value.watching === 'boolean'
     case 'e2ee':
       return (
         typeof value.epoch === 'number' &&

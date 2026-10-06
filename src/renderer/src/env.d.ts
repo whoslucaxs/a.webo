@@ -1,6 +1,7 @@
 /// <reference types="svelte" />
 /// <reference types="vite/client" />
 import type { ElectronAPI } from "@electron-toolkit/preload";
+import type { UpdateState } from '../../shared/update';
 
 type IceServer = {
   urls: string;
@@ -40,6 +41,14 @@ type CallCameraMid = {
 };
 
 type KiwiApi = {
+  getUpdateState: () => Promise<UpdateState>;
+  onUpdateState: (handler: (state: UpdateState) => void) => void;
+  checkForUpdates: () => Promise<void>;
+  installUpdate: () => Promise<void>;
+  openBrowserShare: (id: number, url: string) => Promise<string>
+  prepareBrowserShare: (id: number, url: string) => string
+  closeBrowserShare: () => Promise<void>
+  onBrowserShareClosed: (handler: () => void) => void
   updateSettings: (settings: {
     username: string;
     language: string;

@@ -1,6 +1,10 @@
 ---
 appId: kiwi.p2p.desktop
 productName: a.webo
+publish:
+  provider: github
+  owner: whoslucaxs
+  repo: a.webo
 directories:
   buildResources: build
 files:

@@ -23,12 +23,16 @@ jobs:
             artifact: a-webo-windows-x64
             files: |
               dist/a-webo-setup_x64.exe
+              dist/a-webo-setup_x64.exe.blockmap
               dist/a-webo-portable_x64.exe
+              dist/latest.yml
           - name: Linux x64
             os: ubuntu-latest
             target: --linux AppImage --x64
             artifact: a-webo-linux-x64
-            files: dist/a-webo_x86_64.AppImage
+            files: |
+              dist/a-webo_x86_64.AppImage
+              dist/latest-linux.yml
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4

@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron'
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { UpdateState } from '../shared/update'
 
 let HANDLE_URL_CLICKS = true
 
@@ -88,6 +89,19 @@ ipcRenderer.on(
 )
 
 const KiwiApi = {
+  getUpdateState: (): Promise<UpdateState> => ipcRenderer.invoke('updates:state'),
+  onUpdateState: (handler: (state: UpdateState) => void): void =>
+    onIpc('updates:state', (state) => handler(state as UpdateState)),
+  checkForUpdates: (): Promise<void> => ipcRenderer.invoke('updates:check'),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke('updates:install'),
+  openBrowserShare: (id: number, url: string): Promise<string> => ipcRenderer.invoke('browser-share:open', id, url),
+  prepareBrowserShare: (id: number, url: string): string => {
+    const result = ipcRenderer.sendSync('browser-share:prepare', id, url) as { url?: string; error?: string }
+    if (result.error || !result.url) throw new Error(result.error ?? 'Could not open browser')
+    return result.url
+  },
+  closeBrowserShare: (): Promise<void> => ipcRenderer.invoke('browser-share:close'),
+  onBrowserShareClosed: (handler: () => void): void => onIpc('browser-share:closed', handler),
   getAppVersion: async (): Promise<string> => {
     return await ipcRenderer.invoke('getAppVersion')
   },

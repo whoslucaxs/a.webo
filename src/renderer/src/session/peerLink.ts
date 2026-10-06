@@ -65,7 +65,11 @@ export class PeerLink {
   private suppressNegotiation = true
   private closed = false
   private displaySender: RTCRtpSender | null = null
+  private displayUpdate: Promise<void> = Promise.resolve()
   private cameraSender: RTCRtpSender | null = null
+  private browserVideoSender: RTCRtpSender | null = null
+  private browserAudioSender: RTCRtpSender | null = null
+  private browserUpdate: Promise<void> = Promise.resolve()
   private mediaE2ee: MediaE2EE | null
   private requireMediaE2ee: boolean
   private heldEnabled = new WeakMap<MediaStreamTrack, boolean>()
@@ -267,12 +271,41 @@ export class PeerLink {
     await this.setDisplayTrack(track, stream)
   }
 
-  async setDisplayTrack(track: MediaStreamTrack | null, stream: MediaStream | null): Promise<void> {
-    await this.replaceOrAddSender('display', track, stream)
+  setDisplayTrack(track: MediaStreamTrack | null, stream: MediaStream | null): Promise<void> {
+    const update = this.displayUpdate.catch(() => undefined).then(() => this.replaceOrAddSender('display', track, stream))
+    this.displayUpdate = update
+    return update
   }
 
   async setCameraTrack(track: MediaStreamTrack | null, stream: MediaStream | null): Promise<void> {
     await this.replaceOrAddSender('camera', track, stream)
+  }
+
+  setBrowserStream(stream: MediaStream | null): Promise<void> {
+    const update = this.browserUpdate.catch(() => undefined).then(() => this.updateBrowserStream(stream))
+    this.browserUpdate = update
+    return update
+  }
+
+  private async updateBrowserStream(stream: MediaStream | null): Promise<void> {
+    const tracks = [stream?.getVideoTracks()[0] ?? null, stream?.getAudioTracks()[0] ?? null]
+    const senders = [this.browserVideoSender, this.browserAudioSender]
+    for (let i = 0; i < tracks.length; i++) {
+      const track = tracks[i]
+      const sender = senders[i]
+      if (sender) {
+        await sender.replaceTrack(track)
+      } else if (track && stream) {
+        const added = this.pc.addTrack(track, stream)
+        if (i === 0) this.browserVideoSender = added
+        else this.browserAudioSender = added
+        await this.attachSender(added, {
+          sender: this.localPeerId,
+          kind: i === 0 ? 'screen' : 'audio',
+          streamId: stream.id,
+        })
+      }
+    }
   }
 
   getAdaptiveSenders(): {
@@ -371,7 +404,7 @@ export class PeerLink {
     if (kind === 'display') {
       const found = this.pc
         .getSenders()
-        .find((item) => item.track?.kind === 'video' && item !== this.cameraSender)
+        .find((item) => item.track?.kind === 'video' && item !== this.cameraSender && item !== this.browserVideoSender)
       if (found) {
         this.displaySender = found
         await found.replaceTrack(track)
@@ -453,11 +486,12 @@ export class PeerLink {
         if (settled) return
         settled = true
         this.pc.removeEventListener('icegatheringstatechange', onStateChange)
+        this.pc.removeEventListener('icecandidate', onStateChange)
         clearTimeout(timeoutId)
         resolve()
       }
       const onStateChange = (): void => {
-        if (this.pc.iceGatheringState === 'complete') finish()
+        if (this.pc.iceGatheringState === 'complete' || /^a=candidate:.*\btyp relay\b/m.test(this.pc.localDescription?.sdp ?? '')) finish()
       }
       const timeoutId = setTimeout(() => {
         this.gatheringTimedOut = true
@@ -465,6 +499,7 @@ export class PeerLink {
         finish()
       }, ICE_GATHERING_TIMEOUT_MS)
       this.pc.addEventListener('icegatheringstatechange', onStateChange)
+      this.pc.addEventListener('icecandidate', onStateChange)
       onStateChange()
     })
   }

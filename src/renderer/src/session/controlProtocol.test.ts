@@ -59,6 +59,11 @@ describe('controlProtocol', () => {
     expect(parsed?.t).toBe('mesh-offer')
   })
 
+  it('accepts screen subscriptions and rejects malformed requests', () => {
+    expect(parseControlMessage('{"t":"screen-watch","v":1,"watching":true}')).toMatchObject({ watching: true })
+    expect(parseControlMessage('{"t":"screen-watch","v":1,"watching":"true"}')).toBeNull()
+  })
+
   it('accepts and truncates chat messages', () => {
     const parsed = parseControlMessage(
       JSON.stringify({

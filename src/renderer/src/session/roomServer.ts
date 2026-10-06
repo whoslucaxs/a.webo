@@ -83,6 +83,9 @@ export const claimChannel = (
 export const releaseChannel = (server: string, roomId: string, hostKey: string): Promise<unknown> =>
   request(roomPath(server, roomId, '/release'), 'POST', {}, hostKey)
 
+export const channelParticipants = (server: string, roomId: string, joinAuth: string): Promise<{ count: number }> =>
+  request(roomPath(server, roomId, '/participants'), 'GET', undefined, joinAuth)
+
 export const createRoom = (server: string, durationMinutes = 240, maxParticipants = 4): Promise<{ roomId: string; hostKey: string; expiresAt: number }> =>
   request(`${server}/rooms`, 'POST', { durationMinutes, maxParticipants })
 

@@ -9,6 +9,7 @@
   import { deriveJoinAuthenticator, encodeInviteFragment, randomInviteCrypto, stripInviteFragment } from './crypto/invite'
   import { sessionRoom as room } from './session/sessionStore.svelte'
   import {
+    channelParticipants,
     claimChannel,
     createChannel,
     finishJoin,
@@ -29,6 +30,7 @@
   type SavedChannel = { name: string; link: string }
   const storageKey = 'p2p.kiwi.channels'
   let channels = $state<SavedChannel[]>([])
+  let participantCounts = $state<Record<string, number | null>>({})
   let starting = $state(false)
   let activeUrl = ''
   let auth = ''
@@ -39,6 +41,7 @@
   let mode: 'host' | 'guest' | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let leaseTimer: ReturnType<typeof setInterval> | null = null
+  let countTimer: ReturnType<typeof setInterval> | null = null
   let polling = false
   const pending = new Map<string, { id: string; offer: string }>()
 
@@ -61,13 +64,29 @@
     } catch {
       channels = []
     }
-    return () => { if (pollTimer) clearInterval(pollTimer); if (leaseTimer) clearInterval(leaseTimer) }
+    void refreshCounts()
+    countTimer = setInterval(() => void refreshCounts(), 15000)
+    return () => { if (pollTimer) clearInterval(pollTimer); if (leaseTimer) clearInterval(leaseTimer); if (countTimer) clearInterval(countTimer) }
   })
+
+  const refreshCounts = async (): Promise<void> => {
+    const counts = await Promise.all(channels.map(async ({ link }) => {
+      const channel = parseChannelLink(link)!
+      try {
+        const auth = toBase64Url(await deriveJoinAuthenticator(channel.invite))
+        return [link, (await channelParticipants(channel.server, channel.roomId, auth)).count] as const
+      } catch {
+        return [link, null] as const
+      }
+    }))
+    participantCounts = Object.fromEntries(counts)
+  }
 
   const saveChannel = (name: string, link: string): void => {
     if (channels.some((entry) => entry.link === link)) return
     channels = [...channels, { name, link }]
     localStorage.setItem(storageKey, JSON.stringify(channels))
+    void refreshCounts()
   }
 
   const removeChannel = (link: string): void => {
@@ -277,6 +296,7 @@
         <div class="saved-channel-row">
           <span class="saved-channel-icon"><i class="fa-solid fa-hashtag"></i></span>
           <span class="saved-channel-name"><strong>{channel.name}</strong><small>{parseChannelLink(channel.link)?.description || L.link_access()}</small></span>
+          <span class="saved-channel-count" title={L.peer_list()} aria-label={`${L.peer_list()}: ${participantCounts[channel.link] ?? '—'}`}><i class="fa-solid fa-user-group" aria-hidden="true"></i> {participantCounts[channel.link] ?? '—'}</span>
           <button class="saved-channel-tool" aria-label={L.copy_my_connection_string()} title={L.copy_my_connection_string()} onclick={() => void navigator.clipboard.writeText(channel.link)}><i class="fa-solid fa-link"></i></button>
           <button class="saved-channel-tool" aria-label={L.remove_channel()} title={L.remove_channel()} onclick={() => removeChannel(channel.link)}><i class="fa-solid fa-xmark"></i></button>
           <button class="saved-channel-enter" disabled={starting} onclick={() => void join(channel.link)}>{L.enter_channel()}</button>

@@ -89,6 +89,9 @@ export class Room {
       const authorized = typeof room.hostKey === 'string' && request.headers.get('authorization') === `Bearer ${room.hostKey}`
       const member = !room.permanent || authorized || request.headers.get('authorization') === `Bearer ${room.joinAuth}`
       if (!member) return error('unauthorized', 401)
+      if (action[0] === 'participants' && request.method === 'GET') {
+        return json({ count: Number(room.permanent && room.leaseUntil > Date.now()) + Object.values(room.joins).filter((join) => join.status === 'done' && joinIsActive(join)).length })
+      }
       if (room.permanent && action[0] === 'claim' && request.method === 'POST') {
         if (this.claiming) return json({ role: 'guest' })
         this.claiming = true

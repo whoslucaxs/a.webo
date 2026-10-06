@@ -93,7 +93,7 @@ export const CAMERA_PROFILES: Record<CameraProfileId, CameraProfile> = {
 
 export const AUDIO_PROFILE: AudioProfile = {
   id: 'protected',
-  maxBitrate: 40_000,
+  maxBitrate: 320_000,
   priority: 'high',
 }
 

@@ -11,6 +11,7 @@
   import Toast from './Toast.svelte'
   import SessionStage from './SessionStage.svelte'
   import IncomingCallNotice from './IncomingCallNotice.svelte'
+  import UpdateNotice from './UpdateNotice.svelte'
   import { appState } from './appState.svelte'
   import { debugLog } from './debugLog.svelte'
   import { L } from './translations'
@@ -25,7 +26,7 @@
 
   const joining = $derived(appState.sessionSource === 'join' || (appState.sessionSource === 'channel' && !appState.isHosting))
   const connected = $derived(room.isLive && room.connectionState === 'connected' && room.peers.some((peer) => peer.id !== room.localPeerId) && (!room.e2eeRequired || room.secureConnectionReady))
-  const connecting = $derived(joining && !connected && !room.sessionEndedReason)
+  const connecting = $derived(joining && !connected && !room.sessionEndedReason && !(appState.sessionSource === 'channel' && room.isCoordinator))
   const presenting = $derived(!connecting && Boolean(appState.sessionSource === 'host' || appState.sessionSource === 'channel' || room.isLive || room.sessionEndedReason))
   const hideHome = $derived(connecting || presenting)
   const showInvite = $derived(room.isCoordinator || appState.sessionSource === 'channel')
@@ -129,4 +130,5 @@
 </div>
 
 <IncomingCallNotice />
+<UpdateNotice />
 <ScreenPicker bind:this={screenPicker} />

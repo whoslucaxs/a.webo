@@ -8,6 +8,8 @@ import { applyChromiumFlags } from './chromiumFlags'
 import { windowStateKeeper, settingsKeeper } from './stateKeeper'
 import { ipcMainHandlersInit } from './ipcMainHandlers'
 import { installDisplayMediaHandler } from './screenPicker'
+import { registerBrowserShare } from './browserShare'
+import { registerUpdates } from './updates'
 import { isInProductionMode } from './utils'
 import { bonjourClient } from './bonjour/client'
 import { isBonjourAuthUrl } from './bonjour/urls'
@@ -94,6 +96,7 @@ if (!hasSingleInstanceLock) {
         sandbox: false,
         contextIsolation: true,
         nodeIntegration: true,
+        webviewTag: true,
       },
     })
     MAIN_WINDOW = win
@@ -101,6 +104,7 @@ if (!hasSingleInstanceLock) {
     mainWindowState.track(win)
 
     installDisplayMediaHandler(() => win)
+    registerBrowserShare(win)
 
     win.webContents.on('did-finish-load', () => {
       flushPendingKiwiUrl()
@@ -140,6 +144,7 @@ if (!hasSingleInstanceLock) {
     })
 
     ipcMainHandlersInit()
+    registerUpdates(() => MAIN_WINDOW)
 
     const settings = await settingsKeeper()
     const prefs = settings.get()

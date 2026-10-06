@@ -14,7 +14,22 @@ import {
   cloneForIpc,
   ConnectionType,
   debounce,
+  fitVideoSize,
+  zoomAtPointer,
 } from './Utils'
+
+it('fits a video within the available frame without changing its aspect ratio', () => {
+  const size = fitVideoSize(1920, 1080, 1800, 680)
+  expect(size.height).toBe(680)
+  expect(size.width).toBeCloseTo(680 * 16 / 9)
+})
+
+it('keeps the point under the cursor fixed while zooming', () => {
+  const next = zoomAtPointer(20, -10, 100, 50, 1.5, 3)
+  expect(next).toEqual({ x: -60, y: -70 })
+  expect((100 - 20) / 1.5).toBe((100 - next.x) / 3)
+  expect((50 - -10) / 1.5).toBe((50 - next.y) / 3)
+})
 
 /** Chromium-like Unified Plan offer with UDP, TCP, and mDNS candidates. */
 const REALISTIC_OFFER: RTCSessionDescriptionInit = {

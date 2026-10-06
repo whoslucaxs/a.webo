@@ -91,6 +91,19 @@ const events = {
 }
 
 describe('PeerLink video senders', () => {
+  it('sends browser audio separately from the microphone and removes it when watching stops', async () => {
+    const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, events })
+    const microphone = { id: 'mic', kind: 'audio' } as MediaStreamTrack
+    const video = { id: 'browser-video', kind: 'video' } as MediaStreamTrack
+    const audio = { id: 'browser-audio', kind: 'audio' } as MediaStreamTrack
+    const stream = { id: 'browser', getVideoTracks: () => [video], getAudioTracks: () => [audio] } as unknown as MediaStream
+    link.addTrack(microphone, { id: 'microphone' } as MediaStream)
+    expect(link.pc.getSenders()).toHaveLength(1)
+    await link.setBrowserStream(stream)
+    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, video, audio])
+    await link.setBrowserStream(null)
+    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, null, null])
+  })
   it('keeps display and camera tracks on separate senders', async () => {
     const link = new PeerLink({
       rtcConfig: { iceServers: [] },
@@ -116,6 +129,37 @@ describe('PeerLink video senders', () => {
     expect(link.pc.getSenders()[1].track).toBe(camera)
     expect(senders[0].replaceTrack).toHaveBeenCalledWith(other)
     expect(senders[1].replaceTrack).not.toHaveBeenCalled()
+  })
+
+  it('stops sending after a rapid watch then stop', async () => {
+    const link = new PeerLink({
+      rtcConfig: { iceServers: [] },
+      localPeerId: 'local',
+      pendingId: 'pending',
+      isOfferer: true,
+      events,
+    })
+    const stream = { id: 'screen' } as MediaStream
+    const firstTrack = { id: 'first', kind: 'video' } as MediaStreamTrack
+    const nextTrack = { id: 'next', kind: 'video' } as MediaStreamTrack
+    await link.setDisplayTrack(firstTrack, stream)
+    const sender = link.pc.getSenders()[0] as unknown as {
+      track: MediaStreamTrack | null
+      replaceTrack: (track: MediaStreamTrack | null) => Promise<void>
+    }
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => release = resolve)
+    sender.replaceTrack = vi.fn(async (track: MediaStreamTrack | null) => {
+      if (track === nextTrack) await gate
+      sender.track = track
+    })
+
+    const watch = link.setDisplayTrack(nextTrack, stream)
+    const stop = link.setDisplayTrack(null, null)
+    await vi.waitFor(() => expect(sender.replaceTrack).toHaveBeenCalledTimes(1))
+    release()
+    await Promise.all([watch, stop])
+    expect(sender.track).toBeNull()
   })
 
   it('applies media e2ee to remembered senders after setMediaE2ee', async () => {
@@ -276,6 +320,25 @@ describe('PeerLink adaptive profiles', () => {
 })
 
 describe('PeerLink ICE diagnostics', () => {
+  it('uses an available TURN relay without waiting for ICE gathering to finish', async () => {
+    const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, events })
+    const pc = link.pc as unknown as MockRTCPeerConnection
+    pc.iceGatheringState = 'gathering'
+    pc.localDescription = { type: 'offer', sdp: 'v=0\r\n' }
+    const pending = link.waitForIceGatheringComplete()
+    let resolved = false
+    void pending.then(() => { resolved = true })
+    await Promise.resolve()
+    expect(resolved).toBe(false)
+
+    pc.localDescription.sdp += 'a=candidate:1 1 UDP 1 192.0.2.1 3478 typ relay\r\n'
+    const candidateListener = pc.addEventListener.mock.calls.find(([name]) => name === 'icecandidate')?.[1] as EventListener
+    candidateListener(new Event('icecandidate'))
+    await pending
+    expect(link.iceEvidence().gatheringTimedOut).toBe(false)
+    expect(pc.removeEventListener).toHaveBeenCalledWith('icecandidate', candidateListener)
+  })
+
   it('records candidate types, server errors, and a gathering timeout', async () => {
     vi.useFakeTimers()
     try {

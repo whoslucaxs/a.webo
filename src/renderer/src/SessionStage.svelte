@@ -5,9 +5,10 @@
   import { toast } from './toastState.svelte'
   import {
     ConnectionType,
+    fitVideoSize,
     getDataFromKiwiUrl,
-    makeVideoDraggable,
-    mayBeConnectionString
+    mayBeConnectionString,
+    zoomAtPointer,
   } from './Utils'
   import AudioVisualizer from './AudioVisualizer.svelte'
   import Settings from './Settings.svelte'
@@ -29,7 +30,6 @@
     onReset: () => void
   } = $props()
 
-  let zoomFactor = $state(1)
   let visualizerIsActive = $state(true)
   let connectionStringIsValid = $state<boolean | null>(null)
   let username = $state('')
@@ -39,6 +39,13 @@
   let chatOpen = $state(false)
   let chatDraft = $state('')
   let settingsOpen = $state(false)
+  let browserPanelOpen = $state(false)
+  let browserFrameMinimized = $state(false)
+  let browserUrl = $state('')
+  let browserLoading = $state(false)
+  let browserReady = $state(false)
+  let browserError = $state('')
+  let browserWebview: (HTMLElement & { getWebContentsId: () => number }) | null = null
   let now = $state(Date.now())
   const remainingSeconds = $derived(Math.max(0, Math.ceil(((appState.sessionExpiresAt ?? 0) - now) / 1000)))
   const remainingTime = $derived(new Date(remainingSeconds * 1000).toISOString().slice(11, 19))
@@ -48,6 +55,12 @@
     share.peerId === room.presenterId && share.peerId !== room.localPeerId,
   ))
   const otherShares = $derived(room.screenShares.filter((share) => share !== presenterShare))
+  const pendingScreens = $derived(room.availableScreens.filter((screen) =>
+    !room.screenShares.some((share) => share.peerId === screen.peerId),
+  ))
+  const pendingBrowsers = $derived(room.availableBrowsers.filter((browser) =>
+    !room.browserShares.some((share) => share.peerId === browser.peerId),
+  ))
   const showVideo = $derived(Boolean(presenterShare))
   const videoClass = $derived(room.sessionEndedReason ? 'video video-ended' : 'video')
   const showBrokenVideo = $derived(!room.remoteScreenActive)
@@ -62,12 +75,78 @@
       destroy() { video.srcObject = null },
     }
   }
-  let videoStage: HTMLDivElement | undefined = $state()
+  const fitVideo = (video: HTMLVideoElement) => {
+    const stage = video.parentElement
+    if (!stage) return undefined
+    const update = () => {
+      if (!video.videoWidth || !video.videoHeight || !stage.clientWidth || !stage.clientHeight) return
+      const { width, height } = fitVideoSize(video.videoWidth, video.videoHeight, stage.clientWidth, stage.clientHeight)
+      video.style.width = `${width}px`
+      video.style.height = `${height}px`
+    }
+    const observer = new ResizeObserver(update)
+    observer.observe(stage)
+    video.addEventListener('resize', update)
+    video.addEventListener('loadedmetadata', update)
+    update()
+    return {
+      destroy() {
+        observer.disconnect()
+        video.removeEventListener('resize', update)
+        video.removeEventListener('loadedmetadata', update)
+      },
+    }
+  }
+  let fullscreenVideo: HTMLVideoElement | null = null
+  let originalVideoStyle = { scale: '', translate: '', transform: '' }
+  let fullscreenScale = 1
+  let fullscreenX = 0
+  let fullscreenY = 0
+
+  const onFullscreenChange = (): void => {
+    if (fullscreenVideo) {
+      fullscreenVideo.style.scale = originalVideoStyle.scale
+      fullscreenVideo.style.translate = originalVideoStyle.translate
+      fullscreenVideo.style.transform = originalVideoStyle.transform
+    }
+    const stage = document.fullscreenElement
+    fullscreenVideo = stage?.classList.contains('video-stage')
+      ? stage.querySelector('video')
+      : null
+    if (!fullscreenVideo) return
+    originalVideoStyle = {
+      scale: fullscreenVideo.style.scale,
+      translate: fullscreenVideo.style.translate,
+      transform: fullscreenVideo.style.transform,
+    }
+    fullscreenVideo.style.scale = '1'
+    fullscreenVideo.style.translate = '0px 0px'
+    fullscreenVideo.style.transform = ''
+    fullscreenScale = 1
+    fullscreenX = 0
+    fullscreenY = 0
+  }
+
+  const onFullscreenWheel = (event: WheelEvent): void => {
+    const stage = document.fullscreenElement
+    if (!fullscreenVideo || !stage?.classList.contains('video-stage')) return
+    event.preventDefault()
+    const nextScale = Math.max(1, Math.min(5, fullscreenScale * Math.exp(-event.deltaY * 0.0015)))
+    if (nextScale === fullscreenScale) return
+    const bounds = stage.getBoundingClientRect()
+    const pointerX = event.clientX - bounds.left - bounds.width / 2
+    const pointerY = event.clientY - bounds.top - bounds.height / 2
+    const position = zoomAtPointer(fullscreenX, fullscreenY, pointerX, pointerY, fullscreenScale, nextScale)
+    fullscreenX = nextScale === 1 ? 0 : position.x
+    fullscreenY = nextScale === 1 ? 0 : position.y
+    fullscreenScale = nextScale
+    fullscreenVideo.style.translate = `${fullscreenX}px ${fullscreenY}px`
+    fullscreenVideo.style.scale = String(fullscreenScale)
+  }
 
   $effect(() => {
     if (remoteScreen) {
       room.setRemoteVideo(remoteScreen)
-      makeVideoDraggable(remoteScreen)
     }
   })
 
@@ -96,7 +175,13 @@
   onMount(() => {
     void window.KiwiApi.getSettings().then((settings) => username = settings.username)
     const timer = setInterval(() => now = Date.now(), 1000)
-    return () => clearInterval(timer)
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    document.addEventListener('wheel', onFullscreenWheel, { passive: false })
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('fullscreenchange', onFullscreenChange)
+      document.removeEventListener('wheel', onFullscreenWheel)
+    }
   })
 
   const onMicrophoneToggle = (): void => {
@@ -171,6 +256,49 @@
     if (result === 'failed') toast.show('error', L.screen_share_failed())
   }
 
+  const onBrowserSubmit = async (event: SubmitEvent): Promise<void> => {
+    event.preventDefault()
+    if (!browserUrl.trim() || browserLoading || !browserReady || !browserWebview) return
+    browserLoading = true
+    browserError = ''
+    try {
+      await room.openBrowser(browserUrl.trim(), browserWebview.getWebContentsId())
+      browserPanelOpen = false
+      browserFrameMinimized = false
+    } catch (error) {
+      browserError = error instanceof Error ? error.message : String(error)
+      toast.show('error', browserError)
+    } finally {
+      browserLoading = false
+    }
+  }
+
+  const onStopBrowser = async (): Promise<void> => {
+    await room.stopBrowser()
+    browserFrameMinimized = false
+  }
+
+  const attachBrowserWebview = (node: HTMLElement) => {
+    const webview = node as typeof browserWebview & HTMLElement
+    browserWebview = webview
+    const onReady = () => browserReady = true
+    const onFailed = (event: Event) => {
+      const failure = event as Event & { errorCode?: number; errorDescription?: string; isMainFrame?: boolean }
+      if (failure.isMainFrame && failure.errorCode !== -3) {
+        browserError = failure.errorDescription || 'Could not load page'
+        toast.show('error', browserError)
+      }
+    }
+    webview.addEventListener('dom-ready', onReady)
+    webview.addEventListener('did-fail-load', onFailed)
+    return { destroy() {
+      webview.removeEventListener('dom-ready', onReady)
+      webview.removeEventListener('did-fail-load', onFailed)
+      if (browserWebview === webview) browserWebview = null
+      browserReady = false
+    } }
+  }
+
   let inviteAnotherButton: HTMLButtonElement | undefined = $state()
   let inviteAnotherTextLoading = $state('')
 
@@ -214,32 +342,19 @@
     }
   }
 
-  const onFullscreenClick = async (): Promise<void> => {
-    if (!videoStage) return
-    if (document.fullscreenElement === videoStage) {
+  const onFullscreenClick = async (stage: HTMLElement | null | undefined): Promise<void> => {
+    if (!stage) return
+    if (document.fullscreenElement === stage) {
       await document.exitFullscreen()
       return
     }
-    await videoStage.requestFullscreen()
+    await stage.requestFullscreen()
   }
 
   const onExitFullscreenClick = (e: MouseEvent): void => {
     e.preventDefault()
     e.stopPropagation()
     void document.exitFullscreen()
-  }
-
-  const onZoomInClick = (): void => {
-    if (!remoteScreen) return
-    zoomFactor += 0.1
-    remoteScreen.style.scale = zoomFactor.toString()
-  }
-
-  const onZoomOutClick = (): void => {
-    if (!remoteScreen) return
-    if (zoomFactor <= 1) return
-    zoomFactor -= 0.1
-    remoteScreen.style.scale = zoomFactor.toString()
   }
 
   const connectionInputClass = $derived(
@@ -374,38 +489,22 @@
 
   </aside>
   <main class="call-stage">
-{#if inviteLink}
+{#if !inviteLink && showInvite && inviteFormIsVisible}
   <div class="room-invite">
-    <div>
-      <strong>{L.session_started()}</strong>
-      <p>{L.copy_my_connection_string()}</p>
-    </div>
     <div class="room-invite-actions">
-      <input class="input" value={inviteLink} aria-label={L.host_connection_string()} readonly />
-      <button class="invite-copy" onclick={onCopyInvite}>
-        <i class="fa-solid fa-copy"></i> {L.copy_my_connection_string()}
-      </button>
-    </div>
-  </div>
-{:else if showInvite}
-  <div class="room-invite">
-    <strong>{L.session_started()}</strong>
-    <div class="room-invite-actions">
-      <button class="invite-copy" bind:this={inviteAnotherButton} onclick={onCopyInvite}>{inviteAnotherTextLoading || L.invite_another()}</button>
-      {#if inviteFormIsVisible}
-        <input class="input {connectionInputClass}" bind:value={appState.hostUrl} aria-label={L.participant_connection_string()} />
-        <button class="btn {connectButtonClass}" onclick={onConnectInvite} disabled={!connectionStringIsValid}>{L.connect()}</button>
-        <button class="btn btn-ghost" onclick={() => inviteFormIsVisible = false}>{L.cancel()}</button>
-      {/if}
+      <input class="input {connectionInputClass}" bind:value={appState.hostUrl} aria-label={L.participant_connection_string()} />
+      <button class="btn {connectButtonClass}" onclick={onConnectInvite} disabled={!connectionStringIsValid}>{L.connect()}</button>
+      <button class="btn btn-ghost" onclick={() => inviteFormIsVisible = false}>{L.cancel()}</button>
     </div>
   </div>
 {/if}
 <div class="screen-area">
-<div class="screen-grid">
-<div class={showVideo ? 'relative' : 'hidden'}>
-  <fieldset class="fieldset px-0">
+<div class:has-media={room.screenShares.length > 0 || room.cameraShares.length > 0 || room.browserShares.length > 0 || browserPanelOpen || pendingScreens.length > 0 || pendingBrowsers.length > 0} class="screen-grid">
+<div class={showVideo ? '' : 'hidden'}>
+  <fieldset class="fieldset px-0 min-w-0">
     <legend class="fieldset-legend">{presenterShare?.name ?? L.remote_screen()}</legend>
-    <div bind:this={videoStage} class="video-overflow video-stage relative">
+    {#if presenterShare}<button class="btn btn-ghost btn-sm self-end" onclick={() => room.watchScreen(presenterShare.peerId, false)}>{L.stop_watching()}</button>{/if}
+    <div class="video-overflow video-stage relative">
       {#if showBrokenVideo}
         <div class="broken-video" aria-hidden="true">
           <img src={brokenVideoUrl} alt="" />
@@ -415,76 +514,119 @@
         bind:this={remoteScreen}
         id="remote_screen"
         class="{videoClass} {showBrokenVideo ? 'video-off' : ''}"
+        use:fitVideo
         autoplay
         playsinline
         muted
         disablepictureinpicture
       ></video>
-      <button
-        type="button"
-        class="exit-fullscreen-btn btn btn-neutral btn-sm"
-        title={L.exit_fullscreen()}
-        aria-label={L.exit_fullscreen()}
-        onpointerdown={(e) => e.stopPropagation()}
-        onpointerup={(e) => e.stopPropagation()}
-        onclick={onExitFullscreenClick}
-      >
-        <span class="icon">
-          <i class="fa-solid fa-compress"></i>
-        </span>
-      </button>
+      <button class="enter-fullscreen-btn btn btn-neutral btn-sm" title={L.fullscreen()} aria-label={L.fullscreen()} onclick={(e) => onFullscreenClick(e.currentTarget.parentElement)}><i class="fa-solid fa-expand"></i></button>
+      <button class="exit-fullscreen-btn btn btn-neutral btn-sm" title={L.exit_fullscreen()} aria-label={L.exit_fullscreen()} onclick={onExitFullscreenClick}><i class="fa-solid fa-compress"></i></button>
     </div>
   </fieldset>
-  <div class="flex gap-2 pb-5">
-    <button class="btn btn-info" onclick={onZoomInClick}>
-      <span class="icon">
-        <i class="fas fa-search-plus"></i>
-      </span>
-      <span>{L.zoom_in()}</span>
-    </button>
-    <button class="btn btn-info" onclick={onZoomOutClick}>
-      <span class="icon">
-        <i class="fas fa-search-minus"></i>
-      </span>
-      <span>{L.zoom_out()}</span>
-    </button>
-    <button class="btn btn-info" onclick={onFullscreenClick}>
-      <span class="icon">
-        <i class="fas fa-expand"></i>
-      </span>
-      <span>{L.fullscreen()}</span>
-    </button>
-  </div>
 </div>
 {#each otherShares as share (share.peerId)}
   <fieldset class="fieldset px-0 min-w-0">
     <legend class="fieldset-legend">{share.name}</legend>
-    <video
-      class="video rounded-lg bg-black"
-      use:attachScreen={share.stream}
-      autoplay
-      playsinline
-      muted
-      disablepictureinpicture
-    ></video>
+    {#if share.peerId !== room.localPeerId}
+      <button class="btn btn-ghost btn-sm self-end" onclick={() => room.watchScreen(share.peerId, false)}>{L.stop_watching()}</button>
+    {/if}
+    <div class="video-overflow video-stage relative">
+      <video
+        class="video rounded-lg bg-black"
+        use:attachScreen={share.stream}
+        use:fitVideo
+        autoplay
+        playsinline
+        muted
+        disablepictureinpicture
+      ></video>
+      <button class="enter-fullscreen-btn btn btn-neutral btn-sm" title={L.fullscreen()} aria-label={L.fullscreen()} onclick={(e) => onFullscreenClick(e.currentTarget.parentElement)}><i class="fa-solid fa-expand"></i></button>
+      <button class="exit-fullscreen-btn btn btn-neutral btn-sm" title={L.exit_fullscreen()} aria-label={L.exit_fullscreen()} onclick={onExitFullscreenClick}><i class="fa-solid fa-compress"></i></button>
+    </div>
+  </fieldset>
+{/each}
+{#each pendingScreens as screen (screen.peerId)}
+  <fieldset class="fieldset px-0 min-w-0">
+    <legend class="fieldset-legend">{screen.name}</legend>
+    <div class="screen-watch-card">
+      <i class="fa-solid fa-display" aria-hidden="true"></i>
+      {#if room.watchingScreens.includes(screen.peerId)}
+        <span class="loading loading-spinner" aria-label={L.connecting_to_session()}></span>
+        <button class="btn btn-ghost" onclick={() => room.watchScreen(screen.peerId, false)}>{L.stop_watching()}</button>
+      {:else}
+        <button class="invite-copy" onclick={() => room.watchScreen(screen.peerId, true)}>{L.watch_screen()}</button>
+      {/if}
+    </div>
+  </fieldset>
+{/each}
+{#if browserPanelOpen || room.browserActive}
+  <fieldset class="fieldset px-0 min-w-0 relative" class:browser-frame-minimized={browserFrameMinimized && room.browserActive}>
+    <legend class="fieldset-legend"><i class="fa-solid fa-globe"></i> {L.browser_page()} ({L.you()})</legend>
+    {#if room.browserActive}
+      <div class="browser-frame-actions">
+        <button class="btn btn-neutral btn-sm" title={browserFrameMinimized ? L.restore_browser_frame() : L.minimize_browser_frame()} aria-label={browserFrameMinimized ? L.restore_browser_frame() : L.minimize_browser_frame()} onclick={() => browserFrameMinimized = !browserFrameMinimized}><i class="fa-solid {browserFrameMinimized ? 'fa-window-maximize' : 'fa-window-minimize'}"></i></button>
+        {#if !browserFrameMinimized}<button class="btn btn-neutral btn-sm" title={L.fullscreen()} aria-label={L.fullscreen()} onclick={(e) => onFullscreenClick(e.currentTarget.closest('fieldset')?.querySelector<HTMLElement>('.browser-viewport'))}><i class="fa-solid fa-expand"></i></button>{/if}
+        <button class="btn btn-neutral btn-sm" title={L.stop_browser_share()} aria-label={L.stop_browser_share()} onclick={() => void onStopBrowser()}><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    {/if}
+    <div class="browser-viewport video-stage relative">
+      <webview use:attachBrowserWebview src="data:text/html,%3Cbody%20style%3D%22background%3A%23101d26%22%3E%3C%2Fbody%3E" partition="browser-share"></webview>
+      {#if !room.browserActive}<div class="browser-placeholder"><i class="fa-solid fa-globe"></i><span>{L.share_browser_page()}</span></div>{/if}
+      {#if room.browserActive}
+        <button class="exit-fullscreen-btn btn btn-neutral btn-sm" title={L.exit_fullscreen()} aria-label={L.exit_fullscreen()} onclick={onExitFullscreenClick}><i class="fa-solid fa-compress"></i></button>
+      {/if}
+    </div>
+  </fieldset>
+{/if}
+{#each room.browserShares.filter((share) => share.peerId !== room.localPeerId) as share (share.peerId)}
+  <fieldset class="fieldset px-0 min-w-0">
+    <legend class="fieldset-legend"><i class="fa-solid fa-globe"></i> {share.name} · {L.browser_page()}</legend>
+    {#if share.peerId !== room.localPeerId}
+      <button class="btn btn-ghost btn-sm self-end" onclick={() => room.watchBrowser(share.peerId, false)}>{L.stop_watching()}</button>
+    {/if}
+    <div class="video-overflow video-stage relative">
+      <video class="video rounded-lg bg-black" use:attachScreen={share.stream} use:fitVideo autoplay playsinline muted disablepictureinpicture></video>
+      <button class="enter-fullscreen-btn btn btn-neutral btn-sm" title={L.fullscreen()} aria-label={L.fullscreen()} onclick={(e) => onFullscreenClick(e.currentTarget.parentElement)}><i class="fa-solid fa-expand"></i></button>
+      <button class="exit-fullscreen-btn btn btn-neutral btn-sm" title={L.exit_fullscreen()} aria-label={L.exit_fullscreen()} onclick={onExitFullscreenClick}><i class="fa-solid fa-compress"></i></button>
+    </div>
+  </fieldset>
+{/each}
+{#each pendingBrowsers as browser (browser.peerId)}
+  <fieldset class="fieldset px-0 min-w-0">
+    <legend class="fieldset-legend"><i class="fa-solid fa-globe"></i> {browser.name} · {L.browser_page()}</legend>
+    <div class="screen-watch-card">
+      <i class="fa-solid fa-globe" aria-hidden="true"></i>
+      {#if room.watchingBrowsers.includes(browser.peerId)}
+        <span class="loading loading-spinner" aria-label={L.connecting_to_session()}></span>
+        <button class="btn btn-ghost" onclick={() => room.watchBrowser(browser.peerId, false)}>{L.stop_watching()}</button>
+      {:else}
+        <button class="invite-copy" onclick={() => room.watchBrowser(browser.peerId, true)}>{L.watch_browser()}</button>
+      {/if}
+    </div>
   </fieldset>
 {/each}
 {#each room.cameraShares as camera (camera.peerId)}
   <fieldset class="fieldset px-0 min-w-0">
     <legend class="fieldset-legend"><i class="fa-solid fa-video"></i> {camera.name}{camera.peerId === room.localPeerId ? ` (${L.you()})` : ''}</legend>
-    <video
-      class="video camera-video rounded-lg bg-black"
-      class:local-camera={camera.peerId === room.localPeerId}
-      use:attachScreen={camera.stream}
-      autoplay
-      playsinline
-      muted
-      disablepictureinpicture
-    ></video>
+    <div class="video-overflow video-stage relative">
+      <video
+        class="video camera-video rounded-lg bg-black"
+        class:local-camera={camera.peerId === room.localPeerId}
+        use:attachScreen={camera.stream}
+        use:fitVideo
+        autoplay
+        playsinline
+        muted
+        disablepictureinpicture
+      ></video>
+      <button class="enter-fullscreen-btn btn btn-neutral btn-sm" title={L.fullscreen()} aria-label={L.fullscreen()} onclick={(e) => onFullscreenClick(e.currentTarget.parentElement)}><i class="fa-solid fa-expand"></i></button>
+      <button class="exit-fullscreen-btn btn btn-neutral btn-sm" title={L.exit_fullscreen()} aria-label={L.exit_fullscreen()} onclick={onExitFullscreenClick}><i class="fa-solid fa-compress"></i></button>
+    </div>
   </fieldset>
 {/each}
 </div>
-{#if room.screenShares.length === 0 && room.cameraShares.length === 0}
+{#if room.screenShares.length === 0 && room.cameraShares.length === 0 && room.browserShares.length === 0 && !browserPanelOpen && pendingScreens.length === 0 && pendingBrowsers.length === 0}
   <div class="call-empty">
     <i class="fa-solid fa-display"></i>
     <p>{L.not_streaming_your_display()}</p>
@@ -518,13 +660,31 @@
 </div>
 
 <nav class="call-controls" aria-label={L.media()}>
+  {#if browserPanelOpen}
+    <form class="browser-link-form" onsubmit={onBrowserSubmit}>
+      <label for="browser-share-url">{L.browser_page()}</label>
+      <div class="browser-link-row">
+        <input id="browser-share-url" class="input" type="text" inputmode="url" bind:value={browserUrl} placeholder="https://example.com" required />
+        <button class="invite-copy" type="submit" disabled={browserLoading || !browserReady}>{browserLoading ? `${L.load_page()}…` : L.load_page()}</button>
+        <button class="btn btn-ghost" type="button" onclick={() => browserPanelOpen = false}>{L.cancel()}</button>
+      </div>
+      {#if browserError}<p class="browser-link-error" role="alert">{browserError}</p>{/if}
+    </form>
+  {/if}
   <button class:control-active={room.displayStreamActive} class="control-button" onclick={() => room.displayStreamActive ? onDisplayStreamToggle() : onChangeScreen()} aria-label={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}>
     <i class="fa-solid fa-display"></i><span>{L.share_your_screen()}</span>
   </button>
+  <button class:control-active={room.browserActive} class="control-button" onclick={() => browserPanelOpen = !browserPanelOpen} aria-label={L.share_browser_page()}><i class="fa-solid fa-globe"></i><span>{room.browserActive ? L.change_browser_link() : L.share_browser_page()}</span></button>
+  {#if room.browserActive}<button class="control-button compact" onclick={() => void onStopBrowser()} title={L.stop_browser_share()} aria-label={L.stop_browser_share()}><i class="fa-solid fa-xmark"></i></button>{/if}
   {#if room.displayStreamActive}
     <button class="control-button compact" onclick={onChangeScreen} title={L.change_screen()} aria-label={L.change_screen()}><i class="fa-solid fa-arrows-rotate"></i></button>
   {/if}
   <span class="control-separator"></span>
+  {#if inviteLink || showInvite}
+    <button class="control-button" bind:this={inviteAnotherButton} onclick={onCopyInvite} aria-label={L.copy_my_connection_string()}>
+      <i class="fa-solid fa-link"></i><span>{inviteAnotherTextLoading || L.copy_my_connection_string()}</span>
+    </button>
+  {/if}
   {#if room.hasAudioInput}
     <button class:control-active={room.microphoneActive} class="control-button" onclick={onMicrophoneToggle} aria-label={room.microphoneActive ? L.microphone_active() : L.microphone_inactive()}>
       <span class="mic-btn-icon">
@@ -571,6 +731,19 @@
 </div>
 
 <style>
+  .browser-link-form { position: absolute; bottom: calc(100% + 0.7rem); left: 50%; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 0.65rem; width: min(34rem, calc(100vw - 2rem)); padding: 1rem; border: 1px solid #344a56; border-radius: 0.9rem; background: #15232d; box-shadow: 0 1rem 2.5rem #0009; }
+  .browser-link-form label { font-size: 0.82rem; font-weight: 700; }
+  .browser-link-row { display: flex; align-items: stretch; gap: 0.5rem; min-width: 0; }
+  .browser-link-row .input { flex: 1; min-width: 0; background: #101d26; border-color: #425563; color: #f4f7fa; }
+  .browser-link-row .invite-copy { min-height: 2.8rem; }
+  .browser-link-error { color: #ffb4b8; font-size: 0.76rem; overflow-wrap: anywhere; }
+  .browser-viewport { width: 100%; min-height: 20rem; flex: 1; overflow: hidden; background: #101d26; border-radius: 0.65rem; }
+  .browser-frame-actions { position: absolute; top: 0.5rem; right: 0.75rem; display: flex; gap: 0.35rem; z-index: 2; }
+  .screen-grid .browser-frame-minimized { position: relative; height: 3.5rem; align-self: start; }
+  .browser-frame-minimized .browser-viewport { position: fixed; left: -10000px; top: 0; width: 1280px; height: 720px; min-height: 0; pointer-events: none; }
+  .browser-viewport :global(webview) { display: flex; width: 100%; height: 100%; min-height: 20rem; }
+  .browser-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; color: #b7c1ce; background: #101d26; pointer-events: none; }
+  .browser-placeholder i { font-size: 2.5rem; }
   .call-shell {
     min-height: 100vh;
     height: 100vh;
@@ -721,8 +894,6 @@
     border-radius: 1rem;
     background: #172833;
   }
-  .room-invite strong { font-size: 1.3rem; }
-  .room-invite p { color: #b7c1ce; font-size: 0.84rem; }
   .room-invite-actions { display: flex; gap: 0.5rem; min-width: 0; }
   .room-invite-actions input { flex: 1; min-width: 0; height: 3rem; background: #15232d; border-color: #425563; color: #f4f7fa; }
   .invite-copy {
@@ -742,6 +913,7 @@
   }
   .invite-copy:hover { filter: brightness(1.12); }
   .call-controls {
+    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -783,7 +955,7 @@
     border: 1px solid #344a56;
     border-radius: 1.2rem;
     background: radial-gradient(ellipse at center, #1a2b35 0, #101d26 75%);
-    overflow: hidden;
+    overflow: auto;
   }
   .call-empty {
     min-height: 22rem;
@@ -801,22 +973,32 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
     gap: 1rem;
-    align-items: start;
     padding: 1rem;
   }
+  .screen-grid.has-media { height: 100%; min-height: 0; grid-auto-rows: minmax(21rem, 1fr); }
+  .screen-grid > div { min-height: 0; }
   .screen-grid fieldset {
     min-width: 0;
+    min-height: 0;
     padding: 0.75rem;
     border: 1px solid #344a56;
     border-radius: 1rem;
     background: #15232d;
+    display: flex;
+    flex-direction: column;
   }
+  .screen-grid > div > fieldset { height: 100%; }
+  .screen-watch-card { min-height: 13rem; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; border-radius: 0.75rem; background: #101d26; }
+  .screen-watch-card > i { color: #8ca5b4; font-size: 2.5rem; }
   .screen-grid :global(.fieldset-legend) { color: #f4f7fa; }
   .camera-video { aspect-ratio: 16 / 9; object-fit: cover; }
   .camera-video.local-camera { transform: scaleX(-1); }
   .video {
     width: 100%;
-    height: auto;
+    height: 100%;
+    min-height: 0;
+    object-fit: contain;
+    flex: none;
     transition:
       transform 0.5s linear,
       filter 0.3s ease,
@@ -849,17 +1031,20 @@
   }
   .video-overflow {
     width: 100%;
-    height: auto;
+    min-height: 0;
+    flex: 1;
     overflow: hidden;
   }
+  .video-stage { display: flex; align-items: center; justify-content: center; }
+  .enter-fullscreen-btn,
   .exit-fullscreen-btn {
-    display: none;
     position: absolute;
     top: 1rem;
     right: 1rem;
     z-index: 30;
     pointer-events: auto;
   }
+  .exit-fullscreen-btn { display: none; }
   .video-stage:fullscreen,
   .video-stage:-webkit-full-screen {
     width: 100%;
@@ -871,9 +1056,6 @@
   }
   .video-stage:fullscreen .video,
   .video-stage:-webkit-full-screen .video {
-    width: 100%;
-    height: 100%;
-    max-height: 100%;
     object-fit: contain;
   }
   .video-stage:fullscreen .broken-video,
@@ -885,6 +1067,10 @@
   .video-stage:fullscreen .exit-fullscreen-btn,
   .video-stage:-webkit-full-screen .exit-fullscreen-btn {
     display: inline-flex;
+  }
+  .video-stage:fullscreen .enter-fullscreen-btn,
+  .video-stage:-webkit-full-screen .enter-fullscreen-btn {
+    display: none;
   }
   .mic-btn-icon {
     width: 1.1rem;

@@ -44,7 +44,7 @@ describe('recoverFailedConnection', () => {
     const toggles: boolean[] = []
     ;(globalThis as { window?: unknown }).window = {
       KiwiApi: {
-        toggleRemoteCursors: (enabled: boolean) => {
+        toggleCallOverlay: (enabled: boolean) => {
           toggles.push(enabled)
         },
       },

@@ -6,6 +6,10 @@ Desktop app for voice channels, chat, camera, screen sharing, and shared browser
 
 Builds from every commit on `main` are available as [GitHub Actions artifacts](https://github.com/whoslucaxs/a.webo/actions/workflows/release.yaml). Tagged versions (`vX.Y.Z`) are published on the [Releases page](https://github.com/whoslucaxs/a.webo/releases) with a Windows installer, a Windows portable executable, and a Linux x64 AppImage.
 
+The installed Windows app and Linux AppImage check GitHub Releases when they start and every six hours. When a newer version is available, the app asks before downloading and installing it. The Windows portable build opens the Release download page instead. The first build with this updater must be installed manually.
+
+To require an update after a breaking change, set `minimumVersion` in [`update-policy.json`](update-policy.json) to the oldest supported `X.Y.Z` version and commit it to `main`. Clients below that version see a blocking update prompt once they can reach GitHub and a newer Release is available. Publish that Release before raising the minimum. This policy applies only to clients that already include the updater; it does not remotely disable older builds. If GitHub is unreachable, the app remains usable.
+
 ## Use
 
 1. Open a.webo and enter your display name.

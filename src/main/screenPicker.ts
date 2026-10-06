@@ -1,5 +1,6 @@
 import { BrowserWindow, desktopCapturer, ipcMain, session } from 'electron'
 import type { DesktopCapturerSource, NativeImage } from 'electron'
+import { browserShareFrame } from './browserShare'
 
 const isWayland =
   process.platform === 'linux' &&
@@ -66,11 +67,9 @@ const getDesktopSources = async (): Promise<DesktopCapturerSource[]> => {
   }
 }
 
-type VideoStream = { id: string; name: string }
-
 const respondOnce = (
-  callback: (streams: { video?: VideoStream }) => void,
-): ((streams: { video?: VideoStream }) => void) => {
+  callback: (streams: Electron.Streams) => void,
+): ((streams: Electron.Streams) => void) => {
   let responded = false
   return (streams): void => {
     if (responded) return
@@ -138,11 +137,16 @@ export const installDisplayMediaHandler = (getMainWindow: () => BrowserWindow): 
   })
 
   const handler = async (
-    _request: unknown,
-    callback: (streams: { video?: VideoStream }) => void,
+    request: Electron.DisplayMediaRequestHandlerHandlerRequest,
+    callback: (streams: Electron.Streams) => void,
   ): Promise<void> => {
     const respond = respondOnce(callback)
     try {
+      const frame = request.frame === getMainWindow().webContents.mainFrame ? browserShareFrame() : null
+      if (frame && request.frame === getMainWindow().webContents.mainFrame) {
+        respond({ video: frame, audio: frame, enableLocalEcho: true })
+        return
+      }
       if (isWayland) {
         respond({ video: WAYLAND_VIDEO_SOURCE })
         return

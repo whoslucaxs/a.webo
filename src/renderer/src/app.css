@@ -66,6 +66,7 @@ html, body { width: 100%; height: 100%; overflow-y: auto; font-family: 'Noto San
 .saved-channel-name strong, .saved-channel-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .saved-channel-name strong { font-weight: 700; }
 .saved-channel-name small { color: #aab7c4; font-size: 0.76rem; }
+.saved-channel-count { flex: none; display: inline-flex; align-items: center; gap: 0.3rem; color: #aab7c4; font-size: 0.85rem; }
 .saved-channel-tool { flex: none; width: 1.8rem; height: 2.2rem; color: #aab7c4; cursor: pointer; }
 .saved-channel-tool:hover { color: #06c9b7; }
 .saved-channel-enter { flex: none; min-width: 5.3rem; min-height: 3.5rem; border-radius: 0.75rem; background: linear-gradient(125deg, #0cc9b7, #009d91); color: white; cursor: pointer; font-weight: 700; }

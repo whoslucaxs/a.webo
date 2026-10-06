@@ -342,6 +342,7 @@ export const makeVideoDraggable = (video: HTMLVideoElement): void => {
   let initialY: number
   let isDragging = false
   video.addEventListener('mousedown', (e) => {
+    if (document.fullscreenElement) return
     isDragging = true
     startX = e.clientX
     startY = e.clientY
@@ -374,6 +375,31 @@ export const makeVideoDraggable = (video: HTMLVideoElement): void => {
     isDragging = false
     video.style.cursor = 'default'
   })
+}
+
+export const zoomAtPointer = (
+  x: number,
+  y: number,
+  pointerX: number,
+  pointerY: number,
+  currentScale: number,
+  nextScale: number,
+): { x: number; y: number } => {
+  const ratio = nextScale / currentScale
+  return {
+    x: pointerX - (pointerX - x) * ratio,
+    y: pointerY - (pointerY - y) * ratio,
+  }
+}
+
+export const fitVideoSize = (
+  videoWidth: number,
+  videoHeight: number,
+  availableWidth: number,
+  availableHeight: number,
+): { width: number; height: number } => {
+  const scale = Math.min(availableWidth / videoWidth, availableHeight / videoHeight)
+  return { width: videoWidth * scale, height: videoHeight * scale }
 }
 
 export const debounce = <T extends (...args: unknown[]) => void>(
