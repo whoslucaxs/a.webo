@@ -7,7 +7,7 @@
 
 <HeadComponent
 	data={{
-		title: `${data.metadata.title} · p2p.kiwi docs`,
+		title: `${data.metadata.title} · a.webo docs`,
 		description: data.metadata.description
 	}}
 />
@@ -16,7 +16,7 @@
 	<div class="hero-content w-full max-w-full min-w-0 text-center">
 		<div class="w-full max-w-3xl min-w-0 py-10">
 			<a href="/docs">
-				<img src="/logo.png" alt="p2p.kiwi logo" class="m-5 mx-auto w-32" />
+				<img src="/logo.png" alt="a.webo logo" class="m-5 mx-auto w-32" />
 			</a>
 			<h1 class="text-5xl font-bold">{data.metadata.title}</h1>
 			<p class="py-6">{data.metadata.excerpt}</p>

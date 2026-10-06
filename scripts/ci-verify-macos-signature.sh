@@ -4,8 +4,8 @@
 set -euo pipefail
 
 MODE="${1:-signed}"
-APP="${APP:-dist/mac-universal/p2p.kiwi.app}"
-DMG="${DMG:-dist/p2p-kiwi_universal.dmg}"
+APP="${APP:-dist/mac-universal/a.webo.app}"
+DMG="${DMG:-dist/a-webo_universal.dmg}"
 
 if [ ! -d "$APP" ]; then
   echo "Error: app bundle not found: $APP"

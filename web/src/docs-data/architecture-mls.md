@@ -1,5 +1,5 @@
 ---
-title: MLS implementation for p2p.kiwi
+title: MLS implementation for a.webo
 excerpt: |
   ts-mls (MIT, RFC 9420) behind the `RoomCrypto` interface for
   group membership and epoch key management.
@@ -43,5 +43,5 @@ exposure is limited to the running session and is documented here.
 
 ## Audit status
 
-ts-mls is not a substitute for a p2p.kiwi security audit. Do not claim
+ts-mls is not a substitute for an a.webo security audit. Do not claim
 that rooms are formally audited.

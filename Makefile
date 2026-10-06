@@ -1,4 +1,4 @@
-BIN_NAME = p2p-kiwi
+BIN_NAME = a-webo
 
 macos:
 	TARGET_PLATFORM=macos ./scripts/build.sh

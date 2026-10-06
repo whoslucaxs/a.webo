@@ -7,7 +7,7 @@
 
 <HeadComponent
 	data={{
-		title: 'Docs · p2p.kiwi',
+		title: 'Docs · a.webo',
 		description:
 			'Architecture, sync protocol, cryptography, threat model, rclone, configuration, and the configuration wizard.'
 	}}
@@ -17,7 +17,7 @@
 	<div class="hero-content w-full max-w-full min-w-0 text-center">
 		<div class="w-full max-w-5xl min-w-0">
 			<a href="/">
-				<img src="/logo.png" alt="p2p.kiwi logo" class="m-5 mx-auto w-32" />
+				<img src="/logo.png" alt="a.webo logo" class="m-5 mx-auto w-32" />
 			</a>
 			<h1 class="text-5xl font-bold">Docs 📚</h1>
 			<p class="py-6">E2EE, configuration, threat model, ...</p>

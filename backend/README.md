@@ -1,12 +1,14 @@
-# JanjaShare signaling server
+# a.webo room server
 
-Cloudflare Worker + Durable Object for one-link room setup. The server exchanges WebRTC offers and answers and issues short-lived Cloudflare Realtime TURN credentials. The invite's encryption secret stays in the `webo://` URL fragment and is never posted to the server. Media remains WebRTC peer-to-peer when possible and uses TURN when needed. Temporary rooms can last 10–240 minutes and allow 2–4 participants. Permanent channels keep the same link and elect a new signaling host when the previous host leaves; media is live only while participants are connected. Calls accept up to four participants.
+This Cloudflare Worker and Durable Object handle room membership, WebRTC signaling, and short-lived Cloudflare Realtime TURN credentials. Media is sent between desktop clients, directly or through TURN. The server does not host calls or decrypt media. The invitation secret stays in the `webo://` URL fragment and is not posted to the server.
+
+Temporary rooms expire after their selected duration. Permanent channels retain their link and can be opened while the creator is offline. The current call limit is four participants.
 
 ## Deploy
 
 1. Activate Cloudflare Realtime TURN in the same account and create a TURN key.
-2. Set `TURN_KEY_ID` and `TURN_API_TOKEN` as Wrangler secrets, using the key ID and API token from Cloudflare Realtime TURN. Never commit either value.
-3. Run `npx wrangler deploy` in this directory. The custom domain is `signal.nyxlink.online`.
-4. Check `https://signal.nyxlink.online/health`: `turnConfigured` must be `true`.
+2. In this directory, set `TURN_KEY_ID` and `TURN_API_TOKEN` with `npx wrangler secret put`. Never commit either value.
+3. Run `npx wrangler deploy`. The configured custom domain is `signal.nyxlink.online`.
+4. Open `https://signal.nyxlink.online/health` and confirm `turnConfigured` is `true`.
 
-`node test.mjs` checks the room exchange. The desktop app defaults to this domain; Settings can point at another HTTPS server.
+Run `node test.mjs` to check the room exchange. The desktop app uses this server by default; Settings can point to another compatible HTTPS server.

@@ -3,7 +3,7 @@ set -euo pipefail
 
 if [ -z "${VERSION:-}" ]; then echo "Error: VERSION is not set"; exit 1; fi
 
-BIN_NAME="p2p-kiwi"
+BIN_NAME="a-webo"
 RELEASE_ACTION="create"
 GH_TAG="v$VERSION"
 TARGET_PLATFORM="${TARGET_PLATFORM:-all}"
@@ -24,6 +24,7 @@ LINUX_ARM64_FILES=(
 
 WINDOWS_FILES=(
   "dist/${BIN_NAME}-setup_x64.exe"
+  "dist/${BIN_NAME}-portable_x64.exe"
 )
 
 MACOS_FILES=(

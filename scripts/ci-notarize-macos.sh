@@ -12,8 +12,8 @@ if [ -z "${AUTH_KEY_PATH:-}" ]; then echo "Error: AUTH_KEY_PATH is not set"; exi
 if [ -z "${KEY_ID:-}" ]; then echo "Error: KEY_ID is not set"; exit 1; fi
 if [ -z "${ISSUER:-}" ]; then echo "Error: ISSUER is not set"; exit 1; fi
 
-DMG="${DMG:-dist/p2p-kiwi_universal.dmg}"
-APP="${APP:-dist/mac-universal/p2p.kiwi.app}"
+DMG="${DMG:-dist/a-webo_universal.dmg}"
+APP="${APP:-dist/mac-universal/a.webo.app}"
 
 if [ ! -d "$APP" ]; then
   echo "Error: app bundle not found: $APP"

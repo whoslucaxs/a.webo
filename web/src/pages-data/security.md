@@ -1,39 +1,13 @@
-# Security Policy
+# Security
 
-## Supported Versions
+## Reporting a vulnerability
 
-Versions currently being supported with security updates.
+Please use [GitHub private vulnerability reporting](https://github.com/whoslucaxs/JanjaShare/security/advisories/new). Do not post exploits, invitation secrets, or private room links in public Issues.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.0.x   | :white_check_mark: |
+## Encryption and metadata
 
-## Encryption
+a.webo uses WebRTC for transport and MLS-managed application keys for end-to-end encryption. SFrame protects media frames. A WebRTC DTLS connection by itself does not establish application end-to-end encryption. This implementation has not had a formal security audit.
 
-p2p.kiwi is a WebRTC mesh. STUN/TURN and invite URLs still carry connection
-metadata (SDP, ICE, IP addresses). That is expected and is not hidden.
+The signaling server and TURN provider can observe connection metadata and traffic volume. TURN relays encrypted media when a direct connection fails. Room invitations contain a secret in the URL fragment; anyone with the full link can enter until access is changed or the room expires. Keep invitation links private.
 
-Application end-to-end encryption uses MLS (RFC 9420) via ts-mls and SFrame
-(RFC 9605) for media. Keys live on the endpoints. A green DTLS indicator is
-not an E2EE guarantee. Invite bootstrap secrets are URL fragments and must
-never be logged. Removed members lose later epochs.
-
-ts-mls is not a formal audit of this application. Do not treat rooms as
-formally audited.
-
-See `docs/security/e2ee-threat-model.md` and `docs/security/adr-mls.md`.
-
-## Reporting a Vulnerability
-
-Security vulnerabilities should be communicated with
-the maintainers in private.
-
-### GitHub
-
-- @gorillamoe
-
-> (at `GitHub username` + `@github.com`).
-
-### Discord
-
-- gorillamoe
+See [README.md](https://github.com/whoslucaxs/JanjaShare#readme) and the technical documents in `web/src/docs-data/` for the current architecture.

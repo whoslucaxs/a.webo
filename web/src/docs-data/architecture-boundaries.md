@@ -13,5 +13,5 @@ Peer connections carry `control` and `mls` data channels. Audio, camera, and scr
 streams use WebRTC media tracks. The room server relays signaling, while STUN/TURN
 helps establish or relay media connectivity. The server does not receive room keys.
 
-Invite URLs (`kiwi://`) carry a room identifier and bootstrap secret. The secret
+Invite URLs (`webo://`) carry a room identifier and bootstrap secret. The secret
 stays in the URL fragment and is not sent to the signaling server.

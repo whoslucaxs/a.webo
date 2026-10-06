@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-PKGNAME="p2p-kiwi"
+PKGNAME="a-webo"
 PKGREL="${PKGREL:-1}"
 PKGDEST="${PKGDEST:-$ROOT/dist}"
 WORKDIR="$PKGDEST/arch-pkg"
@@ -14,7 +14,7 @@ usage() {
 Usage: ./scripts/build-arch.sh [options] [deb-file]
 
 Build an Arch Linux package (.pkg.tar.zst) from sources or an existing .deb.
-Install it with: sudo pacman -U dist/p2p-kiwi-*.pkg.tar.zst
+Install it with: sudo pacman -U dist/a-webo-*.pkg.tar.zst
 
 Options:
   --from-source     Build a .deb with electron-builder, then package it
@@ -31,8 +31,8 @@ Environment:
 
 Examples:
   ./scripts/build-arch.sh
-  ./scripts/build-arch.sh dist/p2p-kiwi_amd64.deb
-  ./scripts/build-arch.sh --deb ./p2p-kiwi_amd64.deb
+  ./scripts/build-arch.sh dist/a-webo_amd64.deb
+  ./scripts/build-arch.sh --deb ./a-webo_amd64.deb
 EOF
 }
 
@@ -202,7 +202,7 @@ package() {
 
   if [[ ! -e "\$pkgdir/usr/bin/${PKGNAME}" ]]; then
     local exec_path
-    exec_path="\$(find "\$pkgdir/opt" -maxdepth 2 -type f \\( -name '${PKGNAME}' -o -name 'p2p.kiwi' \\) | head -n 1 || true)"
+    exec_path="\$(find "\$pkgdir/opt" -maxdepth 2 -type f \\( -name '${PKGNAME}' -o -name 'a-webo' \\) | head -n 1 || true)"
     if [[ -n "\$exec_path" ]]; then
       install -dm755 "\$pkgdir/usr/bin"
       ln -s "\${exec_path#"\$pkgdir"}" "\$pkgdir/usr/bin/${PKGNAME}"

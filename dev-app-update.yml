@@ -1,4 +1,0 @@
----
-provider: generic
-url: https://p2p.kiwi/auto-updates
-updaterCacheDirName: p2p-kiwi-updater

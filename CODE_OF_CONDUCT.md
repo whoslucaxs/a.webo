@@ -55,17 +55,13 @@ further defined and clarified by project maintainers.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting an individual maintainer on:
+reported privately to the project maintainer:
 
 ### GitHub
 
-- @gorillamoe
+- @whoslucaxs
 
 > (at `GitHub username` + `@github.com`).
-
-### Discord
-
-- gorillamoe
 
 All complaints will be reviewed and investigated and will result in a response that
 is deemed necessary and appropriate to the circumstances. The project team is
