@@ -16,6 +16,8 @@ To require an update after a breaking change, set `minimumVersion` in [`update-p
 2. Create a temporary or permanent channel, or paste a `webo://` invitation to join one.
 3. Share the channel link. Screen, camera, and browser streams can be started during the call. Other participants choose which streams to watch.
 
+On Windows, screen and window sharing also captures the computer's system audio. Viewers receive it only while watching that share. Electron's display capture loopback is not available on Linux, so Linux screen and window sharing remain video-only; integrated browser sharing has its own audio capture.
+
 The default room server is `https://signal.nyxlink.online`. It exchanges connection information and supplies short-lived TURN credentials. Calls use a WebRTC mesh: each participant connects to the others, directly when possible or through TURN when needed. The room server does not forward media. This architecture works best for small calls; the current room limit is four participants.
 
 ## Develop

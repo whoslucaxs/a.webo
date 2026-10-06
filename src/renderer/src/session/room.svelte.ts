@@ -273,9 +273,8 @@ export class Room {
       debugLog.warn('room', 'refusing plaintext display; e2ee required')
       return
     }
-    for (const track of this.displayStream.getVideoTracks()) {
-      track.enabled = !track.enabled
-    }
+    const enabled = !this.displayStream.getVideoTracks().some((track) => track.enabled)
+    for (const track of this.displayStream.getTracks()) track.enabled = enabled
     this.displayStreamActive = this.displayStream.getVideoTracks().some((track) => track.enabled)
     this.broadcastDisplayState()
     this.refreshScreenShares()
@@ -283,10 +282,14 @@ export class Room {
 
   watchScreen(peerId: string, watching: boolean): void {
     if (peerId === this.localPeerId || (watching && !this.remoteDisplayStates.get(peerId))) return
-    if (!this.sendTo(peerId, { t: 'screen-watch', v: PROTOCOL_VERSION, watching })) return
+    if (!this.sendTo(peerId, { t: 'screen-watch', v: PROTOCOL_VERSION, watching }) && watching) return
     this.watchingScreens = watching
       ? [...new Set([...this.watchingScreens, peerId])]
       : this.watchingScreens.filter((id) => id !== peerId)
+    if (!watching) {
+      const audio = this.remoteAudioElements.get(`${peerId}:screen`)
+      if (audio) audio.srcObject = null
+    }
     this.refreshScreenShares()
     this.attachPresenterVideo()
     this.refreshRemoteScreenActive()
@@ -2021,6 +2024,10 @@ export class Room {
     this.remoteDisplayStates.set(msg.peerId, msg.active)
     if (msg.streamId) this.remoteDisplayStreamIds.set(msg.peerId, msg.streamId)
     if (!msg.active && this.watchingScreens.includes(msg.peerId)) this.watchScreen(msg.peerId, false)
+    if (!msg.active) {
+      const audio = this.remoteAudioElements.get(`${msg.peerId}:screen`)
+      if (audio) audio.srcObject = null
+    }
     if (msg.peerId === this.presenterId) this.remoteDisplayActive = msg.active
     this.refreshRemoteScreenActive()
     this.classifyRemoteVideos(msg.peerId)
@@ -2286,8 +2293,13 @@ export class Room {
 
   private attachRemoteAudio(peerId: string, stream: MediaStream): void {
     const isBrowser = this.remoteBrowserStates.get(peerId)?.streamId === stream.id
+    const isScreen = !isBrowser && (
+      this.remoteDisplayStreamIds.get(peerId) === stream.id ||
+      (Boolean(stream.getVideoTracks?.().length) && this.remoteCameraState.get(peerId)?.streamId !== stream.id)
+    )
     if (isBrowser && !this.watchingBrowsers.includes(peerId)) return
-    const key = isBrowser ? `${peerId}:browser` : peerId
+    if (isScreen && !this.watchingScreens.includes(peerId)) return
+    const key = isBrowser ? `${peerId}:browser` : isScreen ? `${peerId}:screen` : peerId
     let audio = this.remoteAudioElements.get(key)
     if (!audio) {
       audio = document.createElement('audio')
@@ -2409,6 +2421,12 @@ export class Room {
         browserAudio.srcObject = null
         browserAudio.remove()
         this.remoteAudioElements.delete(`${peerId}:browser`)
+      }
+      const screenAudio = this.remoteAudioElements.get(`${peerId}:screen`)
+      if (screenAudio) {
+        screenAudio.srcObject = null
+        screenAudio.remove()
+        this.remoteAudioElements.delete(`${peerId}:screen`)
       }
       await this.dropVoterFromActiveVote(peerId)
     }
@@ -2726,6 +2744,10 @@ export class Room {
       track.addEventListener('ended', () => {
         if (this.displayStream !== stream) return
         this.displayStreamActive = false
+        this.displayStream = null
+        this.stopStream(stream)
+        for (const link of this.screenWatchers) void link.setDisplayTrack(null, null)
+        this.screenWatchers.clear()
         this.broadcastDisplayState()
         this.refreshScreenShares()
       })
@@ -2743,7 +2765,7 @@ export class Room {
       debugLog.info('room', 'getDisplayMedia start')
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
-        audio: false,
+        audio: window.electron.process.platform === 'win32',
       })
       if (!stream.getVideoTracks().length) {
         this.stopStream(stream)

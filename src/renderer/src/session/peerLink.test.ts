@@ -91,6 +91,22 @@ const events = {
 }
 
 describe('PeerLink video senders', () => {
+  it('sends screen audio only while the display is watched, independently of the microphone', async () => {
+    const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, events })
+    const microphone = { id: 'mic', kind: 'audio' } as MediaStreamTrack
+    const video = { id: 'display-video', kind: 'video' } as MediaStreamTrack
+    const audio = { id: 'display-audio', kind: 'audio' } as MediaStreamTrack
+    const stream = { id: 'display', getAudioTracks: () => [audio] } as unknown as MediaStream
+    link.addTrack(microphone, { id: 'microphone' } as MediaStream)
+
+    await link.setDisplayTrack(video, stream)
+    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, video, audio])
+    await link.setDisplayTrack(null, null)
+    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, null, null])
+    await link.setDisplayTrack(video, stream)
+    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, video, audio])
+  })
+
   it('sends browser audio separately from the microphone and removes it when watching stops', async () => {
     const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, events })
     const microphone = { id: 'mic', kind: 'audio' } as MediaStreamTrack

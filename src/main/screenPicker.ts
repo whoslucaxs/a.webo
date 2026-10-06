@@ -164,7 +164,7 @@ export const installDisplayMediaHandler = (getMainWindow: () => BrowserWindow): 
         respond({})
         return
       }
-      respond({ video: selected })
+      respond({ video: selected, audio: process.platform === 'win32' && request.audioRequested ? 'loopback' : undefined })
     } catch (err) {
       console.error('display media request failed', err)
       respond({})

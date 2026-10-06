@@ -68,6 +68,9 @@
     {#if sources.length === 0}
       <p>{L.no_screens_found()}</p>
     {:else}
+      {#if window.electron.process.platform === 'win32'}
+        <p class="mb-4 text-sm opacity-75">Sharing a screen or window also sends all audio playing on this computer.</p>
+      {/if}
       {#if screens.length}
         <h2 class="font-semibold mb-3">{L.screens()}</h2>
         <div class="screen-picker-grid mb-5">

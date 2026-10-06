@@ -65,6 +65,7 @@ export class PeerLink {
   private suppressNegotiation = true
   private closed = false
   private displaySender: RTCRtpSender | null = null
+  private displayAudioSender: RTCRtpSender | null = null
   private displayUpdate: Promise<void> = Promise.resolve()
   private cameraSender: RTCRtpSender | null = null
   private browserVideoSender: RTCRtpSender | null = null
@@ -272,9 +273,26 @@ export class PeerLink {
   }
 
   setDisplayTrack(track: MediaStreamTrack | null, stream: MediaStream | null): Promise<void> {
-    const update = this.displayUpdate.catch(() => undefined).then(() => this.replaceOrAddSender('display', track, stream))
+    const update = this.displayUpdate.catch(() => undefined).then(async () => {
+      await this.replaceOrAddSender('display', track, stream)
+      await this.setDisplayAudioTrack(track ? stream?.getAudioTracks?.()[0] ?? null : null, stream)
+    })
     this.displayUpdate = update
     return update
+  }
+
+  private async setDisplayAudioTrack(track: MediaStreamTrack | null, stream: MediaStream | null): Promise<void> {
+    if (this.displayAudioSender) {
+      await this.displayAudioSender.replaceTrack(track)
+      if (track && stream) await this.attachSender(this.displayAudioSender, {
+        sender: this.localPeerId, kind: 'audio', streamId: stream.id,
+      })
+    } else if (track && stream) {
+      this.displayAudioSender = this.pc.addTrack(track, stream)
+      await this.attachSender(this.displayAudioSender, {
+        sender: this.localPeerId, kind: 'audio', streamId: stream.id,
+      })
+    }
   }
 
   async setCameraTrack(track: MediaStreamTrack | null, stream: MediaStream | null): Promise<void> {

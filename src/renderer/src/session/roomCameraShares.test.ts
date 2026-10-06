@@ -61,6 +61,47 @@ it('sends screen video only to viewers who requested it', async () => {
   expect(setDisplayTrack).not.toHaveBeenCalled()
 })
 
+it('plays watched screen audio separately from microphone audio and stops it on unwatch', () => {
+  const room = new Room()
+  const audioElements: Array<{ srcObject: MediaStream | null; play: ReturnType<typeof vi.fn> }> = []
+  vi.stubGlobal('document', {
+    createElement: () => {
+      const audio = { srcObject: null, style: {}, setAttribute: vi.fn(), play: vi.fn(async () => undefined), remove: vi.fn() }
+      audioElements.push(audio)
+      return audio
+    },
+    body: { appendChild: vi.fn() },
+  })
+  try {
+    const internals = room as unknown as {
+      remoteDisplayStreamIds: Map<string, string>
+      remoteAudioElements: Map<string, { srcObject: MediaStream | null }>
+      attachRemoteAudio: (peerId: string, stream: MediaStream) => void
+      sendTo: () => boolean
+    }
+    internals.sendTo = () => true
+    internals.remoteDisplayStreamIds.set('viewer', 'display')
+    const microphone = { id: 'mic', getVideoTracks: () => [] } as unknown as MediaStream
+    const display = { id: 'display', getVideoTracks: () => [{}] } as unknown as MediaStream
+    room.watchingScreens = ['viewer']
+    internals.attachRemoteAudio('viewer', microphone)
+    internals.attachRemoteAudio('viewer', display)
+    expect(audioElements).toHaveLength(2)
+    expect(internals.remoteAudioElements.get('viewer')?.srcObject).toBe(microphone)
+    expect(internals.remoteAudioElements.get('viewer:screen')?.srcObject).toBe(display)
+    room.watchScreen('viewer', false)
+    expect(internals.remoteAudioElements.get('viewer:screen')?.srcObject).toBeNull()
+    expect(internals.remoteAudioElements.get('viewer')?.srcObject).toBe(microphone)
+    room.watchingScreens = ['viewer']
+    internals.attachRemoteAudio('viewer', display)
+    internals.sendTo = () => false
+    room.watchScreen('viewer', false)
+    expect(internals.remoteAudioElements.get('viewer:screen')?.srcObject).toBeNull()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
 it('reannounces active media after a returning peer joins the encrypted group', async () => {
   const room = new Room()
   const sent: ControlMessage[] = []
