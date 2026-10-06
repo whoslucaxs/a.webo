@@ -25,6 +25,7 @@
   let cameras = $state<MediaDeviceInfo[]>([])
   let microphones = $state<MediaDeviceInfo[]>([])
   let saving = $state(false)
+  let appVersion = $state('')
   const isLinux = window.electron.process.platform === 'linux'
   const languages = ['en', 'de', 'fr', 'pt-br', 'zh']
   const usernameValid = $derived(username.trim().length > 0 && username.trim().length < 32)
@@ -43,6 +44,7 @@
     device.label || `${device.kind} ${index + 1}`
 
   onMount(() => {
+    void window.KiwiApi.getAppVersion().then((version) => { appVersion = version }).catch(() => undefined)
     void (async () => {
       const settings = await window.KiwiApi.getSettings()
       savedSettings = settings
@@ -220,6 +222,7 @@
         {#if saving}<span class="loading loading-spinner loading-sm"></span>{/if}
         {L.save()}
       </button>
+      {#if appVersion}<p class="settings-version">a.webo v{appVersion}</p>{/if}
     </form>
   </div>
 </div>
@@ -258,6 +261,7 @@
   .settings-save { align-self: flex-end; min-width: 9rem; min-height: 3.2rem; border: 0; border-radius: 0.8rem; background: linear-gradient(125deg, #0cc9b7, #009d91); color: white; font-weight: 700; }
   .settings-save:hover { filter: brightness(1.12); }
   .settings-save:disabled { opacity: 0.5; cursor: default; filter: none; }
+  .settings-version { margin: 0.25rem 0 0; color: #aab7c4; font-size: 0.8rem; text-align: center; }
   @media (max-width: 700px) {
     .settings-shell { grid-template-columns: 1fr; padding: 0.8rem; gap: 0.8rem; }
     .settings-menu { position: static; }
