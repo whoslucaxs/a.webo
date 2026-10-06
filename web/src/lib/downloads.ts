@@ -1,5 +1,5 @@
-export const DOWNLOAD_BASE_URL = 'https://github.com/whoslucaxs/JanjaShare/releases/latest/download/'
-export const RELEASES_URL = 'https://github.com/whoslucaxs/JanjaShare/releases'
+export const DOWNLOAD_BASE_URL = 'https://github.com/whoslucaxs/a.webo/releases/latest/download/'
+export const RELEASES_URL = 'https://github.com/whoslucaxs/a.webo/releases'
 
 export const DOWNLOAD_URLS = {
   RELEASES: RELEASES_URL,

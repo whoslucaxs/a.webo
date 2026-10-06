@@ -8,4 +8,4 @@ The configured room server processes room identifiers, membership and signaling 
 
 Media and chat are encrypted between participants at the application layer. A participant you invite can still record or share what they receive. If you open a website in the shared browser, that website receives normal browser requests and may process data under its own policy.
 
-This repository does not implement account registration, analytics, or advertising. Service providers may keep operational logs under their own policies. For questions, open an [Issue](https://github.com/whoslucaxs/JanjaShare/issues) without including private channel links.
+This repository does not implement account registration, analytics, or advertising. Service providers may keep operational logs under their own policies. For questions, open an [Issue](https://github.com/whoslucaxs/a.webo/issues) without including private channel links.

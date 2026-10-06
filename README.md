@@ -4,7 +4,7 @@ Desktop app for voice channels, chat, camera, screen sharing, and shared browser
 
 ## Download
 
-Builds from every commit on `main` are available as [GitHub Actions artifacts](https://github.com/whoslucaxs/JanjaShare/actions/workflows/release.yaml). Tagged versions (`vX.Y.Z`) are published on the [Releases page](https://github.com/whoslucaxs/JanjaShare/releases) with a Windows installer, a Windows portable executable, and a Linux x64 AppImage.
+Builds from every commit on `main` are available as [GitHub Actions artifacts](https://github.com/whoslucaxs/a.webo/actions/workflows/release.yaml). Tagged versions (`vX.Y.Z`) are published on the [Releases page](https://github.com/whoslucaxs/a.webo/releases) with a Windows installer, a Windows portable executable, and a Linux x64 AppImage.
 
 ## Use
 

@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit'
 
 export function load() {
-  redirect(302, 'https://github.com/whoslucaxs/JanjaShare/releases')
+  redirect(302, 'https://github.com/whoslucaxs/a.webo/releases')
 }

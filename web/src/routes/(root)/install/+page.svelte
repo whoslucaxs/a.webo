@@ -21,7 +21,7 @@
 				<a class="btn btn-primary" href={DOWNLOAD_URLS.WINDOWS_X64_PORTABLE}>Windows portable</a>
 				<a class="btn btn-primary" href={DOWNLOAD_URLS.LINUX_APPIMAGE_X86_64}>Linux AppImage</a>
 			</div>
-			<p class="mt-8"><a class="link" href={DOWNLOAD_URLS.RELEASES}>All releases</a> · <a class="link" href="https://github.com/whoslucaxs/JanjaShare/actions/workflows/release.yaml">Builds from main</a></p>
+			<p class="mt-8"><a class="link" href={DOWNLOAD_URLS.RELEASES}>All releases</a> · <a class="link" href="https://github.com/whoslucaxs/a.webo/actions/workflows/release.yaml">Builds from main</a></p>
 		</div>
 	</div>
 </main>

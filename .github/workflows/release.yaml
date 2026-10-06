@@ -64,3 +64,4 @@ jobs:
       - run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

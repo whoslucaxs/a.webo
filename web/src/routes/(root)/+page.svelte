@@ -18,7 +18,7 @@
 			<p>Calls use encrypted WebRTC connections. The room server helps participants connect; TURN relays encrypted media when needed.</p>
 			<div class="mt-8 flex flex-wrap justify-center gap-3">
 				<a class="btn btn-primary" href="/install">Download</a>
-				<a class="btn" href="https://github.com/whoslucaxs/JanjaShare">Source code</a>
+				<a class="btn" href="https://github.com/whoslucaxs/a.webo">Source code</a>
 			</div>
 		</div>
 	</div>

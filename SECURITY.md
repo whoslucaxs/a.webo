@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please use [GitHub private vulnerability reporting](https://github.com/whoslucaxs/JanjaShare/security/advisories/new). Do not post exploits, invitation secrets, or private room links in public Issues.
+Please use [GitHub private vulnerability reporting](https://github.com/whoslucaxs/a.webo/security/advisories/new). Do not post exploits, invitation secrets, or private room links in public Issues.
 
 ## Encryption and metadata
 
