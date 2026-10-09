@@ -227,6 +227,28 @@ export class PeerLink {
     }
   }
 
+  async waitForControlDrain(): Promise<void> {
+    const channel = this.control
+    if (!channel || channel.readyState !== 'open') throw new Error('Connection closed')
+    if (channel.bufferedAmount < 256 * 1024) return
+    channel.bufferedAmountLowThreshold = 128 * 1024
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => finish(new Error('Attachment transfer timed out')), 30_000)
+      const finish = (error?: Error): void => {
+        clearTimeout(timer)
+        channel.removeEventListener('bufferedamountlow', onLow)
+        channel.removeEventListener('close', onClose)
+        if (error) reject(error)
+        else resolve()
+      }
+      const onLow = (): void => finish()
+      const onClose = (): void => finish(new Error('Connection closed'))
+      channel.addEventListener('bufferedamountlow', onLow)
+      channel.addEventListener('close', onClose)
+      if (channel.bufferedAmount < 256 * 1024) finish()
+    })
+  }
+
   sendMls(frame: MlsFrame): boolean {
     if (!this.mls || this.mls.readyState !== 'open') return false
     this.mls.send(asBufferSource(encodeMlsFrame(frame)).buffer)

@@ -2,12 +2,15 @@
   import { onMount } from 'svelte'
   import { L } from './translations'
   import type { CallCameraMid, CallChatMessage, CallPeerInfo } from './callTypes'
+  import { MAX_ATTACHMENT_BYTES, isSupportedAttachment } from './session/chatAttachment'
   import { cloneSessionDescription } from './Utils'
 
   let peers = $state<CallPeerInfo[]>([])
   let messages = $state<CallChatMessage[]>([])
   let streams = $state<Record<string, MediaStream>>({})
   let draft = $state('')
+  let attachmentInput = $state<HTMLInputElement | null>(null)
+  let attachmentSending = $state(false)
 
   const localPeer = $derived(peers.find((peer) => peer.isLocal))
   const cameraOn = $derived(Boolean(localPeer?.cameraEnabled))
@@ -55,6 +58,25 @@
   const onSubmit = (event: SubmitEvent): void => {
     event.preventDefault()
     sendChat()
+  }
+
+  const onAttachmentSelected = async (event: Event): Promise<void> => {
+    const input = event.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    if (!isSupportedAttachment(file.type) || !file.size || file.size > MAX_ATTACHMENT_BYTES) {
+      window.alert('Use a PNG, JPEG, GIF, WebP, MP4, WebM, or OGG file up to 20 MB')
+      return
+    }
+    attachmentSending = true
+    try {
+      window.CallApi.sendAttachment({ name: file.name, type: file.type, bytes: await file.arrayBuffer() })
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error))
+    } finally {
+      attachmentSending = false
+    }
   }
 
   onMount(() => {
@@ -209,12 +231,25 @@
           {message.name}
           <time class="text-xs opacity-50">{formatTime(message.at)}</time>
         </div>
-        <div class="chat-bubble">{message.text}</div>
+        <div class="chat-bubble">
+          {#if message.text}{message.text}{/if}
+          {#if message.attachment}
+            {#if message.attachment.mime.startsWith('image/')}
+              <img class="max-w-full max-h-48 rounded" src={message.attachment.dataUrl} alt={message.attachment.fileName} loading="lazy" />
+            {:else}
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <video class="max-w-full max-h-48 rounded" src={message.attachment.dataUrl} controls preload="metadata" aria-label={message.attachment.fileName}></video>
+            {/if}
+            <a class="block text-xs underline truncate" href={message.attachment.dataUrl} download={message.attachment.fileName}>{message.attachment.fileName}</a>
+          {/if}
+        </div>
       </div>
     {/each}
   </div>
 
   <form class="no-drag p-3 pt-0 flex gap-2" onsubmit={onSubmit}>
+    <input bind:this={attachmentInput} type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/ogg" onchange={onAttachmentSelected} hidden />
+    <button class="btn btn-ghost btn-sm" type="button" title={L.attach_media()} aria-label={L.attach_media()} disabled={attachmentSending} onclick={() => attachmentInput?.click()}><i class:fa-spinner={attachmentSending} class:fa-spin={attachmentSending} class:fa-paperclip={!attachmentSending} class="fa-solid"></i></button>
     <input
       class="input input-bordered input-sm flex-1"
       bind:value={draft}

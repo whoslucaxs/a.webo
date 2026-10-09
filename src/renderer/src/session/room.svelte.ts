@@ -34,6 +34,7 @@ import {
 } from './controlProtocol'
 import { CallLoopback } from './callLoopback'
 import { PeerLink } from './peerLink'
+import { ChatAttachmentAssembler, MAX_ATTACHMENT_BYTES, attachmentChunks, attachmentDataUrl, isSupportedAttachment } from './chatAttachment'
 import { AdaptiveController, SpeechActivity, initialCpuGuard, stepCpuGuard } from './adaptive'
 import type { CpuGuardState } from './adaptive'
 import {
@@ -185,6 +186,8 @@ export class Room {
   private pendingKeyPackages = new Map<string, Uint8Array>()
   private pendingE2ee = new Map<PeerLink, ControlMessage[]>()
   private pendingOutbound: ControlMessage[] = []
+  private readonly incomingAttachments = new ChatAttachmentAssembler()
+  private sendingAttachment = false
   private addingMembers = new Set<string>()
   private mlsAssembler = new MlsAssembler()
   private mlsTail: Promise<void> = Promise.resolve()
@@ -378,6 +381,38 @@ export class Room {
       ...msg,
     })
     this.syncCallOverlay()
+  }
+
+  async sendAttachment(file: File): Promise<void> {
+    if (!this.localPeerId) throw new Error('Join a session first')
+    if (!isSupportedAttachment(file.type)) throw new Error('Use a PNG, JPEG, GIF, WebP, MP4, WebM, or OGG file')
+    if (!file.size || file.size > MAX_ATTACHMENT_BYTES) throw new Error('Attachment must be 20 MB or smaller')
+    if (this.sendingAttachment) throw new Error('Wait for the current attachment to finish')
+    const links = [...this.links.values()].filter((link) => link.isControlOpen && link.remotePeerId)
+    if (links.length && this.e2eeFailClosed() && !this.appCryptoReady()) throw new Error('Wait for the encrypted connection')
+    this.sendingAttachment = true
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      const chunks = attachmentChunks(bytes)
+      const meta = {
+        id: getUUIDv4(), from: this.localPeerId, name: this.username,
+        fileName: file.name.slice(0, 160), mime: file.type, size: bytes.length, at: Date.now(),
+      }
+      if (links.length) {
+        for (let index = 0; index < chunks.length; index++) {
+          const wrapped = await this.wrapControl({ t: 'chat-attachment', v: PROTOCOL_VERSION, ...meta, index, total: chunks.length, data: chunks[index] })
+          if (!wrapped) throw new Error('Attachment encryption is unavailable')
+          for (const link of links) {
+            await link.waitForControlDrain()
+            if (!link.sendControl(wrapped)) throw new Error('Attachment connection closed')
+          }
+        }
+      }
+      this.appendChat({ ...meta, text: '', attachment: { fileName: meta.fileName, mime: meta.mime, size: bytes.length, dataUrl: attachmentDataUrl(file.type, chunks) } })
+      this.syncCallOverlay()
+    } finally {
+      this.sendingAttachment = false
+    }
   }
 
   async Setup(
@@ -1651,6 +1686,9 @@ export class Room {
       case 'chat':
         this.onChat(inner)
         break
+      case 'chat-attachment':
+        this.onChatAttachment(link, inner)
+        break
       case 'camera-state':
         this.onCameraState(inner)
         break
@@ -2017,6 +2055,14 @@ export class Room {
       text: msg.text,
       at: msg.at,
     })
+    this.syncCallOverlay()
+  }
+
+  private onChatAttachment(link: PeerLink, msg: Extract<ControlMessage, { t: 'chat-attachment' }>): void {
+    if (link.remotePeerId !== msg.from) return
+    const attachment = this.incomingAttachments.add(msg)
+    if (!attachment) return
+    this.appendChat({ id: msg.id, from: msg.from, name: msg.name, text: '', at: msg.at, attachment })
     this.syncCallOverlay()
   }
 
@@ -2875,6 +2921,7 @@ export class Room {
     this.cameraSendStreamId = ''
     this.cameraActive = false
     this.chatMessages = []
+    this.incomingAttachments.clear()
     this.remoteVideoStreams.clear()
     this.remoteDisplayStates.clear()
     this.screenWatchers.clear()
@@ -2959,6 +3006,10 @@ export class Room {
     })
     window.KiwiApi.onCallChatSend?.((text) => {
       this.sendChat(text)
+    })
+    window.KiwiApi.onCallAttachmentSend?.(({ name, type, bytes }) => {
+      if (typeof name !== 'string' || typeof type !== 'string' || !(bytes instanceof ArrayBuffer)) return
+      void this.sendAttachment(new File([bytes], name, { type })).catch((error) => toast.show('error', String(error)))
     })
     window.KiwiApi.onCallToggleCamera?.(() => {
       void this.ToggleCamera()
@@ -3054,7 +3105,8 @@ export class Room {
   private appendChat(msg: CallChatMessage): void {
     if (this.chatMessages.some((item) => item.id === msg.id)) return
     const next = [...this.chatMessages, msg]
-    this.chatMessages = next.length > CHAT_MAX_MESSAGES ? next.slice(-CHAT_MAX_MESSAGES) : next
+    while (next.length > CHAT_MAX_MESSAGES || next.reduce((total, item) => total + (item.attachment?.size ?? 0), 0) > 40 * 1024 * 1024) next.shift()
+    this.chatMessages = next
   }
 
   private cameraSources(): Array<{ peerId: string; stream: MediaStream }> {

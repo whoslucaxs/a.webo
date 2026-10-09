@@ -1,6 +1,7 @@
 import { truncateChatText } from './constants'
 import type { AppDomain, CryptoCapabilities } from '../crypto/constants'
 import { isAvatarDataUrl } from '../../../shared/avatar'
+import { ATTACHMENT_CHUNK_BYTES, MAX_ATTACHMENT_BYTES, isSupportedAttachment, type AttachmentChunk } from './chatAttachment'
 export const PROTOCOL_VERSION = 1 as const
 
 export const PLAINTEXT_CONTROL_TYPES = new Set([
@@ -130,6 +131,8 @@ export type ChatMessage = Envelope & {
   at: number
 }
 
+export type ChatAttachmentMessage = Envelope & AttachmentChunk & { t: 'chat-attachment' }
+
 export type CameraStateMessage = Envelope & {
   t: 'camera-state'
   peerId: string
@@ -186,6 +189,7 @@ export type ControlMessage =
   | CoordinatorHandoffMessage
   | SessionEndedMessage
   | ChatMessage
+  | ChatAttachmentMessage
   | CameraStateMessage
   | DisplayStateMessage
   | ScreenWatchMessage
@@ -293,6 +297,20 @@ export const isControlMessage = (value: unknown): value is ControlMessage => {
         isString(value.text) &&
         typeof value.at === 'number'
       )
+    case 'chat-attachment':
+      return (
+        isString(value.id) && value.id.length <= 64 &&
+        isString(value.from) && value.from.length <= 64 &&
+        isString(value.name) && value.name.length <= 64 &&
+        isString(value.fileName) && value.fileName.length > 0 && value.fileName.length <= 160 &&
+        isSupportedAttachment(value.mime) &&
+        typeof value.size === 'number' && Number.isSafeInteger(value.size) && value.size > 0 && value.size <= MAX_ATTACHMENT_BYTES &&
+        typeof value.at === 'number' && Number.isFinite(value.at) &&
+        typeof value.total === 'number' && Number.isSafeInteger(value.total) && value.total === Math.ceil(value.size / ATTACHMENT_CHUNK_BYTES) &&
+        typeof value.index === 'number' && Number.isSafeInteger(value.index) && value.index >= 0 && value.index < value.total &&
+        isString(value.data) && value.data.length <= Math.ceil(ATTACHMENT_CHUNK_BYTES * 4 / 3) &&
+        /^[A-Za-z0-9_-]+$/.test(value.data)
+      )
     case 'camera-state':
       return (
         isString(value.peerId) && typeof value.enabled === 'boolean' && isString(value.streamId)
@@ -352,6 +370,7 @@ export const parseControlMessage = (raw: string): ControlMessage | null => {
 export const domainForControl = (msg: ControlMessage): AppDomain => {
   switch (msg.t) {
     case 'chat':
+    case 'chat-attachment':
       return 'chat'
     case 'camera-state':
       return 'camera-state'

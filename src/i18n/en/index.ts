@@ -161,6 +161,7 @@ const en = {
   camera_off: 'Camera off',
   chat: 'Chat',
   chat_placeholder: 'Message',
+  attach_media: 'Attach image or video',
   send: 'Send',
   debug: 'Debug',
   debug_logs: 'Enable debug logs',

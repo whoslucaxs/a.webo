@@ -178,6 +178,9 @@ const KiwiApi = {
   onCallChatSend: (handler: (text: string) => void): void => {
     onIpc('call-chat-send', (text) => handler(String(text)))
   },
+  onCallAttachmentSend: (handler: (file: { name: string; type: string; bytes: ArrayBuffer }) => void): void => {
+    onIpc('call-attachment-send', (file) => handler(file as { name: string; type: string; bytes: ArrayBuffer }))
+  },
   onCallToggleCamera: (handler: () => void): void => {
     onIpc('call-toggle-camera', () => handler())
   },

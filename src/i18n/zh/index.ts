@@ -156,6 +156,7 @@ const zh = {
   camera_off: '摄像头已关闭',
   chat: '聊天',
   chat_placeholder: '输入消息',
+  attach_media: '添加图片或视频',
   send: '发送',
   debug: '调试',
   debug_logs: '启用调试日志',

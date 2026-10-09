@@ -67,6 +67,9 @@ const CallApi = {
   sendChat: (text: string): void => {
     ipcRenderer.send('call-chat-send', text)
   },
+  sendAttachment: (file: { name: string; type: string; bytes: ArrayBuffer }): void => {
+    ipcRenderer.send('call-attachment-send', file)
+  },
   sendAnswer: (sdp: SdpPayload): void => {
     ipcRenderer.send('call-loop-answer', sdp)
   },

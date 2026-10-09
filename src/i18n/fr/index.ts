@@ -160,6 +160,7 @@ const fr = {
   camera_off: 'Caméra désactivée',
   chat: 'Discussion',
   chat_placeholder: 'Message',
+  attach_media: 'Joindre une image ou une vidéo',
   send: 'Envoyer',
   debug: 'Débogage',
   debug_logs: 'Activer les journaux de débogage',

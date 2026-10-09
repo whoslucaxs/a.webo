@@ -39,6 +39,8 @@
   let participantsOpen = $state(true)
   let chatOpen = $state(false)
   let chatDraft = $state('')
+  let attachmentSending = $state(false)
+  let attachmentInput = $state<HTMLInputElement | null>(null)
   let settingsOpen = $state(false)
   let browserPanelOpen = $state(false)
   let browserFrameMinimized = $state(false)
@@ -214,6 +216,21 @@
     if (!chatDraft.trim()) return
     room.sendChat(chatDraft)
     chatDraft = ''
+  }
+
+  const onAttachmentSelected = async (event: Event): Promise<void> => {
+    const input = event.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    attachmentSending = true
+    try {
+      await room.sendAttachment(file)
+    } catch (error) {
+      toast.show('error', error instanceof Error ? error.message : String(error))
+    } finally {
+      attachmentSending = false
+    }
   }
 
   const chatTime = (at: number): string =>
@@ -661,11 +678,24 @@
             {:else}
               <span class="chat-avatar chat-initial" style:background={sender?.backgroundColor ?? '#0d4b49'} style:color={sender?.foregroundColor ?? '#f4f7fa'}>{message.name.trim().charAt(0).toUpperCase() || '?'}</span>
             {/if}
-            <div class="chat-message-body"><div class="chat-message-meta"><strong>{message.name}</strong><time>{chatTime(message.at)}</time></div><p>{message.text}</p></div>
+            <div class="chat-message-body"><div class="chat-message-meta"><strong>{message.name}</strong><time>{chatTime(message.at)}</time></div>
+              {#if message.text}<p>{message.text}</p>{/if}
+              {#if message.attachment}
+                {#if message.attachment.mime.startsWith('image/')}
+                  <img class="chat-attachment" src={message.attachment.dataUrl} alt={message.attachment.fileName} loading="lazy" />
+                {:else}
+                  <!-- svelte-ignore a11y_media_has_caption -->
+                  <video class="chat-attachment" src={message.attachment.dataUrl} controls preload="metadata" aria-label={message.attachment.fileName}></video>
+                {/if}
+                <a class="chat-download" href={message.attachment.dataUrl} download={message.attachment.fileName}><i class="fa-solid fa-download"></i> {message.attachment.fileName}</a>
+              {/if}
+            </div>
           </article>
         {/each}
       </div>
       <form class="chat-compose" onsubmit={onChatSubmit}>
+        <input bind:this={attachmentInput} type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/ogg" onchange={onAttachmentSelected} hidden />
+        <button type="button" title={L.attach_media()} aria-label={L.attach_media()} disabled={attachmentSending} onclick={() => attachmentInput?.click()}><i class:fa-spinner={attachmentSending} class:fa-spin={attachmentSending} class:fa-paperclip={!attachmentSending} class="fa-solid"></i></button>
         <input class="input" bind:value={chatDraft} placeholder={L.chat_placeholder()} aria-label={L.chat_placeholder()} maxlength="2000" />
         <button type="submit" aria-label={L.send()} disabled={!chatDraft.trim()}><i class="fa-solid fa-paper-plane"></i></button>
       </form>
@@ -892,6 +922,8 @@
   .chat-message-meta strong { font-weight: 700; }
   .chat-message-meta time { color: #94a4b0; font-size: 0.7rem; }
   .chat-message-body p { display: inline-block; max-width: 100%; padding: 0.55rem 0.7rem; border-radius: 0.7rem; background: #1b2b35; color: #dbe4eb; font-size: 0.78rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .chat-attachment { display: block; max-width: min(100%, 18rem); max-height: 15rem; margin-top: 0.35rem; border-radius: 0.65rem; object-fit: contain; background: #0d1720; }
+  .chat-download { display: block; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #6be1d3; font-size: 0.75rem; margin-top: 0.3rem; }
   .chat-compose { display: flex; gap: 0.45rem; padding: 0.65rem; border-top: 1px solid #30434e; }
   .chat-compose input { flex: 1; min-width: 0; height: 2.7rem; border: 1px solid #425563; border-radius: 0.65rem; background: #15232d; color: #f4f7fa; }
   .chat-compose button { flex: none; width: 2.7rem; border-radius: 0.65rem; background: linear-gradient(125deg, #0cc9b7, #009d91); color: white; cursor: pointer; }

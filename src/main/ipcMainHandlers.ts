@@ -76,6 +76,10 @@ export const ipcMainHandlersInit = (): void => {
     if (!fromCallOverlay(event)) return
     callMainWindow?.webContents.send('call-chat-send', text)
   })
+  ipcMain.on('call-attachment-send', (event, file: unknown) => {
+    if (!fromCallOverlay(event)) return
+    callMainWindow?.webContents.send('call-attachment-send', file)
+  })
   ipcMain.on('call-toggle-camera', (event) => {
     if (!fromCallOverlay(event)) return
     callMainWindow?.webContents.send('call-toggle-camera')

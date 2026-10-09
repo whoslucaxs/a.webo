@@ -4,6 +4,7 @@ export type CallChatMessage = {
   name: string
   text: string
   at: number
+  attachment?: { fileName: string; mime: string; size: number; dataUrl: string }
 }
 
 export type CallPeerInfo = {

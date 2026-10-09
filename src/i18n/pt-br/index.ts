@@ -162,6 +162,7 @@ const pt_br = {
   camera_off: 'Câmera desligada',
   chat: 'Chat',
   chat_placeholder: 'Mensagem',
+  attach_media: 'Anexar imagem ou vídeo',
   send: 'Enviar',
   debug: 'Depuração',
   debug_logs: 'Ativar logs de depuração',

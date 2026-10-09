@@ -23,6 +23,7 @@ type CallChatMessage = {
   name: string;
   text: string;
   at: number;
+  attachment?: { fileName: string; mime: string; size: number; dataUrl: string };
 };
 
 type CallPeerInfo = {
@@ -96,6 +97,7 @@ type KiwiApi = {
   onCallOverlayClosed: (handler: () => void) => void;
   onCallOverlayReady: (handler: () => void) => void;
   onCallChatSend: (handler: (text: string) => void) => void;
+  onCallAttachmentSend: (handler: (file: { name: string; type: string; bytes: ArrayBuffer }) => void) => void;
   onCallToggleCamera: (handler: () => void) => void;
   onCallLoopAnswer: (handler: (sdp: RTCSessionDescriptionInit) => void) => void;
   onCallLoopIce: (handler: (candidate: RTCIceCandidateInit) => void) => void;
@@ -171,6 +173,7 @@ type KiwiApi = {
 type CallApi = {
   ready: () => void;
   sendChat: (text: string) => void;
+  sendAttachment: (file: { name: string; type: string; bytes: ArrayBuffer }) => void;
   sendAnswer: (sdp: RTCSessionDescriptionInit) => void;
   sendIce: (candidate: RTCIceCandidateInit) => void;
   toggleCamera: () => void;

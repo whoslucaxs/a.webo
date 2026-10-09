@@ -162,6 +162,7 @@ const en = {
   camera_off: 'Kamera aus',
   chat: 'Chat',
   chat_placeholder: 'Nachricht',
+  attach_media: 'Bild oder Video anhängen',
   send: 'Senden',
   debug: 'Debug',
   debug_logs: 'Debug-Logs aktivieren',

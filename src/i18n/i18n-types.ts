@@ -630,6 +630,10 @@ type RootTranslation = {
 	 */
 	chat_placeholder: string
 	/**
+	 * A​t​t​a​c​h​ ​i​m​a​g​e​ ​o​r​ ​v​i​d​e​o
+	 */
+	attach_media: string
+	/**
 	 * S​e​n​d
 	 */
 	send: string
@@ -1480,6 +1484,10 @@ export type TranslationFunctions = {
 	 * Message
 	 */
 	chat_placeholder: () => LocalizedString
+	/**
+	 * Attach image or video
+	 */
+	attach_media: () => LocalizedString
 	/**
 	 * Send
 	 */
