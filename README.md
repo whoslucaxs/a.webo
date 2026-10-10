@@ -4,7 +4,7 @@ Desktop app for voice channels, chat, camera, screen sharing, and shared browser
 
 ## Download
 
-Builds from every commit on `main` are available as [GitHub Actions artifacts](https://github.com/whoslucaxs/a.webo/actions/workflows/release.yaml). Tagged versions (`vX.Y.Z`) are published on the [Releases page](https://github.com/whoslucaxs/a.webo/releases) with a Windows installer, a Windows portable executable, and a Linux x64 AppImage.
+Every new commit on `main` automatically increments the patch version, builds Windows and Linux, creates a `vX.Y.Z` tag, and publishes a [Release](https://github.com/whoslucaxs/a.webo/releases) with a Windows installer, a Windows portable executable, and a Linux x64 AppImage. Build artifacts are also available in [GitHub Actions](https://github.com/whoslucaxs/a.webo/actions/workflows/release.yaml).
 
 The installed Windows app and Linux AppImage check GitHub Releases when they start and every six hours. When a newer version is available, the app asks before downloading and installing it. The Windows portable build opens the Release download page instead. The first build with this updater must be installed manually.
 
