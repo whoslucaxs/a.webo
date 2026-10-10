@@ -3,6 +3,7 @@
   themes: corporate --default, business --prefersdark;
 }
 @import '@fontsource/noto-sans';
+@import './home.css';
 
 :root {
   --ui-bg: #0e1011;
@@ -58,100 +59,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .app-topbar-button:hover { border-color: var(--ui-border); background: var(--ui-raised); color: var(--ui-text); }
 .app-topbar-button:disabled { opacity: 0.5; cursor: default; }
 
-.home-page { min-height: calc(100vh - 3.65rem); display: grid; grid-template-columns: 14.5rem minmax(0, 1fr); background: var(--ui-grid), var(--ui-bg); background-size: 44px 44px; color: var(--ui-text); }
-.profile-panel { display: flex; flex-direction: column; align-items: stretch; gap: 1rem; padding: 2rem 1rem; border-right: 1px solid var(--ui-border); background: #121414; }
-.profile-avatar-wrap { position: relative; align-self: center; margin-bottom: 0.4rem; }
-.profile-avatar { display: block; width: 6.5rem; height: 6.5rem; border-radius: 50%; object-fit: cover; border: 1px solid var(--ui-border-hover); }
-.profile-avatar-initial { display: grid; place-items: center; font-size: 2.4rem; font-weight: 700; }
-.profile-camera { position: absolute; right: -0.1rem; bottom: 0; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border: 1px solid var(--ui-border-hover); border-radius: 50%; background: var(--ui-raised); cursor: pointer; font-size: 0.9rem; }
-.profile-photo-button { min-height: 2.55rem; display: flex; justify-content: center; align-items: center; gap: 0.55rem; border: 1px solid var(--ui-border); border-radius: 0.65rem; background: var(--ui-raised); color: var(--ui-muted); cursor: pointer; font-size: 0.8rem; }
-.profile-photo-button:hover, .profile-camera:hover { border-color: var(--ui-accent); color: var(--ui-text); }
-.profile-name-field { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.5rem; color: var(--ui-muted); font-size: 0.8rem; }
-.profile-name-field .input { width: 100%; height: 2.65rem; border: 1px solid var(--ui-border); border-radius: 0.65rem; background: var(--ui-input); color: var(--ui-text); font-weight: 600; }
-.profile-save { min-height: 2.7rem; border: 1px solid var(--ui-accent); border-radius: 0.65rem; background: var(--ui-accent); color: #061917; cursor: pointer; font-size: 0.85rem; font-weight: 700; }
-.profile-save:hover, .home-primary:hover, .saved-channel-enter:hover { background: #0bc5ad; }
-.profile-save:disabled, .home-primary:disabled, .saved-channel-enter:disabled { opacity: 0.5; cursor: default; }
-
-.home-workspace { min-width: 0; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(19rem, 0.9fr); align-items: start; gap: 1rem; padding: 1.25rem; }
-.create-panel, .channels-panel { min-width: 0; min-height: calc(100vh - 6.2rem); border: 1px solid var(--ui-border); border-radius: 0.95rem; background: var(--ui-panel); box-shadow: 0 12px 32px #0003; }
-.create-panel { padding: clamp(1rem, 2vw, 1.75rem); }
-.channels-panel { display: flex; flex-direction: column; padding: 1.1rem; }
-.create-chat { display: flex; flex-direction: column; gap: 1.2rem; }
-.create-chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--ui-border); }
-.create-chat-heading h1 { font-size: clamp(1.65rem, 2.4vw, 2.2rem); line-height: 1.16; font-weight: 750; letter-spacing: -0.045em; }
-.create-chat-heading p { margin-top: 0.45rem; color: var(--ui-muted); font-size: 0.88rem; }
-.chat-wave { flex: none; width: clamp(5rem, 10vw, 9rem); color: var(--ui-accent); opacity: 0.75; }
-.chat-name-field { display: flex; align-items: center; gap: 0.9rem; padding: 1rem; border: 1px solid var(--ui-border); border-radius: 0.75rem; background: var(--ui-input); }
-.chat-name-icon { flex: none; width: 3.4rem; height: 3.4rem; display: grid; place-items: center; border: 1px solid #1d5c52; border-radius: 0.65rem; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 1.35rem; }
-.chat-name-content { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
-.chat-name-content strong { font-size: 0.86rem; font-weight: 600; }
-.chat-name-content .input { height: 2.8rem; border: 1px solid var(--ui-border); border-radius: 0.55rem; background: var(--ui-panel); color: var(--ui-text); }
-.chat-name-content .input::placeholder, .join-link-panel .input::placeholder { color: #78837f; }
-.create-duration-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--ui-border); }
-.create-duration-heading span { display: flex; align-items: center; gap: 0.6rem; font-size: 0.95rem; font-weight: 650; }
-.create-duration-heading span i { color: var(--ui-accent); }
-.create-duration-heading small { color: var(--ui-muted); font-size: 0.72rem; }
-.duration-options { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.45rem; }
-.duration-options button { display: flex; align-items: center; justify-content: center; gap: 0.3rem; min-height: 2.75rem; padding: 0 0.35rem; border: 1px solid var(--ui-border); border-radius: 0.55rem; background: var(--ui-raised); color: var(--ui-text); white-space: nowrap; cursor: pointer; font-size: 0.8rem; }
-.duration-options button:hover { border-color: var(--ui-border-hover); background: #242929; }
-.duration-options button.selected { border-color: var(--ui-accent); background: var(--ui-accent-soft); color: #6fe1d0; }
-.duration-note { display: flex; align-items: center; gap: 0.6rem; min-height: 2rem; color: var(--ui-muted); font-size: 0.75rem; }
-.duration-note i { color: var(--ui-accent); }
-.home-primary { min-height: 3.25rem; display: flex; align-items: center; justify-content: center; gap: 0.7rem; border: 1px solid var(--ui-accent); border-radius: 0.6rem; background: var(--ui-accent); color: #061917; cursor: pointer; font-size: 0.95rem; font-weight: 700; }
-
-.channel-list { display: flex; flex-direction: column; gap: 0.85rem; }
-.channel-list-heading { display: flex; align-items: center; gap: 0.85rem; padding: 0.2rem 0.2rem 0.9rem; border-bottom: 1px solid var(--ui-border); }
-.channel-heading-icon { flex: none; width: 3.1rem; height: 3.1rem; display: grid; place-items: center; border-radius: 0.65rem; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 1.7rem; }
-.channel-list-heading h2 { font-size: 1.05rem; font-weight: 700; }
-.channel-list-heading p { margin-top: 0.25rem; color: var(--ui-muted); font-size: 0.79rem; line-height: 1.4; }
-.saved-channels { display: flex; flex-direction: column; gap: 0.5rem; scroll-margin-top: 1rem; }
-.saved-channel-row { min-width: 0; min-height: 4.2rem; display: flex; align-items: center; gap: 0.55rem; padding: 0.55rem; border: 1px solid var(--ui-border); border-radius: 0.7rem; background: var(--ui-input); }
-.saved-channel-row:hover { border-color: var(--ui-border-hover); }
-.saved-channel-icon { flex: none; width: 2.35rem; height: 2.35rem; display: grid; place-items: center; border-radius: 0.55rem; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 1.1rem; }
-.saved-channel-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.saved-channel-name strong, .saved-channel-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.saved-channel-name strong { font-size: 0.82rem; font-weight: 650; }
-.saved-channel-name small { color: var(--ui-muted); font-size: 0.7rem; }
-.saved-channel-count { flex: none; display: inline-flex; align-items: center; gap: 0.3rem; color: var(--ui-muted); font-size: 0.75rem; }
-.saved-channel-tool { flex: none; width: 1.6rem; height: 2rem; color: var(--ui-muted); cursor: pointer; font-size: 0.8rem; }
-.saved-channel-tool:hover { color: var(--ui-accent); }
-.saved-channel-enter { flex: none; min-width: 3.9rem; min-height: 2.35rem; padding: 0 0.5rem; border: 1px solid var(--ui-accent); border-radius: 0.55rem; background: var(--ui-accent); color: #061917; cursor: pointer; font-size: 0.77rem; font-weight: 700; }
-.saved-empty { padding: 0.8rem; color: var(--ui-muted); font-size: 0.82rem; }
-.join-link-panel { margin-top: auto; padding: 1rem 0.15rem 0; border-top: 1px solid var(--ui-border); }
-.join-link-panel h3 { margin-bottom: 0.6rem; font-size: 0.85rem; font-weight: 650; }
-.join-link-panel .join { display: flex; gap: 0.5rem; }
-.join-link-panel .input { flex: 1; min-width: 0; height: 2.65rem; border: 1px solid var(--ui-border); border-radius: 0.55rem; background: var(--ui-input); color: var(--ui-text); }
-.join-link-panel .btn { border: 1px solid var(--ui-accent); border-radius: 0.55rem; background: var(--ui-accent); color: #061917; font-size: 0.8rem; }
-
 .connection-wait { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; background: var(--ui-grid), var(--ui-bg); background-size: 44px 44px; color: var(--ui-text); }
 .connection-wait .loading { color: var(--ui-accent); }
 .connection-wait h1 { font-size: 1.2rem; font-weight: 650; }
-
-@media (max-width: 1450px) {
-  .duration-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .chat-wave { width: 5rem; }
-}
-@media (max-width: 1050px) {
-  .home-workspace { grid-template-columns: minmax(0, 1fr); }
-  .create-panel, .channels-panel { min-height: auto; }
-  .channels-panel { min-height: 22rem; }
-}
-@media (max-width: 750px) {
-  .app-topbar { padding: 0 0.9rem; }
-  .home-page { grid-template-columns: 1fr; }
-  .profile-panel { flex-direction: row; align-items: center; flex-wrap: wrap; padding: 0.85rem; border-right: 0; border-bottom: 1px solid var(--ui-border); }
-  .profile-avatar { width: 3.5rem; height: 3.5rem; }
-  .profile-avatar-initial { font-size: 1.4rem; }
-  .profile-camera { width: 1.6rem; height: 1.6rem; font-size: 0.65rem; }
-  .profile-photo-button { min-height: 2.35rem; padding: 0 0.6rem; }
-  .profile-name-field { flex: 1; min-width: 9rem; margin: 0; }
-  .profile-save { min-height: 2.5rem; padding: 0 0.7rem; }
-  .home-workspace { padding: 0.75rem; }
-}
-@media (max-width: 510px) {
-  .chat-name-field { padding: 0.7rem; }
-  .chat-name-icon { width: 2.8rem; height: 2.8rem; }
-  .chat-wave { display: none; }
-  .duration-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .saved-channel-tool { display: none; }
-}

@@ -50,15 +50,17 @@
 </script>
 
 <aside class="profile-panel">
-  <div class="profile-avatar-wrap">
-    {#if avatar}
-      <img class="profile-avatar" src={avatar} alt="" />
-    {:else}
-      <span class="profile-avatar profile-avatar-initial" style:background={backgroundColor} style:color={foregroundColor}>{username.trim().charAt(0).toUpperCase() || '?'}</span>
-    {/if}
+  <div class="profile-summary">
+    <div class="profile-avatar-wrap">
+      {#if avatar}
+        <img class="profile-avatar" src={avatar} alt="" />
+      {:else}
+        <span class="profile-avatar profile-avatar-initial" style:background={backgroundColor} style:color={foregroundColor}>{username.trim().charAt(0).toUpperCase() || '?'}</span>
+      {/if}
+    </div>
+    <div class="profile-summary-copy"><strong>{username || L.username()}</strong><span>{L.basic()}</span></div>
     <label class="profile-camera" for="home-profile-photo" aria-label={L.choose_photo()} title={L.choose_photo()}><i class="fa-solid fa-camera"></i></label>
   </div>
-  <label class="profile-photo-button" for="home-profile-photo"><i class="fa-regular fa-image"></i>{L.choose_photo()}</label>
   <input id="home-profile-photo" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onchange={chooseAvatar} />
   <label class="profile-name-field"><span>{L.username()}</span><input class="input" bind:value={username} maxlength="31" /></label>
   <button class="profile-save" disabled={!valid || saving} onclick={save}>{L.save_profile()}</button>

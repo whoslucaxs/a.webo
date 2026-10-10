@@ -135,28 +135,33 @@
 </script>
 
 <div class="create-chat">
-  <div class="create-chat-heading">
-    <div><h1>{L.create_audio_chat()}</h1><p>{L.create_audio_chat_description()}</p></div>
-    <svg class="chat-wave" viewBox="0 0 220 90" fill="none" aria-hidden="true"><path d="M0 49 C26 14 43 85 70 49 S112 -9 142 48 S184 83 220 46" stroke="currentColor" stroke-width="2.5" /></svg>
+  <div class="panel-heading">
+    <span><i class="fa-solid fa-plus"></i>{L.create_chat()}</span>
+    <small>{L.create_audio_chat_description()}</small>
   </div>
-  <label class="chat-name-field">
-    <span class="chat-name-icon"><i class="fa-solid fa-microphone"></i></span>
-    <span class="chat-name-content"><strong>{L.chat_name()}</strong><input class="input w-full" bind:value={roomName} maxlength="48" placeholder={L.chat_name_placeholder()} /></span>
-  </label>
-  <div class="create-duration-heading"><span><i class="fa-regular fa-clock"></i>{L.duration()}</span><small>{L.duration_hint()}</small></div>
-  <div class="duration-options" role="group" aria-label={L.duration()}>
-    <button class:selected={durationChoice === '10'} type="button" onclick={() => durationChoice = '10'}>10 {L.minutes_short()}</button>
-    <button class:selected={durationChoice === '20'} type="button" onclick={() => durationChoice = '20'}>20 {L.minutes_short()}</button>
-    <button class:selected={durationChoice === '30'} type="button" onclick={() => durationChoice = '30'}>30 {L.minutes_short()}</button>
-    <button class:selected={durationChoice === '60'} type="button" onclick={() => durationChoice = '60'}>1 {L.hour_short()}</button>
-    <button class:selected={durationChoice === '180'} type="button" onclick={() => durationChoice = '180'}>3 {L.hours_short()}</button>
-    <button class:selected={durationChoice === 'permanent'} type="button" onclick={() => durationChoice = 'permanent'}><i class="fa-solid fa-infinity"></i>{L.persistent()}</button>
+  <div class="create-chat-layout">
+    <label class="chat-name-field">
+      <span class="chat-name-content"><strong>{L.chat_name()}</strong><input class="input w-full" bind:value={roomName} maxlength="48" placeholder={L.chat_name_placeholder()} /></span>
+    </label>
+    <div class="duration-group">
+      <div class="create-duration-heading"><span><i class="fa-regular fa-clock"></i>{L.duration()}</span><small>{L.duration_hint()}</small></div>
+      <div class="duration-options" role="group" aria-label={L.duration()}>
+        <button class:selected={durationChoice === '10'} type="button" onclick={() => durationChoice = '10'}>10 {L.minutes_short()}</button>
+        <button class:selected={durationChoice === '20'} type="button" onclick={() => durationChoice = '20'}>20 {L.minutes_short()}</button>
+        <button class:selected={durationChoice === '30'} type="button" onclick={() => durationChoice = '30'}>30 {L.minutes_short()}</button>
+        <button class:selected={durationChoice === '60'} type="button" onclick={() => durationChoice = '60'}>1 {L.hour_short()}</button>
+        <button class:selected={durationChoice === '180'} type="button" onclick={() => durationChoice = '180'}>3 {L.hours_short()}</button>
+        <button class:selected={durationChoice === 'permanent'} type="button" onclick={() => durationChoice = 'permanent'}><i class="fa-solid fa-infinity"></i>{L.persistent()}</button>
+      </div>
+    </div>
   </div>
-  <p class="duration-note"><i class="fa-solid fa-circle-info"></i>{durationChoice === 'permanent' ? L.link_access() : L.expires_after_duration()}</p>
-  {#if !sessionStarted}
-    <button class="home-primary" disabled={startingSession || !durationValid || durationChoice === 'permanent' && !roomName.trim()} onclick={onStartSessionButtonClick}>
-      {#if startingSession}<span class="loading loading-spinner"></span>{/if}
-      <i class="fa-solid fa-play"></i>{L.create_chat()}
-    </button>
-  {/if}
+  <div class="create-chat-footer">
+    <p class="duration-note"><i class="fa-solid fa-circle-info"></i>{durationChoice === 'permanent' ? L.link_access() : L.expires_after_duration()}</p>
+    {#if !sessionStarted}
+      <button class="home-primary" disabled={startingSession || !durationValid || durationChoice === 'permanent' && !roomName.trim()} onclick={onStartSessionButtonClick}>
+        {#if startingSession}<span class="loading loading-spinner"></span>{/if}
+        <i class="fa-solid fa-arrow-right"></i>{L.create_chat()}
+      </button>
+    {/if}
+  </div>
 </div>

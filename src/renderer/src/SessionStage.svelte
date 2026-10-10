@@ -403,6 +403,7 @@
 <div class="call-shell" data-theme="business">
 <header class="call-header">
   <div class="call-brand"><span>a.</span><span>webo</span></div>
+  <div class="call-header-session"><span>{L.session_started()}</span><strong>{appState.sessionTitle || L.session_started()}</strong></div>
   {#if (appState.sessionSource === 'host' || appState.sessionSource === 'join') && appState.sessionExpiresAt}
     <div class="call-timer" role="timer" aria-live="off" title={L.expires_after_duration()}>
       <i class="fa-regular fa-clock"></i><span>{L.temporary_chat()}</span><strong>{remainingTime}</strong>
@@ -520,6 +521,7 @@
 
   </aside>
   <main class="call-stage">
+<div class="stage-heading"><div><span>{L.session_started()}</span><h1>{L.media()}</h1></div><span class="stage-peer-count"><i class="fa-solid fa-user-group"></i>{room.peers.length}</span></div>
 {#if !inviteLink && showInvite && inviteFormIsVisible}
   <div class="room-invite">
     <div class="room-invite-actions">
@@ -715,6 +717,7 @@
       {#if browserError}<p class="browser-link-error" role="alert">{browserError}</p>{/if}
     </form>
   {/if}
+  <div class="control-group">
   <button class:control-active={room.displayStreamActive} class="control-button" onclick={() => room.displayStreamActive ? onDisplayStreamToggle() : onChangeScreen()} aria-label={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}>
     <i class="fa-solid fa-display"></i><span>{L.share_your_screen()}</span>
   </button>
@@ -723,7 +726,8 @@
   {#if room.displayStreamActive}
     <button class="control-button compact" onclick={onChangeScreen} title={L.change_screen()} aria-label={L.change_screen()}><i class="fa-solid fa-arrows-rotate"></i></button>
   {/if}
-  <span class="control-separator"></span>
+  </div>
+  <div class="control-group">
   {#if inviteLink || showInvite}
     <button class="control-button" bind:this={inviteAnotherButton} onclick={onCopyInvite} aria-label={L.copy_my_connection_string()}>
       <i class="fa-solid fa-link"></i><span>{inviteAnotherTextLoading || L.copy_my_connection_string()}</span>
@@ -743,15 +747,19 @@
   <button class:control-active={room.cameraActive} class="control-button" onclick={onCameraToggle} aria-label={room.cameraActive ? L.camera_on() : L.camera_off()}>
     <i class="fa-solid {room.cameraActive ? 'fa-video' : 'fa-video-slash'}"></i><span>{L.camera()}</span>
   </button>
+  </div>
+  <div class="control-group">
   <button class:control-selected={chatOpen} class="control-button" onclick={onChatClick} aria-pressed={chatOpen}><i class="fa-solid fa-comment"></i><span>{L.chat()}</span></button>
   <button class:control-selected={participantsOpen} class="control-button" onclick={() => participantsOpen = !participantsOpen} aria-pressed={participantsOpen}>
     <i class="fa-solid fa-user-group"></i><span>{L.peer_list()}</span>
   </button>
-  <span class="control-separator"></span>
+  </div>
+  <div class="control-group control-group-danger">
   <button class="control-button control-danger" onclick={onLeaveClick}><i class="fa-solid fa-phone-slash"></i><span>{L.leave()}</span></button>
   {#if room.isCoordinator && appState.sessionSource !== 'channel'}
     <button class="control-button control-danger end-session" onclick={onEndSessionClick}><i class="fa-solid fa-power-off"></i><span>{L.end_session()}</span></button>
   {/if}
+  </div>
 </nav>
 
 {#if settingsOpen}
@@ -814,7 +822,10 @@
     letter-spacing: -0.05em;
   }
   .call-brand span:first-child { color: #05ad98; }
-  .call-timer { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 0.55rem; padding: 0.35rem 0.6rem; border: 1px solid var(--ui-border); border-radius: 0.55rem; background: var(--ui-raised); color: var(--ui-muted); font-size: 0.72rem; white-space: nowrap; }
+  .call-header-session { display: flex; flex: 1; flex-direction: column; min-width: 0; margin-left: 2rem; line-height: 1.25; }
+  .call-header-session span { color: var(--ui-muted); font-size: 0.65rem; }
+  .call-header-session strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.82rem; font-weight: 700; }
+  .call-timer { display: flex; align-items: center; gap: 0.55rem; padding: 0.35rem 0.6rem; border: 1px solid var(--ui-border); border-radius: 0.55rem; background: var(--ui-raised); color: var(--ui-muted); font-size: 0.72rem; white-space: nowrap; }
   .call-timer strong { color: var(--ui-text); font-variant-numeric: tabular-nums; font-size: 0.8rem; }
   .call-timer i { color: var(--ui-accent); }
   .header-settings {
@@ -831,8 +842,7 @@
     min-height: 0;
     display: grid;
     grid-template-columns: 15.5rem minmax(0, 1fr);
-    gap: 0.75rem;
-    padding: 0.8rem 0.8rem 0;
+    gap: 0;
   }
   .call-content.chat-open { grid-template-columns: 15.5rem minmax(0, 1fr) 20rem; }
   .call-content.sidebar-hidden { grid-template-columns: minmax(0, 1fr); }
@@ -840,12 +850,15 @@
   .sidebar-hidden .call-sidebar { display: none; }
   .call-sidebar {
     min-width: 0;
+    overflow-y: auto;
     padding: 1rem 0.85rem;
-    border: 1px solid var(--ui-border);
-    border-radius: 0.85rem;
+    border-right: 1px solid var(--ui-border);
     background: var(--ui-panel);
   }
   .sidebar-status { border-bottom: 1px solid var(--ui-border); padding-bottom: 0.9rem; margin-bottom: 0.9rem; }
+  .sidebar-status :global(.badge) { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 2.2rem; height: auto; padding: 0.45rem 0.6rem; border-radius: 0.45rem; white-space: normal; font-size: 0.72rem; line-height: 1.3; }
+  .sidebar-status :global(.badge-warning) { border-color: #6f5531; background: #322819; color: #f0cc88; }
+  .sidebar-status :global(.badge-error) { border-color: #674047; background: #2c1e22; color: #f0b7bd; }
   .call-sidebar h2 { font-size: 0.85rem; font-weight: 650; margin-bottom: 0.55rem; }
   .sidebar-members h2 { display: flex; justify-content: space-between; }
   .sidebar-members h2 span { font-size: 0.75rem; color: var(--ui-muted); }
@@ -900,16 +913,17 @@
   .call-stage {
     min-width: 0;
     min-height: 0;
-    padding: 0.8rem;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    border: 1px solid var(--ui-border);
-    border-radius: 0.85rem;
-    background: var(--ui-panel);
+    gap: 0.85rem;
     overflow: auto;
   }
-  .chat-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); overflow: hidden; }
+  .stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .stage-heading span { color: var(--ui-muted); font-size: 0.67rem; }
+  .stage-heading h1 { font-size: 0.95rem; font-weight: 700; }
+  .stage-peer-count { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.55rem; border: 1px solid var(--ui-border); border-radius: 0.45rem; background: var(--ui-panel); }
+  .chat-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--ui-border); background: var(--ui-panel); overflow: hidden; }
   .chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--ui-border); background: var(--ui-hatch), var(--ui-panel); }
   .chat-heading h2 { display: flex; align-items: center; gap: 0.55rem; font-size: 0.9rem; font-weight: 650; }
   .chat-heading h2 i { color: var(--ui-muted); font-size: 1rem; }
@@ -963,17 +977,16 @@
   .call-controls {
     position: relative;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.7rem;
     flex-wrap: wrap;
-    align-self: center;
-    margin: 0.7rem;
-    padding: 0.5rem 0.65rem;
-    border: 1px solid var(--ui-border);
-    border-radius: 0.85rem;
+    padding: 0.55rem 0.8rem;
+    border-top: 1px solid var(--ui-border);
     background: var(--ui-panel);
   }
+  .control-group { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+  .control-group-danger { margin-left: auto; }
   .control-button {
     display: inline-flex;
     align-items: center;
@@ -993,7 +1006,6 @@
   .control-button.control-active, .control-button.control-selected { border-color: #1e7669; background: var(--ui-accent-soft); color: #8fe2d5; }
   .control-button.control-danger { border-color: #684046; background: #311b20; color: #f0b7bd; }
   .control-button.control-danger:hover { border-color: #ad5b64; background: #472329; }
-  .control-separator { width: 1px; height: 1.6rem; background: var(--ui-border); margin: 0 0.1rem; }
   .screen-area {
     flex: 1;
     min-height: 22rem;
@@ -1001,7 +1013,7 @@
     flex-direction: column;
     justify-content: center;
     border: 1px solid var(--ui-border);
-    border-radius: 0.7rem;
+    border-radius: 0.55rem;
     background: var(--ui-input);
     overflow: auto;
   }
@@ -1030,7 +1042,7 @@
     min-height: 0;
     padding: 0.6rem;
     border: 1px solid var(--ui-border);
-    border-radius: 0.65rem;
+    border-radius: 0.5rem;
     background: var(--ui-panel);
     display: flex;
     flex-direction: column;
@@ -1140,13 +1152,13 @@
   }
   @media (max-width: 700px) {
     .call-header { padding: 0.6rem 1rem; }
+    .call-header-session { margin-left: 0.75rem; }
     .call-timer span { display: none; }
     .call-content { grid-template-columns: 1fr; }
     .call-content.chat-open, .call-content.sidebar-hidden.chat-open { grid-template-columns: 1fr; overflow-y: auto; }
-    .call-sidebar { max-height: 16rem; overflow: auto; }
-    .chat-panel { min-height: 20rem; max-height: 25rem; }
-    .call-controls { gap: 0.4rem; margin: 0.6rem; }
-    .control-separator { display: none; }
+    .call-sidebar { max-height: 16rem; border-right: 0; border-bottom: 1px solid var(--ui-border); }
+    .chat-panel { min-height: 20rem; max-height: 25rem; border-left: 0; border-top: 1px solid var(--ui-border); }
+    .call-controls { gap: 0.4rem; }
     .room-invite-actions { flex-direction: column; }
     .call-stage { padding: 0.7rem; }
     .room-invite { padding: 0.8rem; }

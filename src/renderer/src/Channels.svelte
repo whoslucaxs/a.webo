@@ -286,10 +286,7 @@
 </script>
 
 <div class="channel-list">
-  <div class="channel-list-heading">
-    <span class="channel-heading-icon"><i class="fa-solid fa-hashtag"></i></span>
-    <div><h2>{L.permanent_channels()}</h2><p>{L.permanent_channel_description()}</p></div>
-  </div>
+  <div class="panel-heading"><span><i class="fa-solid fa-hashtag"></i>{L.permanent_channels()}</span><small>{L.permanent_channel_description()}</small></div>
   <div id="saved-channels" class="saved-channels">
     {#if channels.length}
       {#each channels as channel (channel.link)}

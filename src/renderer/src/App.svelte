@@ -93,13 +93,20 @@
     <div class={hideHome ? 'hidden' : ''}>
       {#if appState.activeView === 'home'}
         <main class="home-page" data-theme="business">
-          <HomeProfile />
+          <aside class="home-sidebar">
+            <nav class="home-navigation" aria-label="a.webo">
+              <span class="home-nav-label">a.webo</span>
+              <a href="#create-channel"><i class="fa-solid fa-plus"></i>{L.create_audio_chat()}</a>
+              <a href="#saved-channels"><i class="fa-solid fa-hashtag"></i>{L.permanent_channels()}</a>
+              <a href="#join-channel"><i class="fa-solid fa-arrow-right-to-bracket"></i>{L.join_a_session()}</a>
+            </nav>
+            <HomeProfile />
+          </aside>
           <div class="home-workspace">
-            <section class="create-panel"><Host onPermanentCreate={(name) => channelsComponent!.create(name)} /></section>
-            <section class="channels-panel">
-              <Channels bind:this={channelsComponent} />
-              <div class="join-link-panel"><h3>{L.join_a_session()}</h3><Join compact onChannelJoin={(url) => void channelsComponent?.join(url)} /></div>
-            </section>
+            <header class="workspace-heading"><div><span class="workspace-eyebrow">a.webo / {L.home()}</span><h1>{L.create_audio_chat()}</h1><p>{L.create_audio_chat_description()}</p></div><span class="workspace-heading-mark" aria-hidden="true"><i class="fa-solid fa-wave-square"></i></span></header>
+            <section id="create-channel" class="create-panel"><Host onPermanentCreate={(name) => channelsComponent!.create(name)} /></section>
+            <section class="channels-panel"><Channels bind:this={channelsComponent} /></section>
+            <section id="join-channel" class="join-link-panel"><div class="panel-heading"><span><i class="fa-solid fa-arrow-right-to-bracket"></i>{L.join_a_session()}</span></div><div class="join-link-content"><p>{L.join_existing_description()}</p><Join compact onChannelJoin={(url) => void channelsComponent?.join(url)} /></div></section>
           </div>
         </main>
       {:else if appState.activeView === 'settings'}

@@ -121,13 +121,13 @@
 
 <div class="settings-page" data-theme="business">
   <div class="settings-shell">
-    <aside class="settings-menu">
-      <h1>{L.settings()}</h1>
+    <header class="settings-heading"><span>a.webo / {L.settings()}</span><h1>{L.settings()}</h1></header>
+    <nav class="settings-menu" aria-label={L.settings()}>
       <a href="#profile"><i class="fa-solid fa-user"></i> {L.basic()}</a>
       <a href="#media"><i class="fa-solid fa-video"></i> {L.media()}</a>
       <a href="#connection"><i class="fa-solid fa-link"></i> {L.room_server_url()}</a>
       <a href="#advanced"><i class="fa-solid fa-sliders"></i> {L.advanced()}</a>
-    </aside>
+    </nav>
 
     <form class="settings-content" onsubmit={save}>
       <section id="profile" class="settings-card">
@@ -218,11 +218,13 @@
         {/if}
       </section>
 
-      <button class="btn settings-save" type="submit" disabled={!usernameValid || !savedSettings || saving}>
-        {#if saving}<span class="loading loading-spinner loading-sm"></span>{/if}
-        {L.save()}
-      </button>
-      {#if appVersion}<p class="settings-version">a.webo v{appVersion}</p>{/if}
+      <div class="settings-actions">
+        {#if appVersion}<p class="settings-version">a.webo v{appVersion}</p>{/if}
+        <button class="btn settings-save" type="submit" disabled={!usernameValid || !savedSettings || saving}>
+          {#if saving}<span class="loading loading-spinner loading-sm"></span>{/if}
+          {L.save()}
+        </button>
+      </div>
     </form>
   </div>
 </div>
@@ -230,14 +232,16 @@
 <style>
   .settings-page { min-height: calc(100vh - 3.65rem); background: var(--ui-grid), var(--ui-bg); background-size: 44px 44px; color: var(--ui-text); }
   :global(dialog) .settings-page { min-height: 0; }
-  .settings-shell { max-width: 72rem; margin: 0 auto; padding: 1.25rem; display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 1rem; }
-  .settings-menu { position: sticky; top: 1rem; align-self: start; display: flex; flex-direction: column; gap: 0.25rem; padding: 1rem; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); }
-  .settings-menu h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.035em; margin-bottom: 0.65rem; }
-  .settings-menu a { display: flex; align-items: center; gap: 0.65rem; padding: 0.62rem 0.7rem; border: 1px solid transparent; border-radius: 0.55rem; color: var(--ui-muted); font-size: 0.78rem; }
+  .settings-shell { max-width: 68rem; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem); display: flex; flex-direction: column; gap: 1rem; }
+  .settings-heading { padding: 0.25rem 0 0.4rem; }
+  .settings-heading span { color: var(--ui-accent); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; }
+  .settings-heading h1 { margin-top: 0.35rem; font-size: 2rem; font-weight: 750; letter-spacing: -0.05em; }
+  .settings-menu { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem; padding: 0.35rem; border: 1px solid var(--ui-border); border-radius: 0.65rem; background: var(--ui-panel); }
+  .settings-menu a { display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0.75rem; border: 1px solid transparent; border-radius: 0.45rem; color: var(--ui-muted); font-size: 0.75rem; }
   .settings-menu a:hover, .settings-menu a:focus-visible { border-color: var(--ui-border); background: var(--ui-raised); color: var(--ui-text); }
   .settings-menu a i { color: var(--ui-muted); }
-  .settings-content { display: flex; flex-direction: column; gap: 0.8rem; min-width: 0; }
-  .settings-card { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); scroll-margin-top: 1rem; }
+  .settings-content { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 0.9rem; min-width: 0; }
+  .settings-card { display: flex; flex-direction: column; gap: 1rem; min-width: 0; padding: 1rem; border: 1px solid var(--ui-border); border-radius: 0.75rem; background: var(--ui-panel); scroll-margin-top: 1rem; }
   .settings-card h2 { margin: -1rem -1rem 0; padding: 0.65rem 1rem; border-bottom: 1px solid var(--ui-border); border-radius: 0.85rem 0.85rem 0 0; background: var(--ui-hatch), var(--ui-panel); font-size: 0.9rem; font-weight: 650; }
   .settings-field { display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.8rem; font-weight: 600; }
   .settings-field :global(.input), .settings-field :global(.select) { height: 2.7rem; border: 1px solid var(--ui-border); border-radius: 0.55rem; background: var(--ui-input); color: var(--ui-text); font-weight: 400; }
@@ -258,13 +262,14 @@
   .settings-photo-button:hover { border-color: var(--ui-border-hover); background: #252929; }
   .settings-remove-photo { color: var(--ui-muted); }
   .settings-remove-photo:hover { color: var(--ui-text); background: var(--ui-raised); }
-  .settings-save { align-self: flex-end; min-width: 7rem; min-height: 2.7rem; border: 1px solid var(--ui-accent); border-radius: 0.55rem; background: var(--ui-accent); color: #061917; font-size: 0.85rem; font-weight: 700; }
+  .settings-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.6rem 0; }
+  .settings-save { min-width: 7rem; min-height: 2.7rem; border: 1px solid var(--ui-accent); border-radius: 0.55rem; background: var(--ui-accent); color: #061917; font-size: 0.85rem; font-weight: 700; }
   .settings-save:hover { background: #0bc5ad; }
   .settings-save:disabled { opacity: 0.5; cursor: default; filter: none; }
-  .settings-version { margin: 0.25rem 0 0; color: var(--ui-muted); font-size: 0.75rem; text-align: center; }
+  .settings-version { color: var(--ui-muted); font-size: 0.75rem; }
   @media (max-width: 700px) {
-    .settings-shell { grid-template-columns: 1fr; padding: 0.75rem; gap: 0.75rem; }
-    .settings-menu { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; }
-    .settings-menu h1 { width: 100%; margin-bottom: 0; }
+    .settings-shell { padding: 0.75rem; gap: 0.75rem; }
+    .settings-content { grid-template-columns: 1fr; }
+    .settings-actions { grid-column: 1; }
   }
 </style>
