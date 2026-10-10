@@ -36,7 +36,6 @@
   let username = $state('')
   let inviteInFlight = false
   let inviteFormIsVisible = $state(false)
-  let participantsOpen = $state(true)
   let chatOpen = $state(false)
   let chatDraft = $state('')
   let attachmentSending = $state(false)
@@ -65,6 +64,7 @@
   const pendingBrowsers = $derived(room.availableBrowsers.filter((browser) =>
     !room.browserShares.some((share) => share.peerId === browser.peerId),
   ))
+  const hasMedia = $derived(room.displayStreamActive || room.browserActive || room.cameraActive || room.screenShares.length > 0 || room.cameraShares.length > 0 || room.browserShares.length > 0 || browserPanelOpen || pendingScreens.length > 0 || pendingBrowsers.length > 0)
   const showVideo = $derived(Boolean(presenterShare))
   const videoClass = $derived(room.sessionEndedReason ? 'video video-ended' : 'video')
   const showBrokenVideo = $derived(!room.remoteScreenActive)
@@ -149,9 +149,7 @@
   }
 
   $effect(() => {
-    if (remoteScreen) {
-      room.setRemoteVideo(remoteScreen)
-    }
+    room.setRemoteVideo(remoteScreen ?? null)
   })
 
   $effect(() => {
@@ -414,8 +412,7 @@
   </button>
 </header>
 
-<div class:sidebar-hidden={!participantsOpen} class:chat-open={chatOpen} class="call-content">
-<aside class="call-sidebar" aria-label={L.peer_list()}>
+<div class="call-notices">
 
 {#if room.presenterGone && !room.isPresenter && !room.sessionEndedReason}
   <div class="alert alert-warning mb-4">{L.presenter_left()}</div>
@@ -426,7 +423,7 @@
 {/if}
 
 <div class="sidebar-status">
-  <h2>{L.session_started()}</h2>
+
   {#if room.e2eeActive && room.mediaE2eeActive}
     {#if room.verification}
       <details class="verification" name="e2ee-verification">
@@ -484,44 +481,9 @@
   {/if}
 </div>
 
-<div class="sidebar-members">
-  <h2>{L.peer_list()} <span>{room.peers.length}</span></h2>
-  <div class="member-list">
-    {#each room.peers as peer (peer.id)}
-      <div class="member-row">
-        <span class="member-avatar-wrap">
-          {#if peer.avatar}
-            <img class="member-avatar" src={peer.avatar} alt="" />
-          {:else}
-            <span class="member-avatar" style:background={peer.backgroundColor} style:color={peer.foregroundColor}>
-              {peer.username.trim().charAt(0).toUpperCase() || '?'}
-            </span>
-          {/if}
-          <span class="member-online"></span>
-        </span>
-        <span class="member-name" title={peer.username}>
-          {peer.username}{peer.id === room.localPeerId ? ` (${L.you()})` : ''}
-        </span>
-        {#if peer.id === room.coordinatorId}<i class="member-role fa-solid fa-crown" title={L.coordinator()}></i>{/if}
-        {#if peer.id === room.presenterId}<i class="member-role fa-solid fa-display" title={L.presenter()}></i>{/if}
-        {#if peer.id !== room.localPeerId}
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs"
-            title={L.remove_from_session()}
-            aria-label={L.remove_from_session()}
-            disabled={Boolean(room.activeVote) || !room.canRequestKick(peer.id)}
-            onclick={() => onRequestKick(peer.id)}
-          ><i class="fa-solid fa-user-minus"></i></button>
-        {/if}
-      </div>
-    {/each}
-  </div>
 </div>
-
-  </aside>
+<div class:chat-open={chatOpen} class="call-content">
   <main class="call-stage">
-<div class="stage-heading"><div><span>{L.session_started()}</span><h1>{L.media()}</h1></div><span class="stage-peer-count"><i class="fa-solid fa-user-group"></i>{room.peers.length}</span></div>
 {#if !inviteLink && showInvite && inviteFormIsVisible}
   <div class="room-invite">
     <div class="room-invite-actions">
@@ -531,8 +493,9 @@
     </div>
   </div>
 {/if}
+{#if hasMedia}
 <div class="screen-area">
-<div class:has-media={room.screenShares.length > 0 || room.cameraShares.length > 0 || room.browserShares.length > 0 || browserPanelOpen || pendingScreens.length > 0 || pendingBrowsers.length > 0} class="screen-grid">
+<div class:has-media={hasMedia} class="screen-grid">
 <div class={showVideo ? '' : 'hidden'}>
   <fieldset class="fieldset px-0 min-w-0">
     <legend class="fieldset-legend">{presenterShare?.name ?? L.remote_screen()}</legend>
@@ -659,13 +622,30 @@
   </fieldset>
 {/each}
 </div>
-{#if room.screenShares.length === 0 && room.cameraShares.length === 0 && room.browserShares.length === 0 && !browserPanelOpen && pendingScreens.length === 0 && pendingBrowsers.length === 0}
-  <div class="call-empty">
-    <i class="fa-solid fa-display"></i>
-    <p>{L.not_streaming_your_display()}</p>
-    <button class="invite-copy" onclick={onChangeScreen}><i class="fa-solid fa-display"></i> {L.share_your_screen()}</button>
-  </div>
+</div>
 {/if}
+<div class:compact={hasMedia} class="participant-gallery" style={`--tile-columns: ${Math.max(1, Math.ceil(Math.sqrt(room.peers.length)))}`} aria-label={L.peer_list()}>
+  {#each room.peers as peer (peer.id)}
+    <article class="participant-tile" style:background={`color-mix(in srgb, ${peer.backgroundColor} 26%, #252729)`} title={peer.username}>
+      <span class="participant-avatar">
+        {#if peer.avatar}
+          <img src={peer.avatar} alt="" />
+        {:else}
+          <span style:background={peer.backgroundColor} style:color={peer.foregroundColor}>{peer.username.trim().charAt(0).toUpperCase() || '?'}</span>
+        {/if}
+      </span>
+      <span class="participant-name">{peer.username}{peer.id === room.localPeerId ? ` (${L.you()})` : ''}</span>
+      <span class="participant-roles">
+        {#if peer.id === room.coordinatorId}<i class="fa-solid fa-crown" title={L.coordinator()}></i>{/if}
+        {#if peer.id === room.presenterId}<i class="fa-solid fa-display" title={L.presenter()}></i>{/if}
+      </span>
+      {#if peer.id !== room.localPeerId && !room.activeVote && room.canRequestKick(peer.id)}
+        <button type="button" class="participant-kick" title={L.remove_from_session()} aria-label={`${L.remove_from_session()}: ${peer.username}`} onclick={() => onRequestKick(peer.id)}><i class="fa-solid fa-user-minus"></i></button>
+      {/if}
+    </article>
+  {:else}
+    <div class="participant-empty">{L.connecting_to_session()}</div>
+  {/each}
 </div>
   </main>
   {#if chatOpen}
@@ -718,10 +698,10 @@
     </form>
   {/if}
   <div class="control-group">
-  <button class:control-active={room.displayStreamActive} class="control-button" onclick={() => room.displayStreamActive ? onDisplayStreamToggle() : onChangeScreen()} aria-label={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}>
+  <button class:control-active={room.displayStreamActive} class="control-button" onclick={() => room.displayStreamActive ? onDisplayStreamToggle() : onChangeScreen()} aria-label={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()} title={room.displayStreamActive ? L.streaming_your_display() : L.share_your_screen()}>
     <i class="fa-solid fa-display"></i><span>{L.share_your_screen()}</span>
   </button>
-  <button class:control-active={room.browserActive} class="control-button" onclick={() => browserPanelOpen = !browserPanelOpen} aria-label={L.share_browser_page()}><i class="fa-solid fa-globe"></i><span>{room.browserActive ? L.change_browser_link() : L.share_browser_page()}</span></button>
+  <button class:control-active={room.browserActive} class="control-button" onclick={() => browserPanelOpen = !browserPanelOpen} aria-label={L.share_browser_page()} title={room.browserActive ? L.change_browser_link() : L.share_browser_page()}><i class="fa-solid fa-globe"></i><span>{room.browserActive ? L.change_browser_link() : L.share_browser_page()}</span></button>
   {#if room.browserActive}<button class="control-button compact" onclick={() => void onStopBrowser()} title={L.stop_browser_share()} aria-label={L.stop_browser_share()}><i class="fa-solid fa-xmark"></i></button>{/if}
   {#if room.displayStreamActive}
     <button class="control-button compact" onclick={onChangeScreen} title={L.change_screen()} aria-label={L.change_screen()}><i class="fa-solid fa-arrows-rotate"></i></button>
@@ -729,12 +709,12 @@
   </div>
   <div class="control-group">
   {#if inviteLink || showInvite}
-    <button class="control-button" bind:this={inviteAnotherButton} onclick={onCopyInvite} aria-label={L.copy_my_connection_string()}>
+    <button class="control-button" bind:this={inviteAnotherButton} onclick={onCopyInvite} aria-label={L.copy_my_connection_string()} title={L.copy_my_connection_string()}>
       <i class="fa-solid fa-link"></i><span>{inviteAnotherTextLoading || L.copy_my_connection_string()}</span>
     </button>
   {/if}
   {#if room.hasAudioInput}
-    <button class:control-active={room.microphoneActive} class="control-button" onclick={onMicrophoneToggle} aria-label={room.microphoneActive ? L.microphone_active() : L.microphone_inactive()}>
+    <button class:control-active={room.microphoneActive} class="control-button" onclick={onMicrophoneToggle} aria-label={room.microphoneActive ? L.microphone_active() : L.microphone_inactive()} title={room.microphoneActive ? L.microphone_active() : L.microphone_inactive()}>
       <span class="mic-btn-icon">
         {#if room.microphoneActive}
           <AudioVisualizer className={visualizerIsActive ? '' : 'hidden'} bind:visualizerIsActive stream={room.GetAudioStream()} />
@@ -744,20 +724,17 @@
       <span>{L.microphone_device()}</span>
     </button>
   {/if}
-  <button class:control-active={room.cameraActive} class="control-button" onclick={onCameraToggle} aria-label={room.cameraActive ? L.camera_on() : L.camera_off()}>
+  <button class:control-active={room.cameraActive} class="control-button" onclick={onCameraToggle} aria-label={room.cameraActive ? L.camera_on() : L.camera_off()} title={room.cameraActive ? L.camera_on() : L.camera_off()}>
     <i class="fa-solid {room.cameraActive ? 'fa-video' : 'fa-video-slash'}"></i><span>{L.camera()}</span>
   </button>
   </div>
   <div class="control-group">
-  <button class:control-selected={chatOpen} class="control-button" onclick={onChatClick} aria-pressed={chatOpen}><i class="fa-solid fa-comment"></i><span>{L.chat()}</span></button>
-  <button class:control-selected={participantsOpen} class="control-button" onclick={() => participantsOpen = !participantsOpen} aria-pressed={participantsOpen}>
-    <i class="fa-solid fa-user-group"></i><span>{L.peer_list()}</span>
-  </button>
+  <button class:control-selected={chatOpen} class="control-button" onclick={onChatClick} aria-pressed={chatOpen} aria-label={L.chat()} title={L.chat()}><i class="fa-solid fa-comment"></i><span>{L.chat()}</span></button>
   </div>
   <div class="control-group control-group-danger">
-  <button class="control-button control-danger" onclick={onLeaveClick}><i class="fa-solid fa-phone-slash"></i><span>{L.leave()}</span></button>
+  <button class="control-button control-danger" onclick={onLeaveClick} aria-label={L.leave()} title={L.leave()}><i class="fa-solid fa-phone-slash"></i><span>{L.leave()}</span></button>
   {#if room.isCoordinator && appState.sessionSource !== 'channel'}
-    <button class="control-button control-danger end-session" onclick={onEndSessionClick}><i class="fa-solid fa-power-off"></i><span>{L.end_session()}</span></button>
+    <button class="control-button control-danger end-session" onclick={onEndSessionClick} aria-label={L.end_session()} title={L.end_session()}><i class="fa-solid fa-power-off"></i><span>{L.end_session()}</span></button>
   {/if}
   </div>
 </nav>
@@ -837,31 +814,20 @@
     padding: 0.2rem 0.4rem;
   }
   .header-settings:hover { color: var(--ui-accent); }
+  .call-notices { position: relative; z-index: 3; display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; min-height: 2.6rem; padding: 0.25rem 0.8rem; border-bottom: 1px solid var(--ui-border); background: var(--ui-panel); }
+  .call-notices > :global(.alert) { width: auto; min-height: 1.9rem; margin: 0; padding: 0.25rem 0.6rem; font-size: 0.72rem; }
   .call-content {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 15.5rem minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 0;
   }
-  .call-content.chat-open { grid-template-columns: 15.5rem minmax(0, 1fr) 20rem; }
-  .call-content.sidebar-hidden { grid-template-columns: minmax(0, 1fr); }
-  .call-content.sidebar-hidden.chat-open { grid-template-columns: minmax(0, 1fr) 20rem; }
-  .sidebar-hidden .call-sidebar { display: none; }
-  .call-sidebar {
-    min-width: 0;
-    overflow-y: auto;
-    padding: 1rem 0.85rem;
-    border-right: 1px solid var(--ui-border);
-    background: var(--ui-panel);
-  }
-  .sidebar-status { border-bottom: 1px solid var(--ui-border); padding-bottom: 0.9rem; margin-bottom: 0.9rem; }
-  .sidebar-status :global(.badge) { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 2.2rem; height: auto; padding: 0.45rem 0.6rem; border-radius: 0.45rem; white-space: normal; font-size: 0.72rem; line-height: 1.3; }
+  .call-content.chat-open { grid-template-columns: minmax(0, 1fr) 20rem; }
+  .sidebar-status { margin-left: auto; }
+  .sidebar-status :global(.badge) { display: flex; align-items: center; gap: 0.4rem; width: auto; min-height: 1.9rem; height: auto; padding: 0.25rem 0.6rem; border-radius: 0.45rem; white-space: normal; font-size: 0.72rem; line-height: 1.3; }
   .sidebar-status :global(.badge-warning) { border-color: #6f5531; background: #322819; color: #f0cc88; }
   .sidebar-status :global(.badge-error) { border-color: #674047; background: #2c1e22; color: #f0b7bd; }
-  .call-sidebar h2 { font-size: 0.85rem; font-weight: 650; margin-bottom: 0.55rem; }
-  .sidebar-members h2 { display: flex; justify-content: space-between; }
-  .sidebar-members h2 span { font-size: 0.75rem; color: var(--ui-muted); }
   .status-pill {
     display: inline-flex;
     align-items: center;
@@ -875,54 +841,31 @@
     cursor: pointer;
   }
   .status-pill i { color: var(--ui-accent); }
-  .verification-content { margin-top: 0.8rem; font-size: 0.7rem; overflow-wrap: anywhere; }
-  .member-list { display: flex; flex-direction: column; gap: 0.35rem; }
-  .member-row {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    padding: 0.45rem;
-    border: 1px solid var(--ui-border);
-    border-radius: 0.55rem;
-    background: var(--ui-input);
-  }
-  .member-avatar-wrap { position: relative; flex: none; }
-  .member-avatar {
-    width: 2.45rem;
-    height: 2.45rem;
-    flex: none;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    font-size: 0.95rem;
-    font-weight: 700;
-    object-fit: cover;
-  }
-  .member-online { position: absolute; right: -0.1rem; bottom: 0; width: 0.65rem; height: 0.65rem; border: 2px solid var(--ui-input); border-radius: 50%; background: var(--ui-accent); }
-  .member-name {
-    min-width: 0;
-    flex: 1;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-size: 0.77rem;
-    font-weight: 600;
-  }
-  .member-role { color: var(--ui-muted); font-size: 0.8rem; }
+  .verification { position: relative; }
+  .verification-content { position: absolute; top: 100%; right: 0; z-index: 5; width: min(28rem, calc(100vw - 2rem)); max-height: 15rem; overflow: auto; margin-top: 0.4rem; padding: 0.7rem; border: 1px solid var(--ui-border); border-radius: 0.55rem; background: var(--ui-panel); box-shadow: 0 1rem 2rem #0008; font-size: 0.7rem; overflow-wrap: anywhere; }
   .call-stage {
     min-width: 0;
     min-height: 0;
-    padding: 1rem;
+    padding: 0.65rem;
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0.5rem;
     overflow: auto;
   }
-  .stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-  .stage-heading span { color: var(--ui-muted); font-size: 0.67rem; }
-  .stage-heading h1 { font-size: 0.95rem; font-weight: 700; }
-  .stage-peer-count { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.55rem; border: 1px solid var(--ui-border); border-radius: 0.45rem; background: var(--ui-panel); }
+  .participant-gallery { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--tile-columns), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 0.35rem; overflow: auto; }
+  .participant-tile { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 8rem; border: 1px solid #ffffff12; border-radius: 0.4rem; overflow: hidden; }
+  .participant-avatar, .participant-avatar img, .participant-avatar > span { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; border-radius: 50%; object-fit: cover; }
+  .participant-avatar > span { font-size: 1.8rem; font-weight: 700; }
+  .participant-name { position: absolute; bottom: 0.65rem; left: 0.75rem; max-width: calc(100% - 3rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; font-size: 0.78rem; font-weight: 700; text-shadow: 0 1px 3px #000a; }
+  .participant-roles { position: absolute; right: 0.75rem; bottom: 0.65rem; display: flex; gap: 0.45rem; color: #fff; font-size: 0.7rem; }
+  .participant-kick { position: absolute; top: 0.6rem; right: 0.6rem; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border: 1px solid #ffffff40; border-radius: 0.4rem; background: #111b; color: #fff; cursor: pointer; opacity: 0; }
+  .participant-tile:hover .participant-kick, .participant-kick:focus-visible { opacity: 1; }
+  .participant-empty { grid-column: 1 / -1; display: grid; place-items: center; color: var(--ui-muted); font-size: 0.82rem; }
+  .participant-gallery.compact { flex: none; display: flex; align-items: center; justify-content: center; gap: 0.45rem; min-height: 3.5rem; overflow-x: auto; overflow-y: hidden; }
+  .participant-gallery.compact .participant-tile { flex: none; width: 3rem; height: 3rem; min-height: 0; border-radius: 50%; background: transparent !important; overflow: visible; }
+  .participant-gallery.compact .participant-avatar, .participant-gallery.compact .participant-avatar img, .participant-gallery.compact .participant-avatar > span { width: 2.5rem; height: 2.5rem; font-size: 1rem; }
+  .participant-gallery.compact .participant-name, .participant-gallery.compact .participant-roles { display: none; }
+  .participant-gallery.compact .participant-kick { top: -0.2rem; right: -0.3rem; width: 1.3rem; height: 1.3rem; border-radius: 50%; font-size: 0.55rem; }
   .chat-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--ui-border); background: var(--ui-panel); overflow: hidden; }
   .chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--ui-border); background: var(--ui-hatch), var(--ui-panel); }
   .chat-heading h2 { display: flex; align-items: center; gap: 0.55rem; font-size: 0.9rem; font-weight: 650; }
@@ -977,31 +920,36 @@
   .call-controls {
     position: relative;
     display: flex;
-    justify-content: space-between;
+    align-self: center;
+    justify-content: center;
     align-items: center;
-    gap: 0.7rem;
+    gap: 0.35rem;
     flex-wrap: wrap;
-    padding: 0.55rem 0.8rem;
-    border-top: 1px solid var(--ui-border);
+    max-width: calc(100vw - 1rem);
+    margin: 0.35rem auto 0.6rem;
+    padding: 0.35rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 1.5rem;
     background: var(--ui-panel);
   }
-  .control-group { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
-  .control-group-danger { margin-left: auto; }
+  .control-group { display: flex; align-items: center; gap: 0.25rem; min-width: 0; }
+  .control-group-danger { margin-left: 0.25rem; padding-left: 0.5rem; border-left: 1px solid var(--ui-border); }
   .control-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.45rem;
-    min-height: 2.55rem;
-    padding: 0.5rem 0.7rem;
+    flex: none;
+    width: 2.35rem;
+    height: 2.35rem;
+    padding: 0;
     border: 1px solid var(--ui-border);
-    border-radius: 0.55rem;
+    border-radius: 50%;
     background: var(--ui-raised);
     color: var(--ui-text);
-    font-size: 0.76rem;
     cursor: pointer;
   }
-  .control-button i { font-size: 0.95rem; }
+  .control-button > span:not(.mic-btn-icon) { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .control-button i { font-size: 0.92rem; }
   .control-button:hover { border-color: var(--ui-border-hover); background: #252929; }
   .control-button.control-active, .control-button.control-selected { border-color: #1e7669; background: var(--ui-accent-soft); color: #8fe2d5; }
   .control-button.control-danger { border-color: #684046; background: #311b20; color: #f0b7bd; }
@@ -1017,18 +965,6 @@
     background: var(--ui-input);
     overflow: auto;
   }
-  .call-empty {
-    min-height: 22rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1.1rem;
-    color: var(--ui-muted);
-    text-align: center;
-  }
-  .call-empty > i { font-size: 2.8rem; color: #737f7b; }
-  .call-empty p { font-size: 0.85rem; }
   .screen-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
@@ -1144,19 +1080,14 @@
   .settings-dialog { position: relative; width: min(72rem, 100%); max-height: min(90vh, 52rem); overflow: auto; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); }
   .settings-close { position: sticky; top: 0.75rem; float: right; z-index: 2; margin: 0.75rem; width: 2rem; height: 2rem; border: 1px solid var(--ui-border); border-radius: 0.5rem; background: var(--ui-raised); color: var(--ui-text); cursor: pointer; }
   @media (max-width: 900px) {
-    .call-content { grid-template-columns: 12rem minmax(0, 1fr); }
-    .call-content.chat-open { grid-template-columns: 12rem minmax(0, 1fr) 18rem; }
-    .call-content.sidebar-hidden.chat-open { grid-template-columns: minmax(0, 1fr) 18rem; }
-    .control-button { padding: 0.6rem; }
-    .control-button span:not(.mic-btn-icon) { font-size: 0.7rem; }
+    .call-content.chat-open { grid-template-columns: minmax(0, 1fr) 18rem; }
   }
   @media (max-width: 700px) {
     .call-header { padding: 0.6rem 1rem; }
     .call-header-session { margin-left: 0.75rem; }
     .call-timer span { display: none; }
     .call-content { grid-template-columns: 1fr; }
-    .call-content.chat-open, .call-content.sidebar-hidden.chat-open { grid-template-columns: 1fr; overflow-y: auto; }
-    .call-sidebar { max-height: 16rem; border-right: 0; border-bottom: 1px solid var(--ui-border); }
+    .call-content.chat-open { grid-template-columns: 1fr; overflow-y: auto; }
     .chat-panel { min-height: 20rem; max-height: 25rem; border-left: 0; border-top: 1px solid var(--ui-border); }
     .call-controls { gap: 0.4rem; }
     .room-invite-actions { flex-direction: column; }
