@@ -1,6 +1,14 @@
 import type { BaseTranslation } from '../i18n-types'
 
 const pt_br = {
+  video_codec: 'Codec de vídeo',
+  video_codec_description: 'Codec preferido para a próxima chamada. Usa outro se o participante não oferecer suporte.',
+  share_page_audio: 'Compartilhar áudio da página',
+  resolution: 'Resolução',
+  frame_rate: 'Taxa de quadros',
+  bitrate: 'Bitrate',
+  native_resolution: 'Nativa',
+  automatic: 'Automático',
   about: 'Sobre',
   advanced: 'Avançado',
   basic: 'Básico',

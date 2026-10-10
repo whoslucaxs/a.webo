@@ -54,6 +54,7 @@ const KiwiApi = {
     debugLogsEnabled: boolean
     cameraDeviceId: string
     microphoneDeviceId: string
+    videoCodec: 'AV1' | 'VP9' | 'VP8' | 'H264'
     iceServers: IceServer[]
   }> => {
     return await ipcRenderer.invoke('getSettings')

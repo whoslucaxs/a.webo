@@ -25,6 +25,7 @@ import type { MediaE2EE } from '../crypto/mediaE2ee'
 import type { MediaStreamIdentity } from '../crypto/roomCrypto'
 import type { AudioProfile, CameraProfile, ScreenProfile } from './adaptive/types'
 import { scaleResolutionDownBy } from './adaptive/qualityProfiles'
+import type { VideoCodec } from '../../../shared/videoCodec'
 
 export type PeerLinkEvents = {
   onControl: (msg: ControlMessage) => void
@@ -35,6 +36,8 @@ export type PeerLinkEvents = {
   onNegotiationOffer: (sdp: RTCSessionDescriptionInit) => void
   onMlsOpen?: () => void
   onMlsFrame?: (frame: MlsFrame) => void
+  onBrowserPcm?: (packet: ArrayBuffer) => void
+  onBrowserPcmReady?: () => void
   onIceCandidate?: (candidate: RTCIceCandidateInit | null) => void
 }
 
@@ -48,6 +51,7 @@ type PeerLinkOptions = {
   mediaE2ee?: MediaE2EE | null
   requireMediaE2ee?: boolean
   keepRoutableIpv6?: boolean
+  videoCodec?: VideoCodec
 }
 
 export class PeerLink {
@@ -59,6 +63,7 @@ export class PeerLink {
   established = false
   private control: RTCDataChannel | null = null
   private mls: RTCDataChannel | null = null
+  private browserPcm: RTCDataChannel | null = null
   private readonly events: PeerLinkEvents
   private makingOffer = false
   private ignoreOffer = false
@@ -70,6 +75,7 @@ export class PeerLink {
   private cameraSender: RTCRtpSender | null = null
   private browserVideoSender: RTCRtpSender | null = null
   private browserAudioSender: RTCRtpSender | null = null
+  private browserPcmReady = false
   private browserUpdate: Promise<void> = Promise.resolve()
   private mediaE2ee: MediaE2EE | null
   private requireMediaE2ee: boolean
@@ -85,6 +91,7 @@ export class PeerLink {
   private readonly serverErrors: IceServerError[] = []
   private gatheringTimedOut = false
   private readonly keepRoutableIpv6: boolean
+  private readonly videoCodec: VideoCodec
   private remoteOfferHasUsableIpv6 = false
 
   constructor(opts: PeerLinkOptions) {
@@ -95,6 +102,7 @@ export class PeerLink {
     this.mediaE2ee = opts.mediaE2ee ?? null
     this.requireMediaE2ee = Boolean(opts.requireMediaE2ee)
     this.keepRoutableIpv6 = opts.keepRoutableIpv6 ?? true
+    this.videoCodec = opts.videoCodec ?? 'AV1'
     this.pc = new RTCPeerConnection(opts.rtcConfig)
     this.pc.ontrack = (event): void => {
       this.events.onTrack(event)
@@ -157,6 +165,8 @@ export class PeerLink {
       this.bindControl(this.control)
       this.mls = this.pc.createDataChannel('mls')
       this.bindMls(this.mls)
+      this.browserPcm = this.pc.createDataChannel('browser-pcm', { ordered: false, maxRetransmits: 0 })
+      this.bindBrowserPcm(this.browserPcm)
     } else {
       this.pc.ondatachannel = (event: RTCDataChannelEvent): void => {
         if (event.channel.label === 'control') {
@@ -166,6 +176,10 @@ export class PeerLink {
         if (event.channel.label === 'mls') {
           this.mls = event.channel
           this.bindMls(event.channel)
+        }
+        if (event.channel.label === 'browser-pcm') {
+          this.browserPcm = event.channel
+          this.bindBrowserPcm(event.channel)
         }
       }
     }
@@ -255,6 +269,17 @@ export class PeerLink {
     return true
   }
 
+  sendBrowserPcm(packet: ArrayBuffer): boolean {
+    const channel = this.browserPcm
+    if (!channel || channel.readyState !== 'open' || !this.browserPcmReady || channel.bufferedAmount > 64 * 1024) return false
+    try {
+      channel.send(packet)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   setMediaE2ee(media: MediaE2EE | null): void {
     this.mediaE2ee = media
   }
@@ -328,25 +353,21 @@ export class PeerLink {
   }
 
   private async updateBrowserStream(stream: MediaStream | null): Promise<void> {
-    const tracks = [stream?.getVideoTracks()[0] ?? null, stream?.getAudioTracks()[0] ?? null]
-    const senders = [this.browserVideoSender, this.browserAudioSender]
-    for (let i = 0; i < tracks.length; i++) {
-      const track = tracks[i]
-      const sender = senders[i]
-      if (sender) {
-        await sender.replaceTrack(track)
-      } else if (track && stream) {
-        const added = this.pc.addTrack(track, stream)
-        if (i === 0) this.browserVideoSender = added
-        else this.browserAudioSender = added
-        await this.attachSender(added, {
-          sender: this.localPeerId,
-          kind: i === 0 ? 'screen' : 'audio',
-          streamId: stream.id,
-        })
-      }
+    const track = stream?.getVideoTracks()[0] ?? null
+    if (this.browserVideoSender) await this.browserVideoSender.replaceTrack(track)
+    else if (track && stream) {
+      this.browserVideoSender = this.pc.addTrack(track, stream)
+      await this.attachSender(this.browserVideoSender, {
+        sender: this.localPeerId, kind: 'screen', streamId: stream.id,
+      })
     }
-    if (tracks[1] && this.browserAudioSender) {
+    const audioTrack = stream && !this.browserPcmReady ? stream.getAudioTracks()[0] ?? null : null
+    if (this.browserAudioSender) await this.browserAudioSender.replaceTrack(audioTrack)
+    else if (audioTrack && stream) {
+      this.browserAudioSender = this.pc.addTrack(audioTrack, stream)
+      await this.attachSender(this.browserAudioSender, {
+        sender: this.localPeerId, kind: 'audio', streamId: stream.id,
+      })
       try {
         const params = this.browserAudioSender.getParameters()
         if (params.encodings.length) {
@@ -628,6 +649,18 @@ export class PeerLink {
     if (channel.readyState === 'open') queueMicrotask(notifyOpen)
   }
 
+  private bindBrowserPcm(channel: RTCDataChannel): void {
+    channel.binaryType = 'arraybuffer'
+    channel.onopen = (): void => channel.send('ready')
+    if (channel.readyState === 'open') queueMicrotask(() => channel.send('ready'))
+    channel.onmessage = (event: MessageEvent<ArrayBuffer | string>): void => {
+      if (event.data === 'ready') {
+        this.browserPcmReady = true
+        this.events.onBrowserPcmReady?.()
+      } else if (event.data instanceof ArrayBuffer) this.events.onBrowserPcm?.(event.data)
+    }
+  }
+
   private async attachSender(sender: RTCRtpSender, identity: MediaStreamIdentity): Promise<void> {
     this.extraSenders.set(sender, identity)
     this.preferVideoCodecs(sender, identity.kind)
@@ -643,12 +676,11 @@ export class PeerLink {
       }
     ).RTCRtpSender?.getCapabilities?.('video')
     if (!transceiver?.setCodecPreferences || !capabilities) return
+    const order = [`video/${this.videoCodec.toLowerCase()}`, 'video/av1', 'video/vp9', 'video/vp8', 'video/h264']
     const rank = (mime: string): number => {
       const type = mime.toLowerCase()
-      if (type === 'video/vp8') return 0
-      if (type === 'video/vp9') return 1
-      if (type.includes('h264')) return 2
-      return 3
+      const index = order.indexOf(type)
+      return index < 0 ? order.length : index
     }
     try {
       transceiver.setCodecPreferences(

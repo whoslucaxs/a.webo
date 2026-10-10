@@ -34,9 +34,12 @@ import {
 } from './controlProtocol'
 import { CallLoopback } from './callLoopback'
 import { PeerLink } from './peerLink'
+import { BrowserPcmPlayer, BrowserPcmSender } from './browserPcm'
 import { ChatAttachmentAssembler, MAX_ATTACHMENT_BYTES, attachmentChunks, attachmentDataUrl, isSupportedAttachment } from './chatAttachment'
-import { AdaptiveController, SpeechActivity, initialCpuGuard, stepCpuGuard } from './adaptive'
+import { AdaptiveController, SCREEN_PROFILES, SpeechActivity, initialCpuGuard, stepCpuGuard } from './adaptive'
 import type { CpuGuardState } from './adaptive'
+import type { ScreenProfile } from './adaptive/types'
+import { DEFAULT_SCREEN_QUALITY, screenProfileForQuality, type ScreenQuality } from './screenQuality'
 import {
   answersMatchOffer,
   canStartKick,
@@ -143,7 +146,11 @@ export class Room {
   private remoteVideo: HTMLVideoElement | null = null
   private audioStream: MediaStream | null = null
   private displayStream: MediaStream | null = null
+  private screenQuality: ScreenQuality = DEFAULT_SCREEN_QUALITY
   private browserStream: MediaStream | null = null
+  private browserAudioShared = false
+  private browserPcmSender: BrowserPcmSender | null = null
+  private browserPcmPlayers = new Map<string, BrowserPcmPlayer>()
   private pendingDisplayStream: MediaStream | null = null
   private cameraStream: MediaStream | null = null
   private cameraSendStreamId = ''
@@ -305,40 +312,70 @@ export class Room {
       ? [...new Set([...this.watchingBrowsers, peerId])]
       : this.watchingBrowsers.filter((id) => id !== peerId)
     if (!watching) {
+      this.browserPcmPlayers.get(peerId)?.stop()
+      this.browserPcmPlayers.delete(peerId)
       const audio = this.remoteAudioElements.get(`${peerId}:browser`)
       if (audio) audio.srcObject = null
+    } else if (!this.browserPcmPlayers.has(peerId)) {
+      this.browserPcmPlayers.set(peerId, new BrowserPcmPlayer())
     }
     this.refreshBrowserShares()
   }
 
-  async openBrowser(url: string, browserId: number): Promise<void> {
+  async openBrowser(url: string, browserId: number, shareAudio: boolean): Promise<void> {
     if (!this.localPeerId) throw new Error('Join a session first')
-    if (this.browserStream) {
+    if (this.browserStream && this.browserAudioShared === shareAudio) {
       await window.KiwiApi.openBrowserShare(browserId, url)
       return
     }
     const parsedUrl = window.KiwiApi.prepareBrowserShare(browserId, url)
     // getDisplayMedia must run during the user's click, before any awaited navigation.
+    const sender = shareAudio ? new BrowserPcmSender() : null
     let stream: MediaStream
     try {
-      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: shareAudio })
     } catch (error) {
+      sender?.stop()
       await window.KiwiApi.closeBrowserShare()
       throw error
     }
-    if (!stream.getVideoTracks().length || !stream.getAudioTracks().length) {
+    if (!stream.getVideoTracks().length || (shareAudio && !stream.getAudioTracks().length)) {
+      sender?.stop()
       this.stopStream(stream)
       await window.KiwiApi.closeBrowserShare()
-      throw new Error('Browser video or audio capture is unavailable')
+      throw new Error(shareAudio ? 'Browser video or audio capture is unavailable' : 'Browser video capture is unavailable')
     }
-    this.browserStream = stream
-    this.browserActive = true
+    if (!shareAudio) {
+      for (const track of stream.getAudioTracks()) {
+        stream.removeTrack(track)
+        track.stop()
+      }
+    }
     try {
+      if (sender) await sender.start(stream, (packet) => {
+        for (const link of this.browserWatchers) link.sendBrowserPcm(packet)
+      })
       await window.KiwiApi.openBrowserShare(browserId, parsedUrl)
     } catch (error) {
-      await this.stopBrowser()
+      sender?.stop()
+      this.stopStream(stream)
+      if (!this.browserStream) await window.KiwiApi.closeBrowserShare()
       throw error
     }
+    const previousStream = this.browserStream
+    this.browserPcmSender?.stop()
+    this.browserPcmSender = sender
+    this.browserStream = stream
+    this.browserAudioShared = shareAudio
+    this.browserActive = true
+    for (const link of this.browserWatchers) {
+      try {
+        await link.setBrowserStream(stream)
+      } catch (error) {
+        debugLog.warn('room', 'could not update browser stream for viewer', error)
+      }
+    }
+    this.stopStream(previousStream)
     this.broadcastBrowserState()
     this.refreshBrowserShares()
   }
@@ -348,7 +385,10 @@ export class Room {
     const stream = this.browserStream
     this.browserStream = null
     this.browserActive = false
+    this.browserAudioShared = false
     this.browserWatchers.clear()
+    this.browserPcmSender?.stop()
+    this.browserPcmSender = null
     for (const link of this.links.values()) await link.setBrowserStream(null)
     this.stopStream(stream)
     this.broadcastBrowserState()
@@ -1085,21 +1125,28 @@ export class Room {
     await this.checkVoteOutcome(next)
   }
 
-  async changeScreen(): Promise<'ok' | 'cancelled' | 'failed'> {
+  async selectScreen(): Promise<MediaStream | 'cancelled' | 'failed'> {
     if (!this.localPeerId) return 'failed'
-    debugLog.info('room', 'changeScreen start')
-    const captured = await this.acquireDisplayStream()
-    if (captured === 'cancelled') {
-      debugLog.warn('room', 'changeScreen cancelled')
-      return 'cancelled'
-    }
-    if (captured === 'failed') return 'failed'
+    return this.acquireDisplayStream()
+  }
+
+  cancelSelectedScreen(stream: MediaStream): void {
+    if (stream !== this.displayStream) this.stopStream(stream)
+  }
+
+  async changeScreen(captured: MediaStream, quality: ScreenQuality): Promise<'ok' | 'failed'> {
     const track = captured.getVideoTracks()[0]
-    if (!track) {
-      this.stopStream(captured)
-      return 'failed'
+    if (!this.localPeerId || !track || track.readyState === 'ended') return 'failed'
+    try {
+      await track.applyConstraints({
+        ...(quality.resolution === 'native' ? {} : { height: { ideal: quality.resolution } }),
+        frameRate: { ideal: quality.frameRate },
+      })
+    } catch (error) {
+      debugLog.warn('room', 'screen capture constraints unavailable; applying sender limits', error)
     }
     const previous = this.displayStream
+    this.screenQuality = quality
     this.displayStream = captured
     this.displayStreamActive = true
     this.broadcastDisplayState()
@@ -1366,6 +1413,7 @@ export class Room {
       remotePeerId: remotePeerId ?? null,
       mediaE2ee: this.mediaE2ee,
       requireMediaE2ee: this.e2eeFailClosed(),
+      videoCodec: this.userSettings?.videoCodec,
       keepRoutableIpv6,
       events: {
         onControl: (msg) => {
@@ -1411,6 +1459,15 @@ export class Room {
         },
         onMlsFrame: (frame) => {
           void this.onMlsFrame(link, frame)
+        },
+        onBrowserPcm: (packet) => {
+          const peerId = link.remotePeerId
+          if (peerId && this.watchingBrowsers.includes(peerId) && this.remoteBrowserStates.get(peerId)?.active) {
+            this.browserPcmPlayers.get(peerId)?.play(packet)
+          }
+        },
+        onBrowserPcmReady: () => {
+          if (this.browserWatchers.has(link)) void link.setBrowserStream(this.browserStream)
         },
         onNegotiationOffer: (sdp) => {
           if (!link.remotePeerId) return
@@ -2089,6 +2146,7 @@ export class Room {
     else this.screenWatchers.delete(link)
     const track = watching && this.displayStreamActive ? this.displayStream?.getVideoTracks()[0] : null
     await link.setDisplayTrack(track ?? null, track ? this.displayStream : null)
+    if (track) await this.applyScreenProfileToLink(link)
   }
 
   private broadcastDisplayState(): void {
@@ -2131,6 +2189,8 @@ export class Room {
     if (!msg.active) {
       this.watchingBrowsers = this.watchingBrowsers.filter((id) => id !== msg.peerId)
       this.remoteBrowserStreams.delete(msg.peerId)
+      this.browserPcmPlayers.get(msg.peerId)?.stop()
+      this.browserPcmPlayers.delete(msg.peerId)
       const audio = this.remoteAudioElements.get(`${msg.peerId}:browser`)
       if (audio) audio.srcObject = null
     }
@@ -2451,6 +2511,8 @@ export class Room {
       this.remoteCameraState.delete(peerId)
       this.remoteBrowserStates.delete(peerId)
       this.remoteBrowserStreams.delete(peerId)
+      this.browserPcmPlayers.get(peerId)?.stop()
+      this.browserPcmPlayers.delete(peerId)
       this.watchingBrowsers = this.watchingBrowsers.filter((id) => id !== peerId)
       for (const [streamId, entry] of this.remoteVideoByStreamId) {
         if (entry.peerId === peerId) this.remoteVideoByStreamId.delete(streamId)
@@ -2613,7 +2675,7 @@ export class Room {
     const controller = new AdaptiveController({
       id: link.remotePeerId ?? link.pendingId,
       collectStats: () => link.collectAdaptiveStats(),
-      applyDisplayProfile: (profile) => link.applyDisplayProfile(profile),
+      applyDisplayProfile: (profile) => this.applyScreenProfileToLink(link, profile),
       applyCameraProfile: (profile) => link.applyCameraProfile(profile),
       applyAudioProfile: (profile) => link.applyAudioProfile(profile),
       getContext: () => this.adaptiveContextFor(),
@@ -2760,7 +2822,13 @@ export class Room {
   ): Promise<void> {
     for (const link of this.screenWatchers) {
       await link.setDisplayTrack(track, stream)
+      if (track) await this.applyScreenProfileToLink(link)
     }
+  }
+
+  private applyScreenProfileToLink(link: PeerLink, adaptive?: ScreenProfile): Promise<boolean> {
+    const profile = adaptive ?? this.adaptiveControllers.get(link)?.getLastDecision()?.screenProfile ?? SCREEN_PROFILES.medium
+    return link.applyDisplayProfile(screenProfileForQuality(profile, this.screenQuality))
   }
 
   private armVoteTimer(vote: VoteState): void {
@@ -2810,7 +2878,7 @@ export class Room {
     try {
       debugLog.info('room', 'getDisplayMedia start')
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
+        video: { frameRate: { ideal: 60 } },
         audio: window.electron.process.platform === 'win32',
       })
       if (!stream.getVideoTracks().length) {
@@ -2908,6 +2976,10 @@ export class Room {
     this.speechActivity.stop()
     this.stopStream(this.displayStream)
     this.stopStream(this.browserStream)
+    this.browserPcmSender?.stop()
+    this.browserPcmSender = null
+    for (const player of this.browserPcmPlayers.values()) player.stop()
+    this.browserPcmPlayers.clear()
     void window.KiwiApi.closeBrowserShare?.()
     this.stopStream(this.pendingDisplayStream)
     this.stopStream(this.audioStream)
@@ -2915,6 +2987,7 @@ export class Room {
     this.displayStream = null
     this.browserStream = null
     this.browserActive = false
+    this.browserAudioShared = false
     this.pendingDisplayStream = null
     this.audioStream = null
     this.cameraStream = null

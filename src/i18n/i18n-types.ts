@@ -18,6 +18,38 @@ export type Translations = RootTranslation
 
 type RootTranslation = {
 	/**
+	 * V​i​d​e​o​ ​c​o​d​e​c
+	 */
+	video_codec: string
+	/**
+	 * P​r​e​f​e​r​r​e​d​ ​c​o​d​e​c​ ​f​o​r​ ​n​e​w​ ​c​o​n​n​e​c​t​i​o​n​s​.​ ​F​a​l​l​s​ ​b​a​c​k​ ​w​h​e​n​ ​a​ ​p​e​e​r​ ​d​o​e​s​ ​n​o​t​ ​s​u​p​p​o​r​t​ ​i​t​.
+	 */
+	video_codec_description: string
+	/**
+	 * S​h​a​r​e​ ​p​a​g​e​ ​a​u​d​i​o
+	 */
+	share_page_audio: string
+	/**
+	 * R​e​s​o​l​u​t​i​o​n
+	 */
+	resolution: string
+	/**
+	 * F​r​a​m​e​ ​r​a​t​e
+	 */
+	frame_rate: string
+	/**
+	 * B​i​t​r​a​t​e
+	 */
+	bitrate: string
+	/**
+	 * N​a​t​i​v​e
+	 */
+	native_resolution: string
+	/**
+	 * A​u​t​o
+	 */
+	automatic: string
+	/**
 	 * A​b​o​u​t
 	 */
 	about: string
@@ -880,6 +912,38 @@ type RootTranslation = {
 }
 
 export type TranslationFunctions = {
+	/**
+	 * Video codec
+	 */
+	video_codec: () => LocalizedString
+	/**
+	 * Preferred codec for new connections. Falls back when a peer does not support it.
+	 */
+	video_codec_description: () => LocalizedString
+	/**
+	 * Share page audio
+	 */
+	share_page_audio: () => LocalizedString
+	/**
+	 * Resolution
+	 */
+	resolution: () => LocalizedString
+	/**
+	 * Frame rate
+	 */
+	frame_rate: () => LocalizedString
+	/**
+	 * Bitrate
+	 */
+	bitrate: () => LocalizedString
+	/**
+	 * Native
+	 */
+	native_resolution: () => LocalizedString
+	/**
+	 * Auto
+	 */
+	automatic: () => LocalizedString
 	/**
 	 * About
 	 */

@@ -1,6 +1,7 @@
 import { screen } from 'electron'
 import settings from 'electron-settings'
 import { debounce } from './utils'
+import { isVideoCodec, type VideoCodec } from '../shared/videoCodec'
 
 type IceServer = {
   urls: string
@@ -21,6 +22,7 @@ export type SettingsData = {
   mediaE2eeEnabled: boolean
   cameraDeviceId: string
   microphoneDeviceId: string
+  videoCodec: VideoCodec
   iceServers: IceServer[]
   roomServerUrl: string
   bonjourEnabled: boolean
@@ -57,6 +59,7 @@ export const defaultSettings: SettingsData = {
   mediaE2eeEnabled: true,
   cameraDeviceId: '',
   microphoneDeviceId: '',
+  videoCodec: 'AV1',
   iceServers: [
     {
       urls: 'stun:stun.l.google.com:19302',
@@ -76,17 +79,22 @@ export const settingsKeeper = async (): Promise<Settings> => {
         return {
           ...defaultSettings,
           ...data,
+          videoCodec: isVideoCodec(data.videoCodec) ? data.videoCodec : defaultSettings.videoCodec,
           bonjourEnabled: false,
           e2eeEnabled: true,
           mediaE2eeEnabled: true,
         }
       },
-      set: (data: SettingsData) => settings.set('settings', data),
+      set: (data: SettingsData) => settings.set('settings', {
+        ...data, videoCodec: isVideoCodec(data.videoCodec) ? data.videoCodec : defaultSettings.videoCodec,
+      }),
     }
   }
   return {
     get: (): SettingsData => defaultSettings,
-    set: (data: SettingsData) => settings.set('settings', data),
+    set: (data: SettingsData) => settings.set('settings', {
+      ...data, videoCodec: isVideoCodec(data.videoCodec) ? data.videoCodec : defaultSettings.videoCodec,
+    }),
   }
 }
 

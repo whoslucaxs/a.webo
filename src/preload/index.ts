@@ -125,6 +125,7 @@ const KiwiApi = {
     mediaE2eeEnabled?: boolean
     cameraDeviceId: string
     microphoneDeviceId: string
+    videoCodec: 'AV1' | 'VP9' | 'VP8' | 'H264'
     iceServers: IceServer[]
     roomServerUrl?: string
     bonjourEnabled?: boolean
@@ -145,6 +146,7 @@ const KiwiApi = {
     mediaE2eeEnabled?: boolean
     cameraDeviceId: string
     microphoneDeviceId: string
+    videoCodec: 'AV1' | 'VP9' | 'VP8' | 'H264'
     iceServers: IceServer[]
     roomServerUrl?: string
     bonjourEnabled?: boolean

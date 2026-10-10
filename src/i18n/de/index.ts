@@ -1,6 +1,14 @@
 import type { BaseTranslation } from '../i18n-types'
 
 const en = {
+  video_codec: 'Videocodec',
+  video_codec_description: 'Bevorzugter Codec für den nächsten Anruf. Bei fehlender Unterstützung wird ein anderer verwendet.',
+  share_page_audio: 'Seitenton übertragen',
+  resolution: 'Auflösung',
+  frame_rate: 'Bildrate',
+  bitrate: 'Bitrate',
+  native_resolution: 'Nativ',
+  automatic: 'Automatisch',
   about: 'Über',
   advanced: 'Erweitert',
   basic: 'Grundlegend',

@@ -3,6 +3,7 @@ type IceServer = {
   username?: string
   credential?: string
 }
+import type { VideoCodec } from '../../shared/videoCodec'
 
 export type SettingsData = {
   username: string
@@ -17,6 +18,7 @@ export type SettingsData = {
   mediaE2eeEnabled?: boolean
   cameraDeviceId?: string
   microphoneDeviceId?: string
+  videoCodec?: VideoCodec
   iceServers: IceServer[]
   roomServerUrl?: string
   bonjourEnabled?: boolean

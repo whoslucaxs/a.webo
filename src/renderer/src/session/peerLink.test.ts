@@ -91,6 +91,23 @@ const events = {
 }
 
 describe('PeerLink video senders', () => {
+  it('prefers AV1 and keeps other supported codecs as fallback', async () => {
+    const codecs = ['video/VP8', 'video/H264', 'video/AV1', 'video/VP9'].map((mimeType) => ({ mimeType, clockRate: 90_000 }))
+    vi.stubGlobal('RTCRtpSender', { getCapabilities: () => ({ codecs, headerExtensions: [] }) })
+    try {
+      for (const [chosen, first] of [['AV1', 'video/AV1'], ['VP8', 'video/VP8']] as const) {
+        const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, videoCodec: chosen, events })
+        const preferences = vi.fn()
+        const pc = link.pc as unknown as MockRTCPeerConnection
+        pc.getTransceivers.mockImplementation(() => [{ sender: pc.getSenders()[0], setCodecPreferences: preferences }])
+        await link.setDisplayTrack({ id: 'screen', kind: 'video' } as MediaStreamTrack, { id: 'screen' } as MediaStream)
+        expect(preferences.mock.calls[0][0][0].mimeType).toBe(first)
+        expect(preferences.mock.calls[0][0]).toHaveLength(4)
+      }
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
   it('sends screen audio only while the display is watched, independently of the microphone', async () => {
     const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, events })
     const microphone = { id: 'mic', kind: 'audio' } as MediaStreamTrack
@@ -107,7 +124,7 @@ describe('PeerLink video senders', () => {
     expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, video, audio])
   })
 
-  it('sends browser audio separately from the microphone and removes it when watching stops', async () => {
+  it('keeps browser audio off the compressed RTP sender and sends PCM only over its data channel', async () => {
     const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, events })
     const microphone = { id: 'mic', kind: 'audio' } as MediaStreamTrack
     const video = { id: 'browser-video', kind: 'video' } as MediaStreamTrack
@@ -115,12 +132,33 @@ describe('PeerLink video senders', () => {
     const stream = { id: 'browser', getVideoTracks: () => [video], getAudioTracks: () => [audio] } as unknown as MediaStream
     link.addTrack(microphone, { id: 'microphone' } as MediaStream)
     expect(link.pc.getSenders()).toHaveLength(1)
+    const pcm = (link.pc.createDataChannel as ReturnType<typeof vi.fn>).mock.results[2].value as MockDataChannel
+    pcm.readyState = 'open'
+    pcm.onmessage?.({ data: 'ready' } as MessageEvent)
     await link.setBrowserStream(stream)
-    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, video, audio])
-    expect(link.pc.getSenders()[2].getParameters().encodings[0].maxBitrate).toBe(320_000)
+    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, video])
     expect(link.pc.getSenders()[0].getParameters().encodings[0].maxBitrate).toBe(0)
+    expect(pcm.label).toBe('browser-pcm')
+    const packet = new ArrayBuffer(16)
+    expect(link.sendBrowserPcm(packet)).toBe(true)
+    expect(pcm.send).toHaveBeenCalledWith(packet)
+    pcm.bufferedAmount = 65 * 1024
+    expect(link.sendBrowserPcm(packet)).toBe(false)
     await link.setBrowserStream(null)
-    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, null, null])
+    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([microphone, null])
+  })
+  it('keeps Opus audio for older clients without the PCM handshake', async () => {
+    const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, events })
+    const video = { id: 'browser-video', kind: 'video' } as MediaStreamTrack
+    const audio = { id: 'browser-audio', kind: 'audio' } as MediaStreamTrack
+    const stream = { id: 'browser', getVideoTracks: () => [video], getAudioTracks: () => [audio] } as unknown as MediaStream
+    await link.setBrowserStream(stream)
+    expect(link.pc.getSenders().map((sender) => sender.track)).toEqual([video, audio])
+    expect(link.pc.getSenders()[1].getParameters().encodings[0].maxBitrate).toBe(320_000)
+    const pcm = (link.pc.createDataChannel as ReturnType<typeof vi.fn>).mock.results[2].value as MockDataChannel
+    pcm.onmessage?.({ data: 'ready' } as MessageEvent)
+    await link.setBrowserStream(stream)
+    expect(link.pc.getSenders()[1].track).toBe(null)
   })
   it('keeps display and camera tracks on separate senders', async () => {
     const link = new PeerLink({
@@ -240,7 +278,7 @@ describe('PeerLink video senders', () => {
     expect(onIceCandidate).toHaveBeenCalledWith(null)
   })
 
-  it('creates only signaling channels', () => {
+  it('creates signaling and browser PCM channels', () => {
     const link = new PeerLink({
       rtcConfig: { iceServers: [] },
       localPeerId: 'local',
@@ -249,7 +287,7 @@ describe('PeerLink video senders', () => {
       events,
     })
     const pc = link.pc as unknown as MockRTCPeerConnection
-    expect(pc.createDataChannel.mock.calls.map((call) => call[0])).toEqual(['control', 'mls'])
+    expect(pc.createDataChannel.mock.calls.map((call) => call[0])).toEqual(['control', 'mls', 'browser-pcm'])
   })
 })
 

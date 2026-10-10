@@ -17,6 +17,7 @@
   import type { Room } from './session/room.svelte'
   import { connectThrownText } from './session/connectionFailureText'
   import { memberSoundChanges, playMemberSound } from './session/memberSounds'
+  import { DEFAULT_SCREEN_QUALITY, type ScreenQuality } from './session/screenQuality'
   import brokenVideoUrl from '../../assets/broken-video.svg?url'
 
   let {
@@ -44,6 +45,13 @@
   let browserPanelOpen = $state(false)
   let browserFrameMinimized = $state(false)
   let browserUrl = $state('')
+  let shareBrowserAudio = $state(false)
+  let selectedScreen = $state<MediaStream | null>(null)
+  let screenSelecting = $state(false)
+  let screenApplying = $state(false)
+  let screenResolution = $state<ScreenQuality['resolution']>(DEFAULT_SCREEN_QUALITY.resolution)
+  let screenFrameRate = $state<ScreenQuality['frameRate']>(DEFAULT_SCREEN_QUALITY.frameRate)
+  let screenBitrate = $state<ScreenQuality['bitrate']>(DEFAULT_SCREEN_QUALITY.bitrate)
   let browserLoading = $state(false)
   let browserReady = $state(false)
   let browserError = $state('')
@@ -191,6 +199,7 @@
     document.addEventListener('fullscreenchange', onFullscreenChange)
     document.addEventListener('wheel', onFullscreenWheel, { passive: false })
     return () => {
+      if (selectedScreen) room.cancelSelectedScreen(selectedScreen)
       clearInterval(timer)
       document.removeEventListener('fullscreenchange', onFullscreenChange)
       document.removeEventListener('wheel', onFullscreenWheel)
@@ -281,8 +290,52 @@
   }
 
   const onChangeScreen = async (): Promise<void> => {
-    const result = await room.changeScreen()
-    if (result === 'failed') toast.show('error', L.screen_share_failed())
+    if (screenSelecting || selectedScreen) return
+    screenSelecting = true
+    try {
+      const result = await room.selectScreen()
+      if (result === 'failed') toast.show('error', L.screen_share_failed())
+      else if (result !== 'cancelled') {
+        browserPanelOpen = false
+        screenResolution = DEFAULT_SCREEN_QUALITY.resolution
+        screenFrameRate = DEFAULT_SCREEN_QUALITY.frameRate
+        screenBitrate = DEFAULT_SCREEN_QUALITY.bitrate
+        selectedScreen = result
+      }
+    } catch (error) {
+      toast.show('error', error instanceof Error ? error.message : L.screen_share_failed())
+    } finally {
+      screenSelecting = false
+    }
+  }
+
+  const cancelScreenQuality = (): void => {
+    if (selectedScreen) room.cancelSelectedScreen(selectedScreen)
+    selectedScreen = null
+  }
+
+  const confirmScreenQuality = async (): Promise<void> => {
+    if (!selectedScreen || screenApplying) return
+    screenApplying = true
+    const stream = selectedScreen
+    try {
+      const result = await room.changeScreen(stream, {
+        resolution: screenResolution,
+        frameRate: screenFrameRate,
+        bitrate: screenBitrate,
+      })
+      if (result === 'failed') {
+        room.cancelSelectedScreen(stream)
+        toast.show('error', L.screen_share_failed())
+      }
+      selectedScreen = null
+    } catch (error) {
+      room.cancelSelectedScreen(stream)
+      selectedScreen = null
+      toast.show('error', error instanceof Error ? error.message : L.screen_share_failed())
+    } finally {
+      screenApplying = false
+    }
   }
 
   const onBrowserSubmit = async (event: SubmitEvent): Promise<void> => {
@@ -291,7 +344,7 @@
     browserLoading = true
     browserError = ''
     try {
-      await room.openBrowser(browserUrl.trim(), browserWebview.getWebContentsId())
+      await room.openBrowser(browserUrl.trim(), browserWebview.getWebContentsId(), shareBrowserAudio)
       browserPanelOpen = false
       browserFrameMinimized = false
     } catch (error) {
@@ -694,6 +747,7 @@
         <button class="invite-copy" type="submit" disabled={browserLoading || !browserReady}>{browserLoading ? `${L.load_page()}…` : L.load_page()}</button>
         <button class="btn btn-ghost" type="button" onclick={() => browserPanelOpen = false}>{L.cancel()}</button>
       </div>
+      <label class="browser-audio-option"><input type="checkbox" bind:checked={shareBrowserAudio} /> {L.share_page_audio()}</label>
       {#if browserError}<p class="browser-link-error" role="alert">{browserError}</p>{/if}
     </form>
   {/if}
@@ -739,6 +793,27 @@
   </div>
 </nav>
 
+{#if selectedScreen}
+  <div class="settings-backdrop" role="presentation" onclick={(event) => { if (event.target === event.currentTarget && !screenApplying) cancelScreenQuality() }}>
+    <dialog open class="screen-quality-dialog" aria-label={L.share_your_screen()}>
+      <h2>{L.share_your_screen()}</h2>
+      <label><span>{L.resolution()}</span><select class="select" bind:value={screenResolution}>
+        <option value={480}>480p</option><option value={720}>720p</option><option value={1080}>1080p</option><option value="native">{L.native_resolution()}</option>
+      </select></label>
+      <label><span>{L.frame_rate()}</span><select class="select" bind:value={screenFrameRate}>
+        <option value={15}>15 FPS</option><option value={30}>30 FPS</option><option value={60}>60 FPS</option>
+      </select></label>
+      <label><span>{L.bitrate()}</span><select class="select" bind:value={screenBitrate}>
+        <option value={800000}>0.8 Mbps</option><option value={1500000}>1.5 Mbps</option><option value={3500000}>3.5 Mbps</option><option value={4500000}>4.5 Mbps</option><option value={6000000}>6.0 Mbps</option><option value="auto">{L.automatic()}</option>
+      </select></label>
+      <div class="screen-quality-actions">
+        <button class="btn btn-ghost" type="button" disabled={screenApplying} onclick={cancelScreenQuality}>{L.cancel()}</button>
+        <button class="invite-copy" type="button" disabled={screenApplying} onclick={confirmScreenQuality}>{L.share_your_screen()}</button>
+      </div>
+    </dialog>
+  </div>
+{/if}
+
 {#if settingsOpen}
   <div class="settings-backdrop" role="presentation" onclick={(event) => { if (event.target === event.currentTarget) settingsOpen = false }}>
     <dialog open class="settings-dialog" aria-label={L.settings()}>
@@ -762,6 +837,8 @@
 <style>
   .browser-link-form { position: absolute; bottom: calc(100% + 0.6rem); left: 50%; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 0.55rem; width: min(34rem, calc(100vw - 2rem)); padding: 0.9rem; border: 1px solid var(--ui-border); border-radius: 0.75rem; background: var(--ui-panel); box-shadow: 0 1rem 2.5rem #0009; }
   .browser-link-form label { font-size: 0.82rem; font-weight: 700; }
+  .browser-link-form .browser-audio-option { display: flex; align-items: center; gap: 0.5rem; color: var(--ui-text); font-size: 0.75rem; font-weight: 500; }
+  .browser-audio-option input { accent-color: var(--ui-accent); }
   .browser-link-row { display: flex; align-items: stretch; gap: 0.5rem; min-width: 0; }
   .browser-link-row .input { flex: 1; min-width: 0; background: var(--ui-input); border-color: var(--ui-border); color: var(--ui-text); }
   .browser-link-row .invite-copy { min-height: 2.8rem; }
@@ -1078,6 +1155,11 @@
   }
   .settings-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: #080a0be0; }
   .settings-dialog { position: relative; width: min(72rem, 100%); max-height: min(90vh, 52rem); overflow: auto; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); }
+  .screen-quality-dialog { display: flex; flex-direction: column; gap: 0.85rem; width: min(25rem, 100%); padding: 1.25rem; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); color: var(--ui-text); box-shadow: 0 1rem 3rem #0009; }
+  .screen-quality-dialog h2 { font-size: 1.1rem; font-weight: 700; }
+  .screen-quality-dialog label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.78rem; }
+  .screen-quality-dialog .select { width: 100%; border-color: var(--ui-border); background: var(--ui-input); }
+  .screen-quality-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.3rem; }
   .settings-close { position: sticky; top: 0.75rem; float: right; z-index: 2; margin: 0.75rem; width: 2rem; height: 2rem; border: 1px solid var(--ui-border); border-radius: 0.5rem; background: var(--ui-raised); color: var(--ui-text); cursor: pointer; }
   @media (max-width: 900px) {
     .call-content.chat-open { grid-template-columns: minmax(0, 1fr) 18rem; }

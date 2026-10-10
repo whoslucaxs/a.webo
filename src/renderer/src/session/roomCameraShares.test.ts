@@ -38,7 +38,8 @@ it('sends screen video only to viewers who requested it', async () => {
   const track = { kind: 'video' } as MediaStreamTrack
   const stream = { id: 'screen', getVideoTracks: () => [track] } as MediaStream
   const setDisplayTrack = vi.fn(async () => undefined)
-  const link = { remotePeerId: 'viewer', setDisplayTrack } as unknown as PeerLink
+  const applyDisplayProfile = vi.fn(async () => true)
+  const link = { remotePeerId: 'viewer', setDisplayTrack, applyDisplayProfile } as unknown as PeerLink
   const internals = room as unknown as {
     displayStream: MediaStream
     addLocalMediaToLink: (link: PeerLink) => Promise<void>
@@ -54,11 +55,44 @@ it('sends screen video only to viewers who requested it', async () => {
 
   await internals.onScreenWatch(link, true)
   expect(setDisplayTrack).toHaveBeenCalledWith(track, stream)
+  expect(applyDisplayProfile).toHaveBeenCalledWith(expect.objectContaining({
+    maxHeight: 720, maxFramerate: 30, maxBitrate: 1_500_000,
+  }))
   await internals.onScreenWatch(link, false)
   expect(setDisplayTrack).toHaveBeenLastCalledWith(null, null)
   setDisplayTrack.mockClear()
   await internals.pushVideoToAll(track, stream)
   expect(setDisplayTrack).not.toHaveBeenCalled()
+})
+
+it('opens a browser page without capturing audio when the option is off', async () => {
+  const room = new Room()
+  room.localPeerId = 'local'
+  const video = { kind: 'video', stop: vi.fn() } as unknown as MediaStreamTrack
+  const stream = {
+    id: 'browser',
+    getVideoTracks: () => [video],
+    getAudioTracks: () => [],
+    getTracks: () => [video],
+  } as MediaStream
+  const getDisplayMedia = vi.fn(async () => stream)
+  const openBrowserShare = vi.fn(async () => 'https://example.com')
+  vi.stubGlobal('navigator', { mediaDevices: { getDisplayMedia } })
+  vi.stubGlobal('window', { KiwiApi: {
+    prepareBrowserShare: () => 'https://example.com',
+    openBrowserShare,
+    closeBrowserShare: vi.fn(async () => undefined),
+  } })
+  try {
+    await room.openBrowser('https://example.com', 7, false)
+    expect(getDisplayMedia).toHaveBeenCalledWith({ video: true, audio: false })
+    expect(room.browserActive).toBe(true)
+    expect(openBrowserShare).toHaveBeenCalledWith(7, 'https://example.com')
+    await room.stopBrowser()
+    expect(video.stop).toHaveBeenCalled()
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })
 
 it('plays watched screen audio separately from microphone audio and stops it on unwatch', () => {
