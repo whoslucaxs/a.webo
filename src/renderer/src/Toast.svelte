@@ -11,7 +11,7 @@
 </script>
 
 {#if toast.visible}
-  <div class="toast toast-top toast-end z-50">
+  <div class="toast toast-top toast-end z-50" data-theme="business">
     <div class="alert {alertClass}">
       <span>{toast.message}</span>
     </div>

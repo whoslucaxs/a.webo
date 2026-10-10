@@ -83,7 +83,7 @@
   }
 </script>
 
-<div class="drawer drawer-end">
+<div class="drawer drawer-end" data-theme="business">
   <input id="bonjour-drawer" type="checkbox" onchange={(evt)=>{
     appState.bonjourVisible = (evt.target as HTMLInputElement).checked
     }} class="drawer-toggle" checked={appState.bonjourVisible ? true : false} />

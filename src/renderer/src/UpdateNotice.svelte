@@ -48,10 +48,10 @@
 
 <style>
   .update-layer { position: fixed; top: 1rem; right: 1rem; z-index: 100; max-width: min(32rem, calc(100vw - 2rem)); }
-  .update-layer.mandatory { inset: 0; max-width: none; display: grid; place-items: center; background: #07141dde; padding: 1rem; }
-  .update-notice { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid #05ad98; border-radius: 1rem; background: #14252e; color: white; box-shadow: 0 1rem 3rem #0008; }
-  .update-notice h2 { font-size: 1.2rem; font-weight: 700; }
-  .update-notice p { margin-top: 0.3rem; color: #c5d6dd; }
+  .update-layer.mandatory { inset: 0; max-width: none; display: grid; place-items: center; background: #080a0be0; padding: 1rem; }
+  .update-notice { display: grid; gap: 0.9rem; padding: 1rem; border: 1px solid var(--ui-border); border-radius: 0.75rem; background: var(--ui-panel); color: var(--ui-text); box-shadow: 0 1rem 3rem #0008; }
+  .update-notice h2 { font-size: 1rem; font-weight: 700; }
+  .update-notice p { margin-top: 0.3rem; color: var(--ui-muted); font-size: 0.85rem; }
   .update-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
-  .update-actions .btn-primary { background: #05ad98; border-color: #05ad98; color: white; }
+  .update-actions .btn-primary { background: var(--ui-accent); border-color: var(--ui-accent); color: #061917; }
 </style>

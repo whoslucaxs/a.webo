@@ -182,8 +182,8 @@
   })
 </script>
 
-<div class="h-screen flex flex-col bg-base-200 text-base-content" data-theme="business">
-  <header class="drag flex items-center justify-between px-3 py-2 bg-base-300">
+<div class="overlay-shell h-screen flex flex-col text-base-content" data-theme="business">
+  <header class="overlay-header drag flex items-center justify-between px-3 py-2">
     <span class="font-semibold text-sm">{L.chat()}</span>
     <div class="no-drag flex gap-1">
       <button
@@ -201,7 +201,7 @@
 
   <section class="grid grid-cols-2 gap-2 p-3">
     {#each peers as peer (peer.id)}
-      <div class="rounded-box bg-base-100 p-2 flex flex-col items-center gap-1">
+      <div class="overlay-peer p-2 flex flex-col items-center gap-1">
         {#if streams[peer.id]}
           <video class="w-full aspect-video rounded-box object-cover bg-black" autoplay playsinline muted use:attachStream={streams[peer.id]}></video>
         {:else if peer.avatar}
@@ -247,7 +247,7 @@
     {/each}
   </div>
 
-  <form class="no-drag p-3 pt-0 flex gap-2" onsubmit={onSubmit}>
+  <form class="overlay-compose no-drag p-3 flex gap-2" onsubmit={onSubmit}>
     <input bind:this={attachmentInput} type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/ogg" onchange={onAttachmentSelected} hidden />
     <button class="btn btn-ghost btn-sm" type="button" title={L.attach_media()} aria-label={L.attach_media()} disabled={attachmentSending} onclick={() => attachmentInput?.click()}><i class:fa-spinner={attachmentSending} class:fa-spin={attachmentSending} class:fa-paperclip={!attachmentSending} class="fa-solid"></i></button>
     <input
@@ -261,6 +261,11 @@
 </div>
 
 <style>
+  .overlay-shell { background: var(--ui-grid), var(--ui-bg); background-size: 44px 44px; }
+  .overlay-header { border-bottom: 1px solid var(--ui-border); background: #111313; }
+  .overlay-peer { border: 1px solid var(--ui-border); border-radius: 0.65rem; background: var(--ui-panel); }
+  .overlay-shell :global(.chat-bubble) { border: 1px solid var(--ui-border); border-radius: 0.55rem; background: var(--ui-raised); color: var(--ui-text); }
+  .overlay-compose { border-top: 1px solid var(--ui-border); background: var(--ui-panel); }
   .drag {
     -webkit-app-region: drag;
   }

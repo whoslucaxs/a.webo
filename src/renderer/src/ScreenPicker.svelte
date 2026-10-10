@@ -57,7 +57,7 @@
   })
 </script>
 
-<dialog class="modal" class:modal-open={visible}>
+<dialog class="modal" class:modal-open={visible} data-theme="business">
   <div class="modal-box max-w-3xl">
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-lg font-bold">{L.share_your_screen()}</h3>
@@ -143,17 +143,17 @@
     flex-direction: column;
     gap: 0.4rem;
     padding: 0.5rem;
-    border: 2px solid var(--color-base-300, #d1d5db);
-    border-radius: 8px;
-    background: var(--color-base-100, #fff);
+    border: 1px solid var(--ui-border);
+    border-radius: 0.65rem;
+    background: var(--ui-input);
     cursor: pointer;
     text-align: left;
     color: inherit;
   }
 
   .screen-picker-item.is-selected {
-    border-color: var(--color-primary, #84cc16);
-    box-shadow: 0 0 0 1px var(--color-primary, #84cc16);
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 1px var(--ui-accent);
   }
 
   .screen-picker-thumb {
@@ -163,9 +163,9 @@
     justify-content: center;
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    border-radius: 4px;
-    background: var(--color-base-200, #f5f5f5);
-    color: var(--color-base-content, #7a7a7a);
+    border-radius: 0.45rem;
+    background: var(--ui-raised);
+    color: var(--ui-muted);
     font-size: 1.5rem;
   }
 

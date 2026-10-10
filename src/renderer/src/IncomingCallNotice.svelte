@@ -21,7 +21,7 @@
 </script>
 
 {#if bonjourIncoming.call}
-  <div class="toast z-50">
+  <div class="toast z-50" data-theme="business">
     <div class="alert alert-soft">
       <div class="hero min-w-0 max-w-full">
         <div class="hero-content flex-col lg:flex-row">
