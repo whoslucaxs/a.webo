@@ -1413,7 +1413,6 @@ export class Room {
       remotePeerId: remotePeerId ?? null,
       mediaE2ee: this.mediaE2ee,
       requireMediaE2ee: this.e2eeFailClosed(),
-      videoCodec: this.userSettings?.videoCodec,
       keepRoutableIpv6,
       events: {
         onControl: (msg) => {

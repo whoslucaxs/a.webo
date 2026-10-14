@@ -91,19 +91,18 @@ const events = {
 }
 
 describe('PeerLink video senders', () => {
-  it('prefers AV1 and keeps other supported codecs as fallback', async () => {
+  it('prefers VP8 while keeping other supported codecs available', async () => {
     const codecs = ['video/VP8', 'video/H264', 'video/AV1', 'video/VP9'].map((mimeType) => ({ mimeType, clockRate: 90_000 }))
     vi.stubGlobal('RTCRtpSender', { getCapabilities: () => ({ codecs, headerExtensions: [] }) })
     try {
-      for (const [chosen, first] of [['AV1', 'video/AV1'], ['VP8', 'video/VP8']] as const) {
-        const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, videoCodec: chosen, events })
-        const preferences = vi.fn()
-        const pc = link.pc as unknown as MockRTCPeerConnection
-        pc.getTransceivers.mockImplementation(() => [{ sender: pc.getSenders()[0], setCodecPreferences: preferences }])
-        await link.setDisplayTrack({ id: 'screen', kind: 'video' } as MediaStreamTrack, { id: 'screen' } as MediaStream)
-        expect(preferences.mock.calls[0][0][0].mimeType).toBe(first)
-        expect(preferences.mock.calls[0][0]).toHaveLength(4)
-      }
+      const link = new PeerLink({ rtcConfig: { iceServers: [] }, localPeerId: 'local', pendingId: 'pending', isOfferer: true, events })
+      const preferences = vi.fn()
+      const pc = link.pc as unknown as MockRTCPeerConnection
+      pc.getTransceivers.mockImplementation(() => [{ sender: pc.getSenders()[0], setCodecPreferences: preferences }])
+      await link.setDisplayTrack({ id: 'screen', kind: 'video' } as MediaStreamTrack, { id: 'screen' } as MediaStream)
+      expect(preferences.mock.calls[0][0].map((codec: { mimeType: string }) => codec.mimeType)).toEqual([
+        'video/VP8', 'video/VP9', 'video/H264', 'video/AV1',
+      ])
     } finally {
       vi.unstubAllGlobals()
     }

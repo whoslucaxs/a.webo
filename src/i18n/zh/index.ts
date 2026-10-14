@@ -1,8 +1,6 @@
 import type { Translation } from '../i18n-types'
 
 const zh = {
-  video_codec: '视频编解码器',
-  video_codec_description: '下次通话的首选编解码器；不受支持时自动使用其他编解码器。',
   share_page_audio: '共享网页音频',
   resolution: '分辨率',
   frame_rate: '帧率',

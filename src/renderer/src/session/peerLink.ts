@@ -25,7 +25,6 @@ import type { MediaE2EE } from '../crypto/mediaE2ee'
 import type { MediaStreamIdentity } from '../crypto/roomCrypto'
 import type { AudioProfile, CameraProfile, ScreenProfile } from './adaptive/types'
 import { scaleResolutionDownBy } from './adaptive/qualityProfiles'
-import type { VideoCodec } from '../../../shared/videoCodec'
 
 export type PeerLinkEvents = {
   onControl: (msg: ControlMessage) => void
@@ -51,7 +50,6 @@ type PeerLinkOptions = {
   mediaE2ee?: MediaE2EE | null
   requireMediaE2ee?: boolean
   keepRoutableIpv6?: boolean
-  videoCodec?: VideoCodec
 }
 
 export class PeerLink {
@@ -91,7 +89,6 @@ export class PeerLink {
   private readonly serverErrors: IceServerError[] = []
   private gatheringTimedOut = false
   private readonly keepRoutableIpv6: boolean
-  private readonly videoCodec: VideoCodec
   private remoteOfferHasUsableIpv6 = false
 
   constructor(opts: PeerLinkOptions) {
@@ -102,7 +99,6 @@ export class PeerLink {
     this.mediaE2ee = opts.mediaE2ee ?? null
     this.requireMediaE2ee = Boolean(opts.requireMediaE2ee)
     this.keepRoutableIpv6 = opts.keepRoutableIpv6 ?? true
-    this.videoCodec = opts.videoCodec ?? 'AV1'
     this.pc = new RTCPeerConnection(opts.rtcConfig)
     this.pc.ontrack = (event): void => {
       this.events.onTrack(event)
@@ -676,11 +672,12 @@ export class PeerLink {
       }
     ).RTCRtpSender?.getCapabilities?.('video')
     if (!transceiver?.setCodecPreferences || !capabilities) return
-    const order = [`video/${this.videoCodec.toLowerCase()}`, 'video/av1', 'video/vp9', 'video/vp8', 'video/h264']
     const rank = (mime: string): number => {
       const type = mime.toLowerCase()
-      const index = order.indexOf(type)
-      return index < 0 ? order.length : index
+      if (type === 'video/vp8') return 0
+      if (type === 'video/vp9') return 1
+      if (type.includes('h264')) return 2
+      return 3
     }
     try {
       transceiver.setCodecPreferences(

@@ -8,7 +8,6 @@
   import { cloneForIpc } from './Utils'
   import { isAvatarDataUrl } from '../../shared/avatar'
   import { avatarFromFile } from './profilePhoto'
-  import { VIDEO_CODECS, isVideoCodec, type VideoCodec } from '../../shared/videoCodec'
   type StoredSettings = Awaited<ReturnType<typeof window.KiwiApi.getSettings>>
 
   let savedSettings = $state<StoredSettings | null>(null)
@@ -20,7 +19,6 @@
   let roomServerUrl = $state('')
   let cameraDeviceId = $state('')
   let microphoneDeviceId = $state('')
-  let videoCodec = $state<VideoCodec>('AV1')
   let microphoneOnConnect = $state(true)
   let hardwareVideoAcceleration = $state(true)
   let debugLogsEnabled = $state(false)
@@ -58,7 +56,6 @@
       roomServerUrl = settings.roomServerUrl || ''
       cameraDeviceId = settings.cameraDeviceId || ''
       microphoneDeviceId = settings.microphoneDeviceId || ''
-      videoCodec = isVideoCodec(settings.videoCodec) ? settings.videoCodec : 'AV1'
       microphoneOnConnect = settings.isMicrophoneEnabledOnConnect
       hardwareVideoAcceleration = settings.hardwareVideoAcceleration
       debugLogsEnabled = settings.debugLogsEnabled
@@ -86,7 +83,6 @@
         roomServerUrl: normalizeRoomServer(roomServerUrl),
         cameraDeviceId,
         microphoneDeviceId,
-        videoCodec,
         isMicrophoneEnabledOnConnect: microphoneOnConnect,
         hardwareVideoAcceleration,
         debugLogsEnabled,
@@ -176,13 +172,6 @@
 
       <section id="media" class="settings-card">
         <h2>{L.media()}</h2>
-        <label class="settings-field">
-          <span>{L.video_codec()}</span>
-          <select class="select w-full" bind:value={videoCodec}>
-            {#each VIDEO_CODECS as codec}<option value={codec}>{codec}</option>{/each}
-          </select>
-          <small>{L.video_codec_description()}</small>
-        </label>
         <label class="settings-field">
           <span>{L.camera_device()}</span>
           <select class="select w-full" bind:value={cameraDeviceId}>
