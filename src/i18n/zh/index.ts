@@ -3,6 +3,7 @@ import type { Translation } from '../i18n-types'
 const zh = {
   share_page_audio: '共享网页音频',
   share_screen_audio: '共享屏幕音频',
+  volume: '音量',
   resolution: '分辨率',
   frame_rate: '帧率',
   bitrate: '码率',

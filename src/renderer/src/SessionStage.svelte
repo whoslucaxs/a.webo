@@ -48,6 +48,7 @@
   let shareBrowserAudio = $state(false)
   let shareScreenAudio = $state(false)
   let selectedScreen = $state<MediaStream | null>(null)
+  let shareVolumeMenu = $state<{ peerId: string; kind: 'screen' | 'browser'; x: number; y: number; volume: number } | null>(null)
   let screenSelecting = $state(false)
   let screenApplying = $state(false)
   let screenResolution = $state<ScreenQuality['resolution']>(DEFAULT_SCREEN_QUALITY.resolution)
@@ -157,6 +158,34 @@
     fullscreenVideo.style.scale = String(fullscreenScale)
   }
 
+  const openShareVolumeMenu = (event: MouseEvent, peerId: string, kind: 'screen' | 'browser'): void => {
+    event.preventDefault()
+    const stage = event.currentTarget as HTMLElement
+    const bounds = stage.getBoundingClientRect()
+    shareVolumeMenu = {
+      peerId,
+      kind,
+      x: Math.max(8, Math.min(event.clientX - bounds.left, bounds.width - 216)),
+      y: Math.max(8, Math.min(event.clientY - bounds.top, bounds.height - 80)),
+      volume: room.getShareVolume(peerId, kind),
+    }
+  }
+
+  const onShareVolumeInput = (event: Event): void => {
+    if (!shareVolumeMenu) return
+    const volume = (event.currentTarget as HTMLInputElement).valueAsNumber / 100
+    room.setShareVolume(shareVolumeMenu.peerId, shareVolumeMenu.kind, volume)
+    shareVolumeMenu = { ...shareVolumeMenu, volume }
+  }
+
+  const closeShareVolumeMenu = (event: PointerEvent): void => {
+    if (!(event.target as Element)?.closest('.share-volume-menu')) shareVolumeMenu = null
+  }
+
+  const onShareVolumeKeydown = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') shareVolumeMenu = null
+  }
+
   $effect(() => {
     room.setRemoteVideo(remoteScreen ?? null)
   })
@@ -199,11 +228,15 @@
     const timer = setInterval(() => now = Date.now(), 1000)
     document.addEventListener('fullscreenchange', onFullscreenChange)
     document.addEventListener('wheel', onFullscreenWheel, { passive: false })
+    document.addEventListener('pointerdown', closeShareVolumeMenu)
+    document.addEventListener('keydown', onShareVolumeKeydown)
     return () => {
       if (selectedScreen) room.cancelSelectedScreen(selectedScreen)
       clearInterval(timer)
       document.removeEventListener('fullscreenchange', onFullscreenChange)
       document.removeEventListener('wheel', onFullscreenWheel)
+      document.removeEventListener('pointerdown', closeShareVolumeMenu)
+      document.removeEventListener('keydown', onShareVolumeKeydown)
     }
   })
 
@@ -453,6 +486,15 @@
   )
 </script>
 
+{#snippet shareVolumeControl(peerId: string, kind: 'screen' | 'browser')}
+  {#if shareVolumeMenu?.peerId === peerId && shareVolumeMenu.kind === kind}
+    <div class="share-volume-menu" role="group" aria-label={L.volume()} style:left={`${shareVolumeMenu.x}px`} style:top={`${shareVolumeMenu.y}px`}>
+      <span>{L.volume()} <strong>{Math.round(shareVolumeMenu.volume * 100)}%</strong></span>
+      <input type="range" min="0" max="100" step="1" value={Math.round(shareVolumeMenu.volume * 100)} aria-label={L.volume()} oninput={onShareVolumeInput} />
+    </div>
+  {/if}
+{/snippet}
+
 <div class="call-shell" data-theme="business">
 <header class="call-header">
   <div class="call-brand"><span>a.</span><span>webo</span></div>
@@ -555,7 +597,7 @@
   <fieldset class="fieldset px-0 min-w-0">
     <legend class="fieldset-legend">{presenterShare?.name ?? L.remote_screen()}</legend>
     {#if presenterShare}<button class="btn btn-ghost btn-sm self-end" onclick={() => room.watchScreen(presenterShare.peerId, false)}>{L.stop_watching()}</button>{/if}
-    <div class="video-overflow video-stage relative">
+    <div class="video-overflow video-stage relative" role="group" aria-label={presenterShare?.name ?? L.remote_screen()} oncontextmenu={(event) => { if (presenterShare) openShareVolumeMenu(event, presenterShare.peerId, 'screen') }}>
       {#if showBrokenVideo}
         <div class="broken-video" aria-hidden="true">
           <img src={brokenVideoUrl} alt="" />
@@ -573,6 +615,7 @@
       ></video>
       <button class="enter-fullscreen-btn btn btn-neutral btn-sm" title={L.fullscreen()} aria-label={L.fullscreen()} onclick={(e) => onFullscreenClick(e.currentTarget.parentElement)}><i class="fa-solid fa-expand"></i></button>
       <button class="exit-fullscreen-btn btn btn-neutral btn-sm" title={L.exit_fullscreen()} aria-label={L.exit_fullscreen()} onclick={onExitFullscreenClick}><i class="fa-solid fa-compress"></i></button>
+      {#if presenterShare}{@render shareVolumeControl(presenterShare.peerId, 'screen')}{/if}
     </div>
   </fieldset>
 </div>
@@ -582,7 +625,7 @@
     {#if share.peerId !== room.localPeerId}
       <button class="btn btn-ghost btn-sm self-end" onclick={() => room.watchScreen(share.peerId, false)}>{L.stop_watching()}</button>
     {/if}
-    <div class="video-overflow video-stage relative">
+    <div class="video-overflow video-stage relative" role="group" aria-label={share.name} oncontextmenu={(event) => { if (share.peerId !== room.localPeerId) openShareVolumeMenu(event, share.peerId, 'screen') }}>
       <video
         class="video rounded-lg bg-black"
         use:attachScreen={share.stream}
@@ -594,6 +637,7 @@
       ></video>
       <button class="enter-fullscreen-btn btn btn-neutral btn-sm" title={L.fullscreen()} aria-label={L.fullscreen()} onclick={(e) => onFullscreenClick(e.currentTarget.parentElement)}><i class="fa-solid fa-expand"></i></button>
       <button class="exit-fullscreen-btn btn btn-neutral btn-sm" title={L.exit_fullscreen()} aria-label={L.exit_fullscreen()} onclick={onExitFullscreenClick}><i class="fa-solid fa-compress"></i></button>
+      {#if share.peerId !== room.localPeerId}{@render shareVolumeControl(share.peerId, 'screen')}{/if}
     </div>
   </fieldset>
 {/each}
@@ -636,10 +680,11 @@
     {#if share.peerId !== room.localPeerId}
       <button class="btn btn-ghost btn-sm self-end" onclick={() => room.watchBrowser(share.peerId, false)}>{L.stop_watching()}</button>
     {/if}
-    <div class="video-overflow video-stage relative">
+    <div class="video-overflow video-stage relative" role="group" aria-label={`${share.name} · ${L.browser_page()}`} oncontextmenu={(event) => openShareVolumeMenu(event, share.peerId, 'browser')}>
       <video class="video rounded-lg bg-black" use:attachScreen={share.stream} use:fitVideo autoplay playsinline muted disablepictureinpicture></video>
       <button class="enter-fullscreen-btn btn btn-neutral btn-sm" title={L.fullscreen()} aria-label={L.fullscreen()} onclick={(e) => onFullscreenClick(e.currentTarget.parentElement)}><i class="fa-solid fa-expand"></i></button>
       <button class="exit-fullscreen-btn btn btn-neutral btn-sm" title={L.exit_fullscreen()} aria-label={L.exit_fullscreen()} onclick={onExitFullscreenClick}><i class="fa-solid fa-compress"></i></button>
+      {@render shareVolumeControl(share.peerId, 'browser')}
     </div>
   </fieldset>
 {/each}
@@ -1112,6 +1157,9 @@
     overflow: hidden;
   }
   .video-stage { display: flex; align-items: center; justify-content: center; }
+  .share-volume-menu { position: absolute; z-index: 31; width: min(13rem, calc(100% - 1rem)); padding: 0.65rem 0.75rem; border: 1px solid var(--ui-border-hover); border-radius: 0.55rem; background: var(--ui-panel); box-shadow: 0 0.5rem 1.5rem #0009; color: var(--ui-text); }
+  .share-volume-menu span { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.78rem; }
+  .share-volume-menu input { display: block; width: 100%; margin-top: 0.5rem; accent-color: var(--ui-accent); }
   .enter-fullscreen-btn,
   .exit-fullscreen-btn {
     position: absolute;

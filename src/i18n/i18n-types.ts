@@ -26,6 +26,10 @@ type RootTranslation = {
 	 */
 	share_screen_audio: string
 	/**
+	 * V​o​l​u​m​e
+	 */
+	volume: string
+	/**
 	 * R​e​s​o​l​u​t​i​o​n
 	 */
 	resolution: string
@@ -916,6 +920,10 @@ export type TranslationFunctions = {
 	 * Share screen audio
 	 */
 	share_screen_audio: () => LocalizedString
+	/**
+	 * Volume
+	 */
+	volume: () => LocalizedString
 	/**
 	 * Resolution
 	 */

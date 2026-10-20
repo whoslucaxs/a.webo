@@ -30,9 +30,14 @@ export class BrowserPcmPlayer {
   private context = new AudioContext()
   private nextTime = 0
   private lastSequence = -1
+  private volume = 1
 
   constructor() {
     void this.context.resume().catch(() => undefined)
+  }
+
+  setVolume(volume: number): void {
+    this.volume = volume
   }
 
   play(packet: ArrayBuffer): void {
@@ -48,8 +53,8 @@ export class BrowserPcmPlayer {
     const left = audio.getChannelData(0)
     const right = audio.getChannelData(1)
     for (let frame = 0; frame < frames; frame++) {
-      left[frame] = view.getInt16(8 + frame * 4, true) / 32768
-      right[frame] = view.getInt16(10 + frame * 4, true) / 32768
+      left[frame] = view.getInt16(8 + frame * 4, true) / 32768 * this.volume
+      right[frame] = view.getInt16(10 + frame * 4, true) / 32768 * this.volume
     }
     const now = this.context.currentTime
     if (this.nextTime < now + 0.04 || this.nextTime > now + 0.3) this.nextTime = now + 0.08

@@ -3,6 +3,7 @@ import type { BaseTranslation } from '../i18n-types'
 const pt_br = {
   share_page_audio: 'Compartilhar áudio da página',
   share_screen_audio: 'Compartilhar áudio da tela',
+  volume: 'Volume',
   resolution: 'Resolução',
   frame_rate: 'Taxa de quadros',
   bitrate: 'Bitrate',

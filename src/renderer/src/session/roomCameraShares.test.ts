@@ -128,10 +128,10 @@ it('opens a browser page without capturing audio when the option is off', async 
 
 it('plays watched screen audio separately from microphone audio and stops it on unwatch', () => {
   const room = new Room()
-  const audioElements: Array<{ srcObject: MediaStream | null; play: ReturnType<typeof vi.fn> }> = []
+  const audioElements: Array<{ srcObject: MediaStream | null; volume: number; play: ReturnType<typeof vi.fn> }> = []
   vi.stubGlobal('document', {
     createElement: () => {
-      const audio = { srcObject: null, style: {}, setAttribute: vi.fn(), play: vi.fn(async () => undefined), remove: vi.fn() }
+      const audio = { srcObject: null, volume: 1, style: {}, setAttribute: vi.fn(), play: vi.fn(async () => undefined), remove: vi.fn() }
       audioElements.push(audio)
       return audio
     },
@@ -140,7 +140,9 @@ it('plays watched screen audio separately from microphone audio and stops it on 
   try {
     const internals = room as unknown as {
       remoteDisplayStreamIds: Map<string, string>
-      remoteAudioElements: Map<string, { srcObject: MediaStream | null }>
+      remoteAudioElements: Map<string, { srcObject: MediaStream | null; volume: number }>
+      remoteBrowserStates: Map<string, { active: boolean; streamId: string }>
+      browserPcmPlayers: Map<string, { setVolume: ReturnType<typeof vi.fn> }>
       attachRemoteAudio: (peerId: string, stream: MediaStream) => void
       sendTo: () => boolean
     }
@@ -154,6 +156,18 @@ it('plays watched screen audio separately from microphone audio and stops it on 
     expect(audioElements).toHaveLength(2)
     expect(internals.remoteAudioElements.get('viewer')?.srcObject).toBe(microphone)
     expect(internals.remoteAudioElements.get('viewer:screen')?.srcObject).toBe(display)
+    room.setShareVolume('viewer', 'screen', 0.3)
+    expect(internals.remoteAudioElements.get('viewer:screen')?.volume).toBe(0.3)
+    expect(internals.remoteAudioElements.get('viewer')?.volume).toBe(1)
+    const pcmPlayer = { setVolume: vi.fn() }
+    internals.browserPcmPlayers.set('viewer', pcmPlayer)
+    internals.remoteBrowserStates.set('viewer', { active: true, streamId: 'browser' })
+    room.watchingBrowsers = ['viewer']
+    room.setShareVolume('viewer', 'browser', 0.4)
+    internals.attachRemoteAudio('viewer', { id: 'browser', getVideoTracks: () => [{}] } as unknown as MediaStream)
+    expect(pcmPlayer.setVolume).toHaveBeenCalledWith(0.4)
+    expect(internals.remoteAudioElements.get('viewer:browser')?.volume).toBe(0.4)
+    expect(internals.remoteAudioElements.get('viewer:screen')?.volume).toBe(0.3)
     room.watchScreen('viewer', false)
     expect(internals.remoteAudioElements.get('viewer:screen')?.srcObject).toBeNull()
     expect(internals.remoteAudioElements.get('viewer')?.srcObject).toBe(microphone)
