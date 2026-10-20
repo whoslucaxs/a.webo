@@ -1155,7 +1155,7 @@
   }
   .settings-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: #080a0be0; }
   .settings-dialog { position: relative; width: min(72rem, 100%); max-height: min(90vh, 52rem); overflow: auto; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); }
-  .screen-quality-dialog { display: flex; flex-direction: column; gap: 0.85rem; width: min(25rem, 100%); padding: 1.25rem; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); color: var(--ui-text); box-shadow: 0 1rem 3rem #0009; }
+  .screen-quality-dialog { position: static; margin: 0; display: flex; flex-direction: column; gap: 0.85rem; width: min(25rem, 100%); padding: 1.25rem; border: 1px solid var(--ui-border); border-radius: 0.85rem; background: var(--ui-panel); color: var(--ui-text); box-shadow: 0 1rem 3rem #0009; }
   .screen-quality-dialog h2 { font-size: 1.1rem; font-weight: 700; }
   .screen-quality-dialog label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.78rem; }
   .screen-quality-dialog .select { width: 100%; border-color: var(--ui-border); background: var(--ui-input); }
