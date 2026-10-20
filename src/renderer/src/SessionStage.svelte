@@ -46,6 +46,7 @@
   let browserFrameMinimized = $state(false)
   let browserUrl = $state('')
   let shareBrowserAudio = $state(false)
+  let shareScreenAudio = $state(false)
   let selectedScreen = $state<MediaStream | null>(null)
   let screenSelecting = $state(false)
   let screenApplying = $state(false)
@@ -300,6 +301,7 @@
         screenResolution = DEFAULT_SCREEN_QUALITY.resolution
         screenFrameRate = DEFAULT_SCREEN_QUALITY.frameRate
         screenBitrate = DEFAULT_SCREEN_QUALITY.bitrate
+        shareScreenAudio = result.getAudioTracks().length > 0
         selectedScreen = result
       }
     } catch (error) {
@@ -323,7 +325,7 @@
         resolution: screenResolution,
         frameRate: screenFrameRate,
         bitrate: screenBitrate,
-      })
+      }, shareScreenAudio)
       if (result === 'failed') {
         room.cancelSelectedScreen(stream)
         toast.show('error', L.screen_share_failed())
@@ -806,6 +808,7 @@
       <label><span>{L.bitrate()}</span><select class="select" bind:value={screenBitrate}>
         <option value={800000}>0.8 Mbps</option><option value={1500000}>1.5 Mbps</option><option value={3500000}>3.5 Mbps</option><option value={4500000}>4.5 Mbps</option><option value={6000000}>6.0 Mbps</option><option value="auto">{L.automatic()}</option>
       </select></label>
+      <label class="screen-audio-option"><input type="checkbox" role="switch" bind:checked={shareScreenAudio} disabled={selectedScreen.getAudioTracks().length === 0 || screenApplying} /> {L.share_screen_audio()}</label>
       <div class="screen-quality-actions">
         <button class="btn btn-ghost" type="button" disabled={screenApplying} onclick={cancelScreenQuality}>{L.cancel()}</button>
         <button class="invite-copy" type="button" disabled={screenApplying} onclick={confirmScreenQuality}>{L.share_your_screen()}</button>
@@ -1159,6 +1162,13 @@
   .screen-quality-dialog h2 { font-size: 1.1rem; font-weight: 700; }
   .screen-quality-dialog label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.78rem; }
   .screen-quality-dialog .select { width: 100%; border-color: var(--ui-border); background: var(--ui-input); }
+  .screen-quality-dialog .screen-audio-option { flex-direction: row; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }
+  .screen-audio-option input { appearance: none; position: relative; width: 2.5rem; height: 1.4rem; flex: none; border: 1px solid var(--ui-border-hover); border-radius: 99px; background: var(--ui-raised); cursor: pointer; }
+  .screen-audio-option input::before { content: ''; position: absolute; top: 0.18rem; left: 0.18rem; width: 0.95rem; height: 0.95rem; border-radius: 50%; background: var(--ui-muted); transition: transform 0.15s; }
+  .screen-audio-option input:checked { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+  .screen-audio-option input:checked::before { transform: translateX(1.06rem); background: var(--ui-accent); }
+  .screen-audio-option input:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+  .screen-audio-option:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
   .screen-quality-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.3rem; }
   .settings-close { position: sticky; top: 0.75rem; float: right; z-index: 2; margin: 0.75rem; width: 2rem; height: 2rem; border: 1px solid var(--ui-border); border-radius: 0.5rem; background: var(--ui-raised); color: var(--ui-text); cursor: pointer; }
   @media (max-width: 900px) {

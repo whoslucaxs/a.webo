@@ -65,6 +65,37 @@ it('sends screen video only to viewers who requested it', async () => {
   expect(setDisplayTrack).not.toHaveBeenCalled()
 })
 
+it.each([false, true])('shares screen audio only when selected (%s)', async (shareAudio) => {
+  const room = new Room()
+  room.localPeerId = 'local'
+  const video = { readyState: 'live', applyConstraints: vi.fn(async () => undefined) } as unknown as MediaStreamTrack
+  const audio = { stop: vi.fn() } as unknown as MediaStreamTrack
+  const tracks = [video, audio]
+  const stream = {
+    id: 'screen',
+    getVideoTracks: () => [video],
+    getAudioTracks: () => tracks.filter((track) => track === audio),
+    getTracks: () => tracks,
+    removeTrack: vi.fn((track: MediaStreamTrack) => tracks.splice(tracks.indexOf(track), 1)),
+  } as unknown as MediaStream
+  const internals = room as unknown as {
+    broadcastDisplayState: () => void
+    refreshScreenShares: () => void
+    bindDisplayEnded: () => void
+    pushVideoToAll: (_track: MediaStreamTrack, stream: MediaStream) => Promise<void>
+  }
+  internals.broadcastDisplayState = vi.fn()
+  internals.refreshScreenShares = vi.fn()
+  internals.bindDisplayEnded = vi.fn()
+  internals.pushVideoToAll = vi.fn(async (_track, sentStream) => {
+    expect(sentStream.getAudioTracks()).toHaveLength(shareAudio ? 1 : 0)
+  })
+
+  expect(await room.changeScreen(stream, { resolution: 720, frameRate: 30, bitrate: 'auto' }, shareAudio)).toBe('ok')
+  expect(audio.stop).toHaveBeenCalledTimes(shareAudio ? 0 : 1)
+  expect(stream.removeTrack).toHaveBeenCalledTimes(shareAudio ? 0 : 1)
+})
+
 it('opens a browser page without capturing audio when the option is off', async () => {
   const room = new Room()
   room.localPeerId = 'local'

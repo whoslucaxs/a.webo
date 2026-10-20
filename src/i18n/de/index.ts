@@ -2,6 +2,7 @@ import type { BaseTranslation } from '../i18n-types'
 
 const en = {
   share_page_audio: 'Seitenton übertragen',
+  share_screen_audio: 'Bildschirmton übertragen',
   resolution: 'Auflösung',
   frame_rate: 'Bildrate',
   bitrate: 'Bitrate',

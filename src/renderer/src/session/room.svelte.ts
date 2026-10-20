@@ -1134,9 +1134,15 @@ export class Room {
     if (stream !== this.displayStream) this.stopStream(stream)
   }
 
-  async changeScreen(captured: MediaStream, quality: ScreenQuality): Promise<'ok' | 'failed'> {
+  async changeScreen(captured: MediaStream, quality: ScreenQuality, shareAudio: boolean): Promise<'ok' | 'failed'> {
     const track = captured.getVideoTracks()[0]
     if (!this.localPeerId || !track || track.readyState === 'ended') return 'failed'
+    if (!shareAudio) {
+      for (const audioTrack of captured.getAudioTracks()) {
+        captured.removeTrack(audioTrack)
+        audioTrack.stop()
+      }
+    }
     try {
       await track.applyConstraints({
         ...(quality.resolution === 'native' ? {} : { height: { ideal: quality.resolution } }),
