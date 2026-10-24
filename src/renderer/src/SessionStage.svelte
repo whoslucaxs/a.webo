@@ -49,6 +49,7 @@
   let shareScreenAudio = $state(false)
   let selectedScreen = $state<MediaStream | null>(null)
   let shareVolumeMenu = $state<{ peerId: string; kind: 'screen' | 'browser'; x: number; y: number; volume: number } | null>(null)
+  let participantVolumeMenu = $state<{ peerId: string; name: string; x: number; y: number; volume: number } | null>(null)
   let screenSelecting = $state(false)
   let screenApplying = $state(false)
   let screenResolution = $state<ScreenQuality['resolution']>(DEFAULT_SCREEN_QUALITY.resolution)
@@ -160,6 +161,7 @@
 
   const openShareVolumeMenu = (event: MouseEvent, peerId: string, kind: 'screen' | 'browser'): void => {
     event.preventDefault()
+    participantVolumeMenu = null
     const stage = event.currentTarget as HTMLElement
     const bounds = stage.getBoundingClientRect()
     shareVolumeMenu = {
@@ -178,12 +180,37 @@
     shareVolumeMenu = { ...shareVolumeMenu, volume }
   }
 
-  const closeShareVolumeMenu = (event: PointerEvent): void => {
-    if (!(event.target as Element)?.closest('.share-volume-menu')) shareVolumeMenu = null
+  const openParticipantVolumeMenu = (event: MouseEvent, peerId: string, name: string): void => {
+    event.preventDefault()
+    shareVolumeMenu = null
+    participantVolumeMenu = {
+      peerId,
+      name,
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 216)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 80)),
+      volume: room.getParticipantVolume(peerId),
+    }
   }
 
-  const onShareVolumeKeydown = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape') shareVolumeMenu = null
+  const onParticipantVolumeInput = (event: Event): void => {
+    if (!participantVolumeMenu) return
+    const volume = (event.currentTarget as HTMLInputElement).valueAsNumber / 100
+    room.setParticipantVolume(participantVolumeMenu.peerId, volume)
+    participantVolumeMenu = { ...participantVolumeMenu, volume }
+  }
+
+  const closeVolumeMenus = (event: PointerEvent): void => {
+    if (!(event.target as Element)?.closest('.share-volume-menu, .participant-volume-menu')) {
+      shareVolumeMenu = null
+      participantVolumeMenu = null
+    }
+  }
+
+  const onVolumeKeydown = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+      shareVolumeMenu = null
+      participantVolumeMenu = null
+    }
   }
 
   $effect(() => {
@@ -228,15 +255,15 @@
     const timer = setInterval(() => now = Date.now(), 1000)
     document.addEventListener('fullscreenchange', onFullscreenChange)
     document.addEventListener('wheel', onFullscreenWheel, { passive: false })
-    document.addEventListener('pointerdown', closeShareVolumeMenu)
-    document.addEventListener('keydown', onShareVolumeKeydown)
+    document.addEventListener('pointerdown', closeVolumeMenus)
+    document.addEventListener('keydown', onVolumeKeydown)
     return () => {
       if (selectedScreen) room.cancelSelectedScreen(selectedScreen)
       clearInterval(timer)
       document.removeEventListener('fullscreenchange', onFullscreenChange)
       document.removeEventListener('wheel', onFullscreenWheel)
-      document.removeEventListener('pointerdown', closeShareVolumeMenu)
-      document.removeEventListener('keydown', onShareVolumeKeydown)
+      document.removeEventListener('pointerdown', closeVolumeMenus)
+      document.removeEventListener('keydown', onVolumeKeydown)
     }
   })
 
@@ -726,7 +753,7 @@
 {/if}
 <div class:compact={hasMedia} class="participant-gallery" style={`--tile-columns: ${Math.max(1, Math.ceil(Math.sqrt(room.peers.length)))}`} aria-label={L.peer_list()}>
   {#each room.peers as peer (peer.id)}
-    <article class="participant-tile" style:background={`color-mix(in srgb, ${peer.backgroundColor} 26%, #252729)`} title={peer.username}>
+    <article class="participant-tile" style:background={`color-mix(in srgb, ${peer.backgroundColor} 26%, #252729)`} title={peer.username} oncontextmenu={(event) => { if (peer.id !== room.localPeerId) openParticipantVolumeMenu(event, peer.id, peer.username) }}>
       <span class="participant-avatar">
         {#if peer.avatar}
           <img src={peer.avatar} alt="" />
@@ -739,6 +766,9 @@
         {#if peer.id === room.coordinatorId}<i class="fa-solid fa-crown" title={L.coordinator()}></i>{/if}
         {#if peer.id === room.presenterId}<i class="fa-solid fa-display" title={L.presenter()}></i>{/if}
       </span>
+      {#if peer.id !== room.localPeerId}
+        <button type="button" class="participant-volume" title={`${L.volume()}: ${peer.username}`} aria-label={`${L.volume()}: ${peer.username}`} onclick={(event) => openParticipantVolumeMenu(event, peer.id, peer.username)}><i class="fa-solid fa-volume-high"></i></button>
+      {/if}
       {#if peer.id !== room.localPeerId && !room.activeVote && room.canRequestKick(peer.id)}
         <button type="button" class="participant-kick" title={L.remove_from_session()} aria-label={`${L.remove_from_session()}: ${peer.username}`} onclick={() => onRequestKick(peer.id)}><i class="fa-solid fa-user-minus"></i></button>
       {/if}
@@ -748,6 +778,12 @@
   {/each}
 </div>
   </main>
+  {#if participantVolumeMenu}
+    <div class="participant-volume-menu share-volume-menu" role="group" aria-label={`${L.volume()}: ${participantVolumeMenu.name}`} style:left={`${participantVolumeMenu.x}px`} style:top={`${participantVolumeMenu.y}px`}>
+      <span>{participantVolumeMenu.name} <strong>{Math.round(participantVolumeMenu.volume * 100)}%</strong></span>
+      <input type="range" min="0" max="100" step="1" value={Math.round(participantVolumeMenu.volume * 100)} aria-label={`${L.volume()}: ${participantVolumeMenu.name}`} oninput={onParticipantVolumeInput} />
+    </div>
+  {/if}
   {#if chatOpen}
     <aside class="chat-panel" aria-label={L.chat()}>
       <header class="chat-heading"><h2><i class="fa-regular fa-comment"></i> {L.chat()}</h2><span><i class="fa-solid fa-user-group"></i> {room.peers.length}</span></header>
@@ -984,13 +1020,16 @@
   .participant-name { position: absolute; bottom: 0.65rem; left: 0.75rem; max-width: calc(100% - 3rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; font-size: 0.78rem; font-weight: 700; text-shadow: 0 1px 3px #000a; }
   .participant-roles { position: absolute; right: 0.75rem; bottom: 0.65rem; display: flex; gap: 0.45rem; color: #fff; font-size: 0.7rem; }
   .participant-kick { position: absolute; top: 0.6rem; right: 0.6rem; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border: 1px solid #ffffff40; border-radius: 0.4rem; background: #111b; color: #fff; cursor: pointer; opacity: 0; }
+  .participant-volume { position: absolute; top: 0.6rem; left: 0.6rem; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border: 1px solid #ffffff40; border-radius: 0.4rem; background: #111b; color: #fff; cursor: pointer; opacity: 0; }
   .participant-tile:hover .participant-kick, .participant-kick:focus-visible { opacity: 1; }
+  .participant-tile:hover .participant-volume, .participant-volume:focus-visible { opacity: 1; }
   .participant-empty { grid-column: 1 / -1; display: grid; place-items: center; color: var(--ui-muted); font-size: 0.82rem; }
   .participant-gallery.compact { flex: none; display: flex; align-items: center; justify-content: center; gap: 0.45rem; min-height: 3.5rem; overflow-x: auto; overflow-y: hidden; }
   .participant-gallery.compact .participant-tile { flex: none; width: 3rem; height: 3rem; min-height: 0; border-radius: 50%; background: transparent !important; overflow: visible; }
   .participant-gallery.compact .participant-avatar, .participant-gallery.compact .participant-avatar img, .participant-gallery.compact .participant-avatar > span { width: 2.5rem; height: 2.5rem; font-size: 1rem; }
   .participant-gallery.compact .participant-name, .participant-gallery.compact .participant-roles { display: none; }
   .participant-gallery.compact .participant-kick { top: -0.2rem; right: -0.3rem; width: 1.3rem; height: 1.3rem; border-radius: 50%; font-size: 0.55rem; }
+  .participant-gallery.compact .participant-volume { top: -0.2rem; left: -0.3rem; width: 1.3rem; height: 1.3rem; border-radius: 50%; font-size: 0.55rem; }
   .chat-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--ui-border); background: var(--ui-panel); overflow: hidden; }
   .chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--ui-border); background: var(--ui-hatch), var(--ui-panel); }
   .chat-heading h2 { display: flex; align-items: center; gap: 0.55rem; font-size: 0.9rem; font-weight: 650; }
@@ -1158,6 +1197,7 @@
   }
   .video-stage { display: flex; align-items: center; justify-content: center; }
   .share-volume-menu { position: absolute; z-index: 31; width: min(13rem, calc(100% - 1rem)); padding: 0.65rem 0.75rem; border: 1px solid var(--ui-border-hover); border-radius: 0.55rem; background: var(--ui-panel); box-shadow: 0 0.5rem 1.5rem #0009; color: var(--ui-text); }
+  .participant-volume-menu { position: fixed; z-index: 100; width: min(13rem, calc(100vw - 1rem)); }
   .share-volume-menu span { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.78rem; }
   .share-volume-menu input { display: block; width: 100%; margin-top: 0.5rem; accent-color: var(--ui-accent); }
   .enter-fullscreen-btn,

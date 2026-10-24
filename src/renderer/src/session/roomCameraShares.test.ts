@@ -151,14 +151,21 @@ it('plays watched screen audio separately from microphone audio and stops it on 
     const microphone = { id: 'mic', getVideoTracks: () => [] } as unknown as MediaStream
     const display = { id: 'display', getVideoTracks: () => [{}] } as unknown as MediaStream
     room.watchingScreens = ['viewer']
+    room.setParticipantVolume('viewer', 0.6)
     internals.attachRemoteAudio('viewer', microphone)
     internals.attachRemoteAudio('viewer', display)
     expect(audioElements).toHaveLength(2)
     expect(internals.remoteAudioElements.get('viewer')?.srcObject).toBe(microphone)
+    expect(internals.remoteAudioElements.get('viewer')?.volume).toBe(0.6)
     expect(internals.remoteAudioElements.get('viewer:screen')?.srcObject).toBe(display)
     room.setShareVolume('viewer', 'screen', 0.3)
     expect(internals.remoteAudioElements.get('viewer:screen')?.volume).toBe(0.3)
-    expect(internals.remoteAudioElements.get('viewer')?.volume).toBe(1)
+    expect(internals.remoteAudioElements.get('viewer')?.volume).toBe(0.6)
+    room.setParticipantVolume('viewer', 0.2)
+    expect(internals.remoteAudioElements.get('viewer')?.volume).toBe(0.2)
+    expect(internals.remoteAudioElements.get('viewer:screen')?.volume).toBe(0.3)
+    internals.attachRemoteAudio('other', { id: 'other-mic', getVideoTracks: () => [] } as unknown as MediaStream)
+    expect(internals.remoteAudioElements.get('other')?.volume).toBe(1)
     const pcmPlayer = { setVolume: vi.fn() }
     internals.browserPcmPlayers.set('viewer', pcmPlayer)
     internals.remoteBrowserStates.set('viewer', { active: true, streamId: 'browser' })

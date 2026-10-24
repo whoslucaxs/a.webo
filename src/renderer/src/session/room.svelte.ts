@@ -172,7 +172,7 @@ export class Room {
   private remoteCameraState = new Map<string, { enabled: boolean; streamId: string }>()
   private remoteCameraStreams = new Map<string, MediaStream>()
   private remoteAudioElements = new Map<string, HTMLAudioElement>()
-  private shareVolumes = new Map<string, number>()
+  private audioVolumes = new Map<string, number>()
   private iceGraceTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private voteTimer: ReturnType<typeof setTimeout> | null = null
   private cooldownUntil = 0
@@ -326,15 +326,26 @@ export class Room {
   }
 
   getShareVolume(peerId: string, kind: 'screen' | 'browser'): number {
-    return this.shareVolumes.get(`${peerId}:${kind}`) ?? 1
+    return this.audioVolumes.get(`${peerId}:${kind}`) ?? 1
   }
 
   setShareVolume(peerId: string, kind: 'screen' | 'browser', volume: number): void {
     const level = Math.max(0, Math.min(1, volume))
-    this.shareVolumes.set(`${peerId}:${kind}`, level)
+    this.audioVolumes.set(`${peerId}:${kind}`, level)
     const audio = this.remoteAudioElements.get(`${peerId}:${kind}`)
     if (audio) audio.volume = level
     if (kind === 'browser') this.browserPcmPlayers.get(peerId)?.setVolume(level)
+  }
+
+  getParticipantVolume(peerId: string): number {
+    return this.audioVolumes.get(peerId) ?? 1
+  }
+
+  setParticipantVolume(peerId: string, volume: number): void {
+    const level = Math.max(0, Math.min(1, volume))
+    this.audioVolumes.set(peerId, level)
+    const audio = this.remoteAudioElements.get(peerId)
+    if (audio) audio.volume = level
   }
 
   async openBrowser(url: string, browserId: number, shareAudio: boolean): Promise<void> {
@@ -2430,7 +2441,9 @@ export class Room {
     if (!audio) {
       audio = document.createElement('audio')
       audio.autoplay = true
-      if (isBrowser || isScreen) audio.volume = this.getShareVolume(peerId, isBrowser ? 'browser' : 'screen')
+      audio.volume = isBrowser || isScreen
+        ? this.getShareVolume(peerId, isBrowser ? 'browser' : 'screen')
+        : this.getParticipantVolume(peerId)
       audio.setAttribute('playsinline', '')
       audio.style.display = 'none'
       document.body?.appendChild(audio)
@@ -2532,8 +2545,9 @@ export class Room {
       this.remoteCameraState.delete(peerId)
       this.remoteBrowserStates.delete(peerId)
       this.remoteBrowserStreams.delete(peerId)
-      this.shareVolumes.delete(`${peerId}:screen`)
-      this.shareVolumes.delete(`${peerId}:browser`)
+      this.audioVolumes.delete(peerId)
+      this.audioVolumes.delete(`${peerId}:screen`)
+      this.audioVolumes.delete(`${peerId}:browser`)
       this.browserPcmPlayers.get(peerId)?.stop()
       this.browserPcmPlayers.delete(peerId)
       this.watchingBrowsers = this.watchingBrowsers.filter((id) => id !== peerId)
@@ -3043,7 +3057,7 @@ export class Room {
       audio.remove()
     }
     this.remoteAudioElements.clear()
-    this.shareVolumes.clear()
+    this.audioVolumes.clear()
     this.hasAudioInput = false
     this.isLive = false
     this.activeVote = null
