@@ -35,6 +35,7 @@ import {
 import { CallLoopback } from './callLoopback'
 import { PeerLink } from './peerLink'
 import { BrowserPcmPlayer, BrowserPcmSender } from './browserPcm'
+import { WindowAudioCapture } from './windowAudioCapture'
 import { ChatAttachmentAssembler, MAX_ATTACHMENT_BYTES, attachmentChunks, attachmentDataUrl, isSupportedAttachment } from './chatAttachment'
 import { AdaptiveController, SCREEN_PROFILES, SpeechActivity, initialCpuGuard, stepCpuGuard } from './adaptive'
 import type { CpuGuardState } from './adaptive'
@@ -146,6 +147,7 @@ export class Room {
   private remoteVideo: HTMLVideoElement | null = null
   private audioStream: MediaStream | null = null
   private displayStream: MediaStream | null = null
+  private windowAudioCaptures = new Map<MediaStream, WindowAudioCapture>()
   private screenQuality: ScreenQuality = DEFAULT_SCREEN_QUALITY
   private browserStream: MediaStream | null = null
   private browserAudioShared = false
@@ -1164,6 +1166,8 @@ export class Room {
     const track = captured.getVideoTracks()[0]
     if (!this.localPeerId || !track || track.readyState === 'ended') return 'failed'
     if (!shareAudio) {
+      this.windowAudioCaptures.get(captured)?.stop()
+      this.windowAudioCaptures.delete(captured)
       for (const audioTrack of captured.getAudioTracks()) {
         captured.removeTrack(audioTrack)
         audioTrack.stop()
@@ -2928,6 +2932,20 @@ export class Room {
         debugLog.warn('room', 'getDisplayMedia capture not live')
         return 'cancelled'
       }
+      // shortcut: Window audio isolation is Windows-only until Linux capture exposes a reliable process id.
+      if (window.electron.process.platform === 'win32' && !stream.getAudioTracks().length) {
+        try {
+          const capture = new WindowAudioCapture()
+          const track = await capture.start()
+          if (track) {
+            stream.addTrack(track)
+            this.windowAudioCaptures.set(stream, capture)
+          }
+        } catch (error) {
+          debugLog.warn('room', 'application audio capture unavailable', error)
+          toast.show('error', 'Could not capture audio from this application')
+        }
+      }
       return stream
     } catch (e) {
       if (e && typeof e === 'object' && 'name' in e && e.name === 'NotAllowedError') {
@@ -2999,6 +3017,8 @@ export class Room {
 
   private stopStream(stream: MediaStream | null): void {
     if (!stream) return
+    this.windowAudioCaptures.get(stream)?.stop()
+    this.windowAudioCaptures.delete(stream)
     for (const track of stream.getTracks()) track.stop()
   }
 

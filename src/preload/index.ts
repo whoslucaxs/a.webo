@@ -163,6 +163,13 @@ const KiwiApi = {
   onSelectScreenShareSource: (handler: SelectScreenShareSourceHandler): void => {
     selectScreenShareSourceHandler = handler
   },
+  startWindowAudio: (): Promise<number> => ipcRenderer.invoke('window-audio:start'),
+  stopWindowAudio: (captureId: number): Promise<void> => ipcRenderer.invoke('window-audio:stop', captureId),
+  onWindowAudioPacket: (handler: (captureId: number, chunk: Uint8Array) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, captureId: number, chunk: Uint8Array): void => handler(captureId, chunk)
+    ipcRenderer.on('window-audio:packet', listener)
+    return () => ipcRenderer.removeListener('window-audio:packet', listener)
+  },
   toggleCallOverlay: async (open: boolean): Promise<void> => {
     await ipcRenderer.invoke('toggleCallOverlay', open)
   },

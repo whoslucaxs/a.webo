@@ -69,7 +69,7 @@
       <p>{L.no_screens_found()}</p>
     {:else}
       {#if window.electron.process.platform === 'win32'}
-        <p class="mb-4 text-sm opacity-75">Sharing a screen or window also sends all audio playing on this computer.</p>
+        <p class="mb-4 text-sm opacity-75">Sharing an entire screen can send all computer audio. Sharing a window sends only that application's audio.</p>
       {/if}
       {#if screens.length}
         <h2 class="font-semibold mb-3">{L.screens()}</h2>

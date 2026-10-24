@@ -68,5 +68,8 @@
   "overrides": {
     "vitest": "4.1.11"
   },
-  "desktopName": "a.webo"
+  "desktopName": "a.webo",
+  "optionalDependencies": {
+    "loopback-capture": "3.0.2"
+  }
 }

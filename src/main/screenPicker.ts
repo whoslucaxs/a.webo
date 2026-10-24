@@ -1,5 +1,7 @@
 import { BrowserWindow, desktopCapturer, ipcMain, session } from 'electron'
 import type { DesktopCapturerSource, NativeImage } from 'electron'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { browserShareFrame } from './browserShare'
 
 const isWayland =
@@ -22,6 +24,21 @@ const SELECT_CHANNEL = 'selectScreenShareSource'
 const SELECTED_CHANNEL = 'screenShareSourceSelected'
 const PICKER_TIMEOUT_MS = 120000
 let pickerRequestId = 0
+let selectedWindowId: string | null = null
+let windowAudioCapture: { stop: () => void } | null = null
+let windowAudioCaptureId = 0
+
+const processIdForWindow = async (sourceId: string): Promise<number> => {
+  const handle = /^window:(\d+):\d+$/.exec(sourceId)?.[1]
+  if (!handle) throw new Error('Invalid window source')
+  const script = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class WindowPid { [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId); }'; [uint32]$windowProcessId = 0; [void][WindowPid]::GetWindowThreadProcessId([IntPtr][long]${handle}, [ref]$windowProcessId); Write-Output $windowProcessId`
+  const { stdout } = await promisify(execFile)('powershell.exe', [
+    '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64'),
+  ], { timeout: 8000, windowsHide: true })
+  const pid = Number(stdout.trim())
+  if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Could not identify the selected application')
+  return pid
+}
 
 const nativeImageToDataUrl = (image?: NativeImage | null): string | null => {
   if (!image || image.isEmpty()) return null
@@ -131,6 +148,36 @@ const askRendererToPickSource = async (
 }
 
 export const installDisplayMediaHandler = (getMainWindow: () => BrowserWindow): void => {
+  getMainWindow().once('closed', () => {
+    windowAudioCapture?.stop()
+    windowAudioCapture = null
+    windowAudioCaptureId++
+  })
+  ipcMain.removeHandler('window-audio:start')
+  ipcMain.handle('window-audio:start', async (event) => {
+    if (event.senderFrame !== getMainWindow().webContents.mainFrame) throw new Error('Window audio capture denied')
+    if (process.platform !== 'win32' || !selectedWindowId) return 0
+    windowAudioCapture?.stop()
+    windowAudioCapture = null
+    const pid = await processIdForWindow(selectedWindowId)
+    const { LoopbackCapture } = require('loopback-capture')
+    const capture = new LoopbackCapture()
+    const win = getMainWindow()
+    const captureId = ++windowAudioCaptureId
+    capture.start(pid, true, (chunk: Buffer) => {
+      if (captureId === windowAudioCaptureId && !win.isDestroyed()) win.webContents.send('window-audio:packet', captureId, chunk)
+    })
+    windowAudioCapture = capture
+    return captureId
+  })
+  ipcMain.removeHandler('window-audio:stop')
+  ipcMain.handle('window-audio:stop', (event, captureId: number) => {
+    if (event.senderFrame !== getMainWindow().webContents.mainFrame) return
+    if (captureId !== windowAudioCaptureId) return
+    windowAudioCapture?.stop()
+    windowAudioCapture = null
+    windowAudioCaptureId++
+  })
   session.defaultSession.setPermissionCheckHandler(() => true)
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
     callback(true)
@@ -164,7 +211,9 @@ export const installDisplayMediaHandler = (getMainWindow: () => BrowserWindow): 
         respond({})
         return
       }
-      respond({ video: selected, audio: process.platform === 'win32' && request.audioRequested ? 'loopback' : undefined })
+      const isScreen = selected.id.startsWith('screen:') || Boolean(selected.display_id)
+      selectedWindowId = process.platform === 'win32' && !isScreen ? selected.id : null
+      respond({ video: selected, audio: process.platform === 'win32' && !selectedWindowId && request.audioRequested ? 'loopback' : undefined })
     } catch (err) {
       console.error('display media request failed', err)
       respond({})

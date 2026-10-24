@@ -17,6 +17,7 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+  - node_modules/loopback-capture/prebuilds/**
 win:
   target:
     - nsis

@@ -92,6 +92,9 @@ type KiwiApi = {
   onSelectScreenShareSource: (
     handler: (sources: ScreenShareSource[]) => Promise<string | null>,
   ) => void;
+  startWindowAudio: () => Promise<number>;
+  stopWindowAudio: (captureId: number) => Promise<void>;
+  onWindowAudioPacket: (handler: (captureId: number, chunk: Uint8Array) => void) => () => void;
   toggleCallOverlay: (open: boolean) => Promise<void>;
   setCallOverlayVisible: (visible: boolean) => Promise<void>;
   onCallOverlayClosed: (handler: () => void) => void;
