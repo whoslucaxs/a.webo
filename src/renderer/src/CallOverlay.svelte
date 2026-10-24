@@ -4,6 +4,7 @@
   import type { CallCameraMid, CallChatMessage, CallPeerInfo } from './callTypes'
   import { MAX_ATTACHMENT_BYTES, isSupportedAttachment } from './session/chatAttachment'
   import { cloneSessionDescription } from './Utils'
+  import ChatImage from './ChatImage.svelte'
 
   let peers = $state<CallPeerInfo[]>([])
   let messages = $state<CallChatMessage[]>([])
@@ -235,7 +236,7 @@
           {#if message.text}{message.text}{/if}
           {#if message.attachment}
             {#if message.attachment.mime.startsWith('image/')}
-              <img class="max-w-full max-h-48 rounded" src={message.attachment.dataUrl} alt={message.attachment.fileName} loading="lazy" />
+              <ChatImage src={message.attachment.dataUrl} alt={message.attachment.fileName} />
             {:else}
               <!-- svelte-ignore a11y_media_has_caption -->
               <video class="max-w-full max-h-48 rounded" src={message.attachment.dataUrl} controls preload="metadata" aria-label={message.attachment.fileName}></video>

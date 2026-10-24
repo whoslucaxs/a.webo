@@ -11,6 +11,7 @@
     zoomAtPointer,
   } from './Utils'
   import AudioVisualizer from './AudioVisualizer.svelte'
+  import ChatImage from './ChatImage.svelte'
   import Settings from './Settings.svelte'
   import SessionEndedOverlay from './SessionEndedOverlay.svelte'
   import PresenterVoteModal from './PresenterVoteModal.svelte'
@@ -800,7 +801,7 @@
               {#if message.text}<p>{message.text}</p>{/if}
               {#if message.attachment}
                 {#if message.attachment.mime.startsWith('image/')}
-                  <img class="chat-attachment" src={message.attachment.dataUrl} alt={message.attachment.fileName} loading="lazy" />
+                  <ChatImage src={message.attachment.dataUrl} alt={message.attachment.fileName} />
                 {:else}
                   <!-- svelte-ignore a11y_media_has_caption -->
                   <video class="chat-attachment" src={message.attachment.dataUrl} controls preload="metadata" aria-label={message.attachment.fileName}></video>
