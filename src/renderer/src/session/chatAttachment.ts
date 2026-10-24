@@ -6,6 +6,17 @@ export const ATTACHMENT_CHUNK_BYTES = 8190; // Divisible by 3 so encoded chunks 
 export const isSupportedAttachment = (mime: unknown): mime is string =>
   typeof mime === "string" && /^(image\/(?:png|jpeg|gif|webp)|video\/(?:mp4|webm|ogg))$/.test(mime);
 
+export const clipboardImage = (data: DataTransfer | null): File | null => {
+  const item = Array.from(data?.items ?? []).find(
+    (item) => item.kind === "file" && item.type.startsWith("image/") && isSupportedAttachment(item.type),
+  );
+  const file = item?.getAsFile();
+  if (!file) return null;
+  const mime = file.type || item.type;
+  if (file.name && file.type) return file;
+  return new File([file], file.name || `clipboard.${mime === "image/jpeg" ? "jpg" : mime.slice(6)}`, { type: mime });
+};
+
 export const attachmentDataUrl = (mime: string, chunks: string[]): string => {
   const encoded = chunks.join("").replace(/-/g, "+").replace(/_/g, "/");
   return `data:${mime};base64,${encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=")}`;

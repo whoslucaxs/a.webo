@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { L } from './translations'
   import type { CallCameraMid, CallChatMessage, CallPeerInfo } from './callTypes'
-  import { MAX_ATTACHMENT_BYTES, isSupportedAttachment } from './session/chatAttachment'
+  import { MAX_ATTACHMENT_BYTES, clipboardImage, isSupportedAttachment } from './session/chatAttachment'
   import { cloneSessionDescription } from './Utils'
   import ChatImage from './ChatImage.svelte'
 
@@ -61,11 +61,11 @@
     sendChat()
   }
 
-  const onAttachmentSelected = async (event: Event): Promise<void> => {
-    const input = event.currentTarget as HTMLInputElement
-    const file = input.files?.[0]
-    input.value = ''
-    if (!file) return
+  const sendAttachment = async (file: File): Promise<void> => {
+    if (attachmentSending) {
+      window.alert('Wait for the current attachment to finish')
+      return
+    }
     if (!isSupportedAttachment(file.type) || !file.size || file.size > MAX_ATTACHMENT_BYTES) {
       window.alert('Use a PNG, JPEG, GIF, WebP, MP4, WebM, or OGG file up to 20 MB')
       return
@@ -78,6 +78,20 @@
     } finally {
       attachmentSending = false
     }
+  }
+
+  const onAttachmentSelected = (event: Event): void => {
+    const input = event.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (file) void sendAttachment(file)
+  }
+
+  const onChatPaste = (event: ClipboardEvent): void => {
+    const file = clipboardImage(event.clipboardData)
+    if (!file) return
+    event.preventDefault()
+    void sendAttachment(file)
   }
 
   onMount(() => {
@@ -248,7 +262,7 @@
     {/each}
   </div>
 
-  <form class="overlay-compose no-drag p-3 flex gap-2" onsubmit={onSubmit}>
+  <form class="overlay-compose no-drag p-3 flex gap-2" onsubmit={onSubmit} onpaste={onChatPaste}>
     <input bind:this={attachmentInput} type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/ogg" onchange={onAttachmentSelected} hidden />
     <button class="btn btn-ghost btn-sm" type="button" title={L.attach_media()} aria-label={L.attach_media()} disabled={attachmentSending} onclick={() => attachmentInput?.click()}><i class:fa-spinner={attachmentSending} class:fa-spin={attachmentSending} class:fa-paperclip={!attachmentSending} class="fa-solid"></i></button>
     <input

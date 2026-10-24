@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { attachmentChunks, ChatAttachmentAssembler, MAX_ATTACHMENT_BYTES } from "./chatAttachment";
+import { attachmentChunks, ChatAttachmentAssembler, clipboardImage, MAX_ATTACHMENT_BYTES } from "./chatAttachment";
 import { PROTOCOL_VERSION, parseControlMessage } from "./controlProtocol";
 import { Room } from "./room.svelte";
 
 describe("chat attachments", () => {
+  it("accepts a pasted image and leaves plain text paste alone", () => {
+    const image = new File([new Uint8Array([1])], "", { type: "image/png" });
+    const clipboard = (type: string) => ({ items: [{ kind: "file", type, getAsFile: () => image }] }) as unknown as DataTransfer;
+    expect(clipboardImage(clipboard("image/png"))?.name).toBe("clipboard.png");
+    expect(clipboardImage(clipboard("image/png"))?.type).toBe("image/png");
+    expect(clipboardImage(clipboard("image/svg+xml"))).toBeNull();
+    expect(clipboardImage({ items: [] } as unknown as DataTransfer)).toBeNull();
+  });
+
   it("reassembles out-of-order chunks into the original image", () => {
     const bytes = Uint8Array.from({ length: 20_000 }, (_, index) => index % 251);
     const data = attachmentChunks(bytes);

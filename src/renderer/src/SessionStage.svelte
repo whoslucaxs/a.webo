@@ -16,6 +16,7 @@
   import SessionEndedOverlay from './SessionEndedOverlay.svelte'
   import PresenterVoteModal from './PresenterVoteModal.svelte'
   import type { Room } from './session/room.svelte'
+  import { clipboardImage } from './session/chatAttachment'
   import { connectThrownText } from './session/connectionFailureText'
   import { memberSoundChanges, playMemberSound } from './session/memberSounds'
   import { DEFAULT_SCREEN_QUALITY, type ScreenQuality } from './session/screenQuality'
@@ -287,11 +288,11 @@
     chatDraft = ''
   }
 
-  const onAttachmentSelected = async (event: Event): Promise<void> => {
-    const input = event.currentTarget as HTMLInputElement
-    const file = input.files?.[0]
-    input.value = ''
-    if (!file) return
+  const sendAttachment = async (file: File): Promise<void> => {
+    if (attachmentSending) {
+      toast.show('error', 'Wait for the current attachment to finish')
+      return
+    }
     attachmentSending = true
     try {
       await room.sendAttachment(file)
@@ -300,6 +301,20 @@
     } finally {
       attachmentSending = false
     }
+  }
+
+  const onAttachmentSelected = (event: Event): void => {
+    const input = event.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (file) void sendAttachment(file)
+  }
+
+  const onChatPaste = (event: ClipboardEvent): void => {
+    const file = clipboardImage(event.clipboardData)
+    if (!file) return
+    event.preventDefault()
+    void sendAttachment(file)
   }
 
   const chatTime = (at: number): string =>
@@ -812,7 +827,7 @@
           </article>
         {/each}
       </div>
-      <form class="chat-compose" onsubmit={onChatSubmit}>
+      <form class="chat-compose" onsubmit={onChatSubmit} onpaste={onChatPaste}>
         <input bind:this={attachmentInput} type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/ogg" onchange={onAttachmentSelected} hidden />
         <button type="button" title={L.attach_media()} aria-label={L.attach_media()} disabled={attachmentSending} onclick={() => attachmentInput?.click()}><i class:fa-spinner={attachmentSending} class:fa-spin={attachmentSending} class:fa-paperclip={!attachmentSending} class="fa-solid"></i></button>
         <input class="input" bind:value={chatDraft} placeholder={L.chat_placeholder()} aria-label={L.chat_placeholder()} maxlength="2000" />
